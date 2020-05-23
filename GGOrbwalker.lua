@@ -2732,7 +2732,7 @@ function Object:OnLoad()
             end
         end
         return success
-    end, 0, 100)
+    end, 1, 100)
 end
 
 function Object:OnAllyHeroLoad(cb)
