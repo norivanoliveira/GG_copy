@@ -738,3 +738,12 @@ end
 function GGPrediction:SpellPrediction(args)
     return Prediction:SpellPrediction(args)
 end
+function GGPrediction:ClosestPointOnLineSegment(p, p1, p2)
+    return Math:ClosestPointOnLineSegment(p, p1, p2)
+end
+function GGPrediction:IsInRange(p1, p2, range)
+    return Math:IsInRange(p1, p2, range)
+end
+function GGPrediction:GetImmobileDuration(unit)
+    return Immobile:GetDuration(unit)
+end
