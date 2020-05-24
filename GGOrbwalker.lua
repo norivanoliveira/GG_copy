@@ -1984,7 +1984,7 @@ function Spell:CheckSpellDelays2(delays)
     return true
 end
 
-function Spell:SpellClear(spell, spelldata, isReady, canLastHit, canLaneClear, getDrawMenu, getDamage)
+function Spell:SpellClear(spell, spelldata, isReady, canLastHit, canLaneClear, getDamage)
     local c =
     {
         HK = 0,
@@ -2142,17 +2142,14 @@ function Spell:SpellClear(spell, spelldata, isReady, canLastHit, canLaneClear, g
                 end
             end
         end
-        
-        local lhmenu, lcmenu = getDrawMenu()
-        if lhmenu.enabled:Value() or lcmenu.enabled:Value() then
-            local targets = self.FarmMinions
-            for i = 1, #targets do
-                local minion = targets[i]
-                if minion.LastHitable and lhmenu.enabled:Value() then
-                    Draw.Circle(minion.Minion.pos, lhmenu.radius:Value(), lhmenu.width:Value(), lhmenu.color:Value())
-                elseif minion.AlmostLastHitable and lcmenu.enabled:Value() then
-                    Draw.Circle(minion.Minion.pos, lcmenu.radius:Value(), lcmenu.width:Value(), lcmenu.color:Value())
-                end
+
+        local targets = self.FarmMinions
+        for i = 1, #targets do
+            local minion = targets[i]
+            if minion.LastHitable then
+                Draw.Circle(minion.Minion.pos, 50, 1, Draw.Color(150, 255, 255, 255))
+            elseif minion.AlmostLastHitable then
+                Draw.Circle(minion.Minion.pos, 50, 1, Draw.Color(150, 239, 159, 55))
             end
         end
     end
@@ -3572,9 +3569,9 @@ function Health:OnTick()
             local minion = args.Minion
             if Object:IsValid(minion, Obj_AI_Minion, true, true) then
                 if args.LastHitable then
-                    Draw.Circle(minion.pos, math_max(65, minion.boundingRadius), 2, Color.LastHitable)
+                    Draw.Circle(minion.pos, math_max(65, minion.boundingRadius), 1, Color.LastHitable)
                 elseif args.AlmostLastHitable then
-                    Draw.Circle(minion.pos, math_max(65, minion.boundingRadius), 2, Color.AlmostLastHitable)
+                    Draw.Circle(minion.pos, math_max(65, minion.boundingRadius), 1, Color.AlmostLastHitable)
                 end
             end
         end
@@ -4081,7 +4078,7 @@ function Cursor:OnLoad()
     
     table_insert(SDK.Draw, function()
         if self.MenuDrawCursor:Value() then
-            Draw.Circle(mousePos, 150, 2, Color.Cursor)
+            Draw.Circle(mousePos, 150, 1, Color.Cursor)
         end
     end)
     
@@ -4388,6 +4385,11 @@ function Attack:IsReady()
     return true
 end
 
+function Attack:GetAttackCastTime(num)
+	num = num or 0
+	return self:GetWindup() - Data:GetLatency() + num + 0.025 + (Orbwalker.Menu.General.ExtraWindUpTime:Value() * 0.001)
+end
+
 function Attack:IsActive(num)
     num = num or 0
     
@@ -4487,7 +4489,7 @@ function Orbwalker:OnLoad()
         end
         
         if self.MenuDrawings.Range:Value() then
-            Draw.Circle(myHero.pos, Data:GetAutoAttackRange(myHero), 2, Color.Range)
+            Draw.Circle(myHero.pos, Data:GetAutoAttackRange(myHero), 1, Color.Range)
         end
         
         if self.MenuDrawings.HoldRadius:Value() then
@@ -4499,7 +4501,7 @@ function Orbwalker:OnLoad()
             for i = 1, #t do
                 local enemy = t[i]
                 local range = Data:GetAutoAttackRange(enemy, myHero)
-                Draw.Circle(enemy.pos, range, 2, Math:IsInRange(enemy, myHero, range) and Color.EnemyRange or Color.Range)
+                Draw.Circle(enemy.pos, range, 1, Math:IsInRange(enemy, myHero, range) and Color.EnemyRange or Color.Range)
             end
         end
     end)
