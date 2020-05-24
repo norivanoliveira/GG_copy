@@ -1743,9 +1743,12 @@ function Data:GetHeroData(obj)
         return {}
     end
     local name = obj.charName
-    if name == nil or self.HEROES[name:lower()] == nil then
+    if name == nil then
         return {}
     end
+    if self.HEROES[name:lower()] == nil and not name:lower():find("dummy") then
+    	return {}
+	end
     local Team = obj.team
     local IsEnemy = obj.isEnemy
     local IsAlly = obj.isAlly
