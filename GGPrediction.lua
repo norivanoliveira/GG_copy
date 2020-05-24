@@ -669,7 +669,7 @@ function Prediction:SpellPrediction(args)
             self.HitChance = 0
             return false
         end
-        if Math:FindAngle(self.CastPosition,self.Target.pos,myHero.pos) > 90 - self.TimeToHit * 30 then
+        if self.Type ~= SPELLTYPE_CIRCLE and self.TimeToHit > 0.7 and Math:FindAngle(self.CastPosition,self.Target.pos,myHero.pos) > 90 - self.TimeToHit * 30 then
             return false
         end
         self.HitChance = HITCHANCE_NORMAL
