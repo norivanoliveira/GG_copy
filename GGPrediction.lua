@@ -669,13 +669,13 @@ function Prediction:SpellPrediction(args)
             self.HitChance = 0
             return false
         end
+        self.HitChance = HITCHANCE_NORMAL
         if hitChance > HITCHANCE_NORMAL and self.TargetIsHero then
             local duration, spelltime, attacktime, knockduration = Immobile:GetDuration(self.Target)
             if knockduration ~= 0 then
                 self.HitChance = 0
                 return false
             end
-            self.HitChance = HITCHANCE_NORMAL
             if duration > 0 then
                 if self.TimeToHit + 0.02 < duration + self.RealRadius / self.Target.ms then
                     self.HitChance = HITCHANCE_IMMOBILE
