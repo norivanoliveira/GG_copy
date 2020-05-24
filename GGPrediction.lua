@@ -274,10 +274,10 @@ function Math:AngleBetween(p1, p2)
     end
     return theta
 end
-function Math:FindAngle(p0, p1, p2)
-    local b = math_pow(p1.x - p0.x, 2) + math_pow(p1.z - p0.z, 2)
-    local a = math_pow(p1.x - p2.x, 2) + math_pow(p1.z - p2.z, 2)
-    local c = math_pow(p2.x - p0.x, 2) + math_pow(p2.z - p0.z, 2)
+function Math:FindAngle(p1, center, p2)
+    local b = math_pow(center.x - p1.x, 2) + math_pow(center.z - p1.z, 2)
+    local a = math_pow(center.x - p2.x, 2) + math_pow(center.z - p2.z, 2)
+    local c = math_pow(p2.x - p1.x, 2) + math_pow(p2.z - p1.z, 2)
     local angle = math_acos((a + b - c) / math_sqrt(4 * a * b)) * (180 / math_pi)
     if (angle > 90) then
         angle = 180 - angle
@@ -669,6 +669,9 @@ function Prediction:SpellPrediction(args)
             self.HitChance = 0
             return false
         end
+        if Math:FindAngle(self.CastPosition,self.Target.pos,myHero.pos) > 90 - self.TimeToHit * 30 then
+            return false
+        end
         self.HitChance = HITCHANCE_NORMAL
         if hitChance > HITCHANCE_NORMAL and self.TargetIsHero then
             local duration, spelltime, attacktime, knockduration = Immobile:GetDuration(self.Target)
@@ -746,4 +749,7 @@ function GGPrediction:IsInRange(p1, p2, range)
 end
 function GGPrediction:GetImmobileDuration(unit)
     return Immobile:GetDuration(unit)
+end
+function GGPrediction:FindAngle(p1,center,p2)
+    return Math:FindAngle(p1,center,p2)
 end
