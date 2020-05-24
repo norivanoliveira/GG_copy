@@ -2361,7 +2361,7 @@ if Champion ~= nil then
         if Champion.Load then
             Champion:Load()
         end
-		if Champion.PreAttack then
+		if Champion.OnPreAttack then
 			GG_Orbwalker:OnPreAttack(Champion.OnPreAttack)
 		end
         if Champion.OnAttack then
