@@ -132,10 +132,10 @@ do
     -- cast
     function Utils:Cast(spell, target, spellprediction, hitchance)
         if not self.CanUseSpell and (target or spellprediction) then
-            return
+            return false
         end
         if not self:CanCast(spell) then
-            return
+            return false
         end
         if spellprediction == nil then
             if target == nil then
@@ -145,7 +145,7 @@ do
                 for i, cb in ipairs(self.OnSpellCastCb) do
                 	cb(spell, target, spellprediction)
             	end
-                return
+                return true
             end
             if Control.CastSpell(spell, target) then
                 self.CanUseSpell = false
@@ -153,11 +153,12 @@ do
                 for i, cb in ipairs(self.OnSpellCastCb) do
                 	cb(spell, target, spellprediction)
             	end
+            	return true
             end
-            return
+            return false
         end
         if target == nil then
-            return
+            return false
         end
         spellprediction:GetPrediction(target, myHero)
         if spellprediction:CanHit(hitchance or HITCHANCE_HIGH) then
@@ -167,8 +168,10 @@ do
                 for i, cb in ipairs(self.OnSpellCastCb) do
                 	cb(spell, target, spellprediction)
             	end
+            	return true
             end
         end
+        return false
     end
     function Utils:CanCast(spell)
         if spell == HK_Q then
@@ -975,6 +978,248 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     end
 end
 
+if Champion == nil and myHero.charName == 'KogMaw' then
+	--menu
+    Menu.q_combo				= Menu.q:MenuElement({id = 'combo', name = 'Combo', value = true})
+    Menu.q_harass				= Menu.q:MenuElement({id = 'harass', name = 'Harass', value = true})
+    Menu.q_hitchance 			= Menu.q:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high", "immobile"}})
+
+    Menu.w_combo				= Menu.w:MenuElement({id = 'combo', name = 'Combo', value = true})
+    Menu.w_harass				= Menu.w:MenuElement({id = 'harass', name = 'Harass', value = false})
+	Menu.w_stopq				= Menu.w:MenuElement({id = "stopq", name = "Stop using Q when has W", value = false})
+	Menu.w_stope				= Menu.w:MenuElement({id = "stope", name = "Stop using E when has W", value = false})
+	Menu.w_stopr				= Menu.w:MenuElement({id = "stopr", name = "Stop using R when has W", value = false})
+
+	Menu.e_combo 				= Menu.e:MenuElement({id = "combo", name = "Combo", value = true})
+	Menu.e_harass 				= Menu.e:MenuElement({id = "harass", name = "Harass", value = false})
+	Menu.e_mana 				= Menu.e:MenuElement({id = "mana", name = "Minimum Mana %", value = 20, min = 1, max = 100, step = 1})
+	Menu.e_hitchance 			= Menu.e:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high", "immobile"}})
+
+	Menu.r_combo				= Menu.r:MenuElement({id = "combo", name = "Combo", value = true})
+	Menu.r_harass 				= Menu.r:MenuElement({id = "harass", name = "Harass", value = false})
+	Menu.r_onlylow 				= Menu.r:MenuElement({id = "onlylow", name = "Only 0-40 % HP enemies", value = true})
+	Menu.r_xstacks				= Menu.r:MenuElement({id = "xstacks", name = "Stop at x stacks", value = 3, min = 1, max = 9, step = 1})
+	Menu.r_mana 				= Menu.r:MenuElement({id = "mana", name = "Minimum Mana %", value = 20, min = 1, max = 100, step = 1})
+	Menu.r_hitchance			= Menu.r:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high", "immobile"}})
+	Menu.r:MenuElement({name = "KS", id = "ks", type = _G.MENU})
+		Menu.r_ks_enabled		= Menu.r.ks:MenuElement({id = "enabled", name = "Enabled", value = true})
+		Menu.r_ks_stack			= Menu.r.ks:MenuElement({id = "stack", name = "Check for R stacks", value = false})
+		Menu.r_ks_hitchance		= Menu.r.ks:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high", "immobile"}})
+	Menu.r:MenuElement({name = "Semi Manual", id = "semi", type = _G.MENU})
+		Menu.r_semi_key			= Menu.r.semi:MenuElement({name = "Semi-Manual Key", id = "key", key = string.byte("T")})
+		Menu.r_semi_stack		= Menu.r.semi:MenuElement({name = "Check R stacks", id = "stack", value = false})
+		Menu.r_semi_onlylow		= Menu.r.semi:MenuElement({name = "Only 0-40 % HP enemies", id = "onlylow", value = false})
+		Menu.r_semi_hitchance	= Menu.r.semi:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high", "immobile"}})
+		Menu.r_semi_useon		= Menu.r.semi:MenuElement({name = "Use on", id = "useon", type = _G.MENU})
+
+	-- locals
+	local QPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 70, Range = 1175, Speed = 1650, Collision = true, Type = GGPrediction.SPELLTYPE_LINE})
+	local EPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 120, Range = 1280, Speed = 1350, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
+	local RPrediction = GGPrediction:SpellPrediction({Delay = 1.3, Radius = 90, Range = 0, Speed = math.huge, Collision = false, Type = GGPrediction.SPELLTYPE_CIRCLE})
+
+	-- champion
+	Champion =
+	{
+        CanAttackCb = function()
+        	return GG_Spell:CheckSpellDelays({q = 0.33, w = 0, e = 0.33, r = 0.33})
+        end,
+        CanMoveCb = function()
+            return GG_Spell:CheckSpellDelays({q = 0.2, w = 0, e = 0.2, r = 0.2})
+        end,
+        OnPreAttack = function(args)
+        	if not GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 0.33}) then
+        		return
+    		end
+	        if not((self.IsCombo and Menu.w_combo:Value()) or (self.IsHarass and Menu.w_harass:Value())) then
+	        	return
+	    	end
+			local enemies = GG_Object:GetEnemyHeroes(610 + (20 * myHero:GetSpellData(_W).level) + myHero.boundingRadius - 35, true, true, true, true)
+			if #enemies > 0 and Utils:Cast(HK_W) then
+				args.Process = false
+			end
+    	end,
+	}
+	-- load
+    function Champion:Load()
+    	GG_Object:OnEnemyHeroLoad(function(args) Menu.r_semi_useon:MenuElement({id = args.charName, name = args.charName, value = true}) end)
+	end
+	-- tick
+    function Champion:Tick()
+    	if self.IsAttacking or self.CanAttackTarget then
+    		return
+		end
+		self:WLogic()
+		self.HasWBuff = GG_Buff:HasBuff(myHero, "KogMawBioArcaneBarrage")
+        self.WMana = myHero.mana - 40 - (myHero:GetSpellData(_W).currentCd * myHero.mpRegen)
+        if self.AttackTarget == nil and (GetTickCount() < Utils.LastW + 300 or Game.Timer() < GG_Spell.WkTimer + 0.3) then
+            return
+        end
+        self:RLogic()
+        self:QLogic()
+        self:ELogic()
+	end
+    -- q logic
+    function Champion:QLogic()
+    	if not GG_Spell:IsReady(_Q, {q = 0.5, w = 0.15, e = 0.33, r = 0.33}) then
+    		return
+		end
+		if self.WMana < myHero:GetSpellData(_Q).mana then
+			return
+		end
+		self:QCombo()
+    end
+	-- w logic
+	function Champion:WLogic()
+		if not GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 0.33}) then
+			return
+		end
+		self:WCombo()
+    end
+	-- e logic
+    function Champion:ELogic()
+    	if not GG_Spell:IsReady(_E, {q = 0.33, w = 0.15, e = 0.5, r = 0.33}) then
+    		return
+		end
+		if self.WMana < myHero:GetSpellData(_E).mana then
+			return
+		end
+		self:ECombo()
+	end
+    -- r logic
+    function Champion:RLogic()
+        if not GG_Spell:IsReady(_R, {q = 0.33, w = 0.15, e = 0.33, r = 0.5}) then
+        	return
+    	end
+        if self.WMana < myHero:GetSpellData(_R).mana then
+        	return
+    	end
+        RPrediction.Range = 900 + 300 * myHero:GetSpellData(_R).level
+        self.RTargets = Utils:GetEnemyHeroes(RPrediction.Range)
+        self.RStacks = GG_Buff:GetBuffCount(myHero, "kogmawlivingartillerycost")
+        self:RKS()
+        self:RSemiManual()
+        self:RCombo()
+    end
+    -- q combo
+    function Champion:QCombo()
+    	if not((self.IsCombo and Menu.q_combo:Value()) or (self.IsHarass and Menu.q_harass:Value())) then
+    		return
+		end
+		if Menu.w_stopq:Value() and self.HasWBuff then
+			return
+		end
+        local target = self.AttackTarget ~= nil and self.AttackTarget or GG_Target:GetTarget(Utils:GetEnemyHeroes(1175), DAMAGE_TYPE_MAGICAL)
+        Utils:Cast(HK_Q, target, QPrediction, Menu.q_hitchance:Value() + 1)
+	end
+    -- w combo
+    function Champion:WCombo()
+        if not((self.IsCombo and Menu.w_combo:Value()) or (self.IsHarass and Menu.w_harass:Value())) then
+        	return
+    	end
+        if not GG_Attack:IsBefore(0.55) then
+        	return
+    	end
+    	local enemies = GG_Object:GetEnemyHeroes(610 + (20 * myHero:GetSpellData(_W).level) + myHero.boundingRadius - 35, true, true, true, true)
+        if #enemies > 0 then
+        	Utils:Cast(HK_W)
+        end
+	end
+	-- e combo
+	function Champion:ECombo()
+    	if not((self.IsCombo and Menu.e_combo:Value()) or (self.IsHarass and Menu.e_harass:Value())) then
+    		return
+		end
+		if Menu.w_stope:Value() and self.HasWBuff then
+			return
+		end
+		if self.ManaPercent < Menu.e_mana:Value() then
+			return
+		end
+        local target = self.AttackTarget ~= nil and self.AttackTarget or GG_Target:GetTarget(Utils:GetEnemyHeroes(1280), DAMAGE_TYPE_MAGICAL)
+        Utils:Cast(HK_E, target, EPrediction, Menu.e_hitchance:Value() + 1)
+    end
+    -- r combo
+    function Champion:RCombo()
+		if not((self.IsCombo and Menu.r_combo:Value()) or (self.IsHarass and Menu.r_harass:Value())) then
+        	return
+    	end
+    	if Menu.w_stopr:Value() and self.HasWBuff then
+    		return
+		end
+		if self.ManaPercent < Menu.r_mana:Value() then
+			return
+		end
+		if self.RStacks >= Menu.r_xstacks:Value() then
+			return
+		end
+		local enemies = {}
+        local target = self.AttackTarget
+        if Menu.r_onlylow:Value() then
+        	if target and target.health * 100 / target.maxHealth >= 40 then
+        		target = nil
+    		end
+    		if target == nil then
+	        	for i, unit in ipairs(self.RTargets) do
+	                if ((unit.health + (unit.hpRegen * 3)) * 100) / unit.maxHealth < 40 then
+	                	table_insert(enemies, unit)
+	                end
+	            end
+            end
+        elseif target == nil then
+            enemies = self.RTargets
+        end
+        Utils:Cast(HK_R, target ~= nil and target or GG_Target:GetTarget(enemies, DAMAGE_TYPE_MAGICAL), RPrediction, Menu.r_hitchance:Value() + 1)
+    end
+    -- r ks
+    function Champion:RKS()
+    	if not Menu.r_ks_enabled:Value() then
+    		return
+		end
+		if Menu.r_ks_stack:Value() and self.RStacks >= Menu.r_xstacks:Value() then
+			return
+		end
+		local baseRDmg = 60 + (40 * myHero:GetSpellData(_R).level) + (myHero.bonusDamage * 0.65) + (myHero.ap * 0.25)
+		for i, unit in ipairs(self.RTargets) do
+			local health = unit.health
+			local hpRegen = unit.hpRegen
+            local rMultipier = math.floor(100 - (((health + (hpRegen * 3)) * 100) / unit.maxHealth))
+            local rDmg = rMultipier > 60 and baseRDmg * 2 or baseRDmg * (1 + (rMultipier * 0.00833))
+            if GG_Damage:CalculateDamage(myHero, unit, DAMAGE_TYPE_MAGICAL, rDmg) > health + (hpRegen * 2) then
+            	if Utils:Cast(HK_R, GG_Target:GetTarget(enemies, DAMAGE_TYPE_MAGICAL), RPrediction, Menu.r_ks_hitchance:Value() + 1) then
+            		break
+        		end
+            end
+        end
+    end
+    -- r semi manual
+    function Champion:RSemiManual()
+    	if not Menu.r_semi_key:Value() then
+    		return
+		end
+		if Menu.r_semi_stack:Value() and self.RStacks >= Menu.r_xstacks:Value() then
+			return
+		end
+		local enemies = {}
+        if Menu.r_semi_onlylow:Value() then
+        	for i, unit in ipairs(self.RTargets) do
+                if ((unit.health + (unit.hpRegen * 3)) * 100) / unit.maxHealth < 40 then
+                	table_insert(enemies, unit)
+                end
+            end
+        else
+            enemies = self.RTargets
+        end
+        local useonenemies = {}
+        for i, unit in ipairs(enemies) do
+            local canuse = Menu.r_semi_useon[unit.charName]
+            if canuse and canuse:Value() then
+                table_insert(useonenemies, unit)
+            end
+    	end
+        Utils:Cast(HK_R, GG_Target:GetTarget(useonenemies, DAMAGE_TYPE_MAGICAL), RPrediction, Menu.r_semi_hitchance:Value() + 1)
+    end
+end
+
 --[[
 if Champion == nil and myHero.charName == 'Karthus' then
     class "Karthus"
@@ -1034,7 +1279,7 @@ if Champion == nil and myHero.charName == 'Karthus' then
             return
         end
         -- Has Passive Buff
-        local hasPassive = SDKBuff:HasBuff(myHero, "karthusdeathdefiedbuff")
+        local hasPassive = GG_Buff:HasBuff(myHero, "karthusdeathdefiedbuff")
         -- W
         if GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 3.23}) then
             if (GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.wset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.wset.harass:Value()) then
@@ -1046,7 +1291,7 @@ if Champion == nil and myHero.charName == 'Karthus' then
         if GG_Spell:IsReady(_E, {q = 0.33, w = 0.33, e = 0.5, r = 3.23}) and not hasPassive then
             if Menu.eset.auto:Value() or (GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.eset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.eset.harass:Value()) then
                 local enemyList = AIO:GetEnemyHeroes(425)
-                local eBuff = SDKBuff:HasBuff(myHero, "karthusdefile")
+                local eBuff = GG_Buff:HasBuff(myHero, "karthusdefile")
                 if eBuff and #enemyList == 0 and AIO:Cast(HK_E) then
                     return
                 end
@@ -1174,220 +1419,6 @@ if Champion == nil and myHero.charName == 'Karthus' then
     end
 end
 
-if Champion == nil and myHero.charName == 'KogMaw' then
-    class "KogMaw"
-
-    function KogMaw:__init()
-        self.QData = {Delay = 0.25, Radius = 70, Range = 1175, Speed = 1650, Collision = true, Type = _G.SPELLTYPE_LINE}
-        self.EData = {Delay = 0.25, Radius = 120, Range = 1280, Speed = 1350, Collision = false, Type = _G.SPELLTYPE_LINE}
-        self.RData = {Delay = 1.2, Radius = 225, Range = 0, Speed = math.huge, Collision = false, Type = _G.SPELLTYPE_CIRCLE}
-        self.HasWBuff = false
-    end
-
-    function KogMaw:CreateMenu()
-        Menu = MenuElement({name = "Gamsteron KogMaw", id = "Gamsteron_KogMaw", type = _G.MENU})
-        -- Q
-        Menu:MenuElement({name = "Q settings", id = "qset", type = _G.MENU})
-        Menu.qset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.qset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu.qset:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
-        -- W
-        Menu:MenuElement({name = "W settings", id = "wset", type = _G.MENU})
-        Menu.wset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.wset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu.wset:MenuElement({id = "stopq", name = "Stop Q if has W buff", value = false})
-        Menu.wset:MenuElement({id = "stope", name = "Stop E if has W buff", value = false})
-        Menu.wset:MenuElement({id = "stopr", name = "Stop R if has W buff", value = false})
-        -- E
-        Menu:MenuElement({name = "E settings", id = "eset", type = _G.MENU})
-        Menu.eset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.eset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu.eset:MenuElement({id = "emana", name = "Minimum Mana %", value = 20, min = 1, max = 100, step = 1})
-        Menu.eset:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
-        -- R
-        Menu:MenuElement({name = "R settings", id = "rset", type = _G.MENU})
-        Menu.rset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.rset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu.rset:MenuElement({id = "onlylow", name = "Only 0-40 % HP enemies", value = true})
-        Menu.rset:MenuElement({id = "stack", name = "Stop at x stacks", value = 3, min = 1, max = 9, step = 1})
-        Menu.rset:MenuElement({id = "rmana", name = "Minimum Mana %", value = 20, min = 1, max = 100, step = 1})
-        Menu.rset:MenuElement({name = "KS", id = "ksmenu", type = _G.MENU})
-        Menu.rset.ksmenu:MenuElement({id = "ksr", name = "KS - Enabled", value = true})
-        Menu.rset.ksmenu:MenuElement({id = "csksr", name = "KS -> Check R stacks", value = false})
-        Menu.rset:MenuElement({name = "Semi Manual", id = "semirkog", type = _G.MENU})
-        Menu.rset.semirkog:MenuElement({name = "Semi-Manual Key", id = "semir", key = string.byte("T")})
-        Menu.rset.semirkog:MenuElement({name = "Check R stacks", id = "semistacks", value = false})
-        Menu.rset.semirkog:MenuElement({name = "Only 0-40 % HP enemies", id = "semilow", value = false})
-        Menu.rset.semirkog:MenuElement({name = "Use on:", id = "useon", type = _G.MENU})
-        GG_Object:OnEnemyHeroLoad(function(args) Menu.rset.semirkog.useon:MenuElement({id = args.charName, name = args.charName, value = true}) end)
-        Menu.rset:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
-    end
-
-    function KogMaw:Tick()
-        -- Is Attacking
-        if GG_Orbwalker:IsAutoAttacking() then
-            return
-        end
-        -- Can Attack
-        local AATarget = GG_Target:GetComboTarget()
-        if AATarget and not GG_Orbwalker.IsNone and GG_Orbwalker:CanAttack() then
-            return
-        end
-        -- W
-        if ((GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.wset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.wset.harass:Value())) and SDKAttack:IsBefore(0.55) and GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 0.33}) then
-            local enemyList = AIO:GetEnemyHeroesAA(610 + (20 * myHero:GetSpellData(_W).level) + myHero.boundingRadius - 35, true)
-            if #enemyList > 0 and AIO:Cast(HK_W) then
-                return
-            end
-        end
-        -- Check W Buff
-        local HasWBuff = false
-        for i = 0, myHero.buffCount do
-            local buff = myHero:GetBuff(i)
-            if buff and buff.count > 0 and buff.duration > 0 and buff.name == "KogMawBioArcaneBarrage" then
-                HasWBuff = true
-                break
-            end
-        end
-        self.HasWBuff = HasWBuff
-        -- Get Mana Percent
-        local manaPercent = 100 * myHero.mana / myHero.maxMana
-        -- Save Mana
-        local wMana = 40 - (myHero:GetSpellData(_W).currentCd * myHero.mpRegen)
-        local meMana = myHero.mana - wMana
-        if not(AATarget) and (Game.Timer() < GG_Spell.WTimer + 0.3 or Game.Timer() < GG_Spell.WkTimer + 0.3) then
-            return
-        end
-        -- R
-        local result = false
-        if meMana > myHero:GetSpellData(_R).mana and GG_Spell:IsReady(_R, {q = 0.33, w = 0.15, e = 0.33, r = 0.5}) then
-            self.RData.Range = 900 + 300 * myHero:GetSpellData(_R).level
-            local enemyList = AIO:GetEnemyHeroes(self.RData.Range)
-            local rStacks = SDKBuff:GetBuffCount(myHero, "kogmawlivingartillerycost") < Menu.rset.stack:Value()
-            local checkRStacksKS = Menu.rset.ksmenu.csksr:Value()
-            -- KS
-            if Menu.rset.ksmenu.ksr:Value() and (not checkRStacksKS or rStacks) then
-                local rTargets = {}
-                for i = 1, #enemyList do
-                    local hero = enemyList[i]
-                    local baseRDmg = 60 + (40 * myHero:GetSpellData(_R).level) + (myHero.bonusDamage * 0.65) + (myHero.ap * 0.25)
-                    local rMultipier = math.floor(100 - (((hero.health + (hero.hpRegen * 3)) * 100) / hero.maxHealth))
-                    local rDmg
-                    if rMultipier > 60 then
-                        rDmg = baseRDmg * 2
-                    else
-                        rDmg = baseRDmg * (1 + (rMultipier * 0.00833))
-                    end
-                    rDmg = GG_Damage:CalculateDamage(myHero, hero, DAMAGE_TYPE_MAGICAL, rDmg)
-                    local unitKillable = rDmg > hero.health + (hero.hpRegen * 2)
-                    if unitKillable then
-                        rTargets[#rTargets + 1] = hero
-                    end
-                end
-                result = AIO:Cast(HK_R, GG_Target:GetTarget(rTargets, 1), self.RData, Menu.rset.hitchance:Value() + 1)
-            end if result then return end
-            -- SEMI MANUAL
-            local checkRStacksSemi = Menu.rset.semirkog.semistacks:Value()
-            if Menu.rset.semirkog.semir:Value() and (not checkRStacksSemi or rStacks) then
-                local onlyLowR = Menu.rset.semirkog.semilow:Value()
-                local rTargets = {}
-                if onlyLowR then
-                    for i = 1, #enemyList do
-                        local hero = enemyList[i]
-                        if hero and ((hero.health + (hero.hpRegen * 3)) * 100) / hero.maxHealth < 40 then
-                            rTargets[#rTargets + 1] = hero
-                        end
-                    end
-                else
-                    rTargets = enemyList
-                end
-                result = AIO:Cast(HK_R, GG_Target:GetTarget(rTargets, 1), self.RData, Menu.rset.hitchance:Value() + 1)
-            end if result then return end
-            -- Combo / Harass
-            if (GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.rset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.rset.harass:Value()) then
-                local stopRIfW = Menu.wset.stopr:Value() and self.HasWBuff
-                if not stopRIfW and rStacks and manaPercent > Menu.rset.rmana:Value() then
-                    local onlyLowR = Menu.rset.onlylow:Value()
-                    local AATarget2
-                    if onlyLowR and AATarget and (AATarget.health * 100) / AATarget.maxHealth > 39 then
-                        AATarget2 = nil
-                    else
-                        AATarget2 = AATarget
-                    end
-                    local t
-                    if AATarget2 then
-                        t = AATarget2
-                    else
-                        local rTargets = {}
-                        if onlyLowR then
-                            for i = 1, #enemyList do
-                                local hero = enemyList[i]
-                                if hero and ((hero.health + (hero.hpRegen * 3)) * 100) / hero.maxHealth < 40 then
-                                    rTargets[#rTargets + 1] = hero
-                                end
-                            end
-                        else
-                            rTargets = enemyList
-                        end
-                        t = GG_Target:GetTarget(rTargets, 1)
-                    end
-                    result = AIO:Cast(HK_R, t, self.RData, Menu.rset.hitchance:Value() + 1)
-                end
-            end if result then return end
-        end
-        -- Q
-        local stopQIfW = Menu.wset.stopq:Value() and self.HasWBuff
-        if not stopQIfW and meMana > myHero:GetSpellData(_Q).mana and GG_Spell:IsReady(_Q, {q = 0.5, w = 0.15, e = 0.33, r = 0.33}) then
-            -- Combo / Harass
-            if (GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.qset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.qset.harass:Value()) then
-                local t
-                if AATarget then
-                    t = AATarget
-                else
-                    t = GG_Target:GetTarget(AIO:GetEnemyHeroes(1175), 1)
-                end
-                result = AIO:Cast(HK_Q, t, self.QData, Menu.qset.hitchance:Value() + 1)
-            end
-        end if result then return end
-        -- E
-        local stopEifW = Menu.wset.stope:Value() and self.HasWBuff
-        if not stopEifW and manaPercent > Menu.eset.emana:Value() and meMana > myHero:GetSpellData(_E).mana and GG_Spell:IsReady(_E, {q = 0.33, w = 0.15, e = 0.5, r = 0.33}) then
-            if (GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.eset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.eset.harass:Value()) then
-                local t
-                if AATarget then
-                    t = AATarget
-                else
-                    t = GG_Target:GetTarget(AIO:GetEnemyHeroes(1280), 1)
-                end
-                result = AIO:Cast(HK_E, t, self.EData, Menu.eset.hitchance:Value() + 1)
-            end
-        end if result then return end
-    end
-
-    function KogMaw:PreAttack(args)
-        if ((GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.wset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.wset.harass:Value())) and GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 0.33}) then
-            local enemyList = AIO:GetEnemyHeroesAA(610 + (20 * myHero:GetSpellData(_W).level) + myHero.boundingRadius - 35, true)
-            if #enemyList > 0 and AIO:Cast(HK_W) then
-                args.Process = false
-            end
-        end
-    end
-
-    function KogMaw:CanMove()
-        if not GG_Spell:CheckSpellDelays({q = 0.2, w = 0, e = 0.2, r = 0.2}) then
-            return false
-        end
-        return true
-    end
-
-    function KogMaw:CanAttack()
-        if not GG_Spell:CheckSpellDelays({q = 0.33, w = 0, e = 0.33, r = 0.33}) then
-            return false
-        end
-        return true
-    end
-end
-
 if Champion == nil and myHero.charName == 'Vayne' then
     class "Vayne"
 
@@ -1435,7 +1466,7 @@ if Champion == nil and myHero.charName == 'Vayne' then
     function Vayne:Tick()
         
         -- reset attack after Q
-        if Game.CanUseSpell(_Q) ~= 0 and Game.Timer() > self.LastReset + 1 and SDKBuff:HasBuff(myHero, "vaynetumblebonus") then
+        if Game.CanUseSpell(_Q) ~= 0 and Game.Timer() > self.LastReset + 1 and GG_Buff:HasBuff(myHero, "vaynetumblebonus") then
             GG_Orbwalker:__OnAutoAttackReset()
             self.LastReset = Game.Timer()
         end
@@ -1695,7 +1726,7 @@ if Champion == nil and myHero.charName == 'Brand' then
                 local enemyList = AIO:GetEnemyHeroes(1050)
                 for i = 1, #enemyList do
                     local unit = enemyList[i]
-                    if SDKBuff:GetBuffDuration(unit, "brandablaze") > 0.5 and unit:GetCollision(self.QData.Radius, self.QData.Speed, self.QData.Delay) == 0 then
+                    if GG_Buff:GetBuffDuration(unit, "brandablaze") > 0.5 and unit:GetCollision(self.QData.Radius, self.QData.Speed, self.QData.Delay) == 0 then
                         blazeList[#blazeList + 1] = unit
                     end
                 end
@@ -1718,7 +1749,7 @@ if Champion == nil and myHero.charName == 'Brand' then
                 local enemyList = AIO:GetEnemyHeroes(1050)
                 for i = 1, #enemyList do
                     local unit = enemyList[i]
-                    if unit and SDKBuff:GetBuffDuration(unit, "brandablaze") > 0.5 and unit:GetCollision(self.QData.Radius, self.QData.Speed, self.QData.Delay) == 0 then
+                    if unit and GG_Buff:GetBuffDuration(unit, "brandablaze") > 0.5 and unit:GetCollision(self.QData.Radius, self.QData.Speed, self.QData.Delay) == 0 then
                         blazeList[#blazeList + 1] = unit
                     end
                 end
@@ -1758,7 +1789,7 @@ if Champion == nil and myHero.charName == 'Brand' then
                 local blazeList = {}
                 for i = 1, #enemyList do
                     local unit = enemyList[i]
-                    if unit and SDKBuff:GetBuffDuration(unit, "brandablaze") > 0.33 then
+                    if unit and GG_Buff:GetBuffDuration(unit, "brandablaze") > 0.33 then
                         blazeList[#blazeList + 1] = unit
                     end
                 end
@@ -1783,7 +1814,7 @@ if Champion == nil and myHero.charName == 'Brand' then
                         local enemyList = AIO:GetEnemyHeroes(635)
                         for i = 1, #enemyList do
                             local unit = enemyList[i]
-                            if unit and SDKBuff:GetBuffDuration(unit, "brandablaze") > 0.33 then
+                            if unit and GG_Buff:GetBuffDuration(unit, "brandablaze") > 0.33 then
                                 blazeList[#blazeList + 1] = unit
                             end
                         end
@@ -1806,7 +1837,7 @@ if Champion == nil and myHero.charName == 'Brand' then
                     local enemyList = AIO:GetEnemyHeroes(670)
                     for i = 1, #enemyList do
                         local unit = enemyList[i]
-                        if unit and SDKBuff:GetBuffDuration(unit, "brandablaze") > 0.33 then
+                        if unit and GG_Buff:GetBuffDuration(unit, "brandablaze") > 0.33 then
                             blazeList[#blazeList + 1] = unit
                         end
                     end
@@ -1843,7 +1874,7 @@ if Champion == nil and myHero.charName == 'Brand' then
                 local enemyList = AIO:GetEnemyHeroes(950)
                 for i = 1, #enemyList do
                     local unit = enemyList[i]
-                    if SDKBuff:GetBuffDuration(unit, "brandablaze") > 1.33 then
+                    if GG_Buff:GetBuffDuration(unit, "brandablaze") > 1.33 then
                         blazeList[#blazeList + 1] = unit
                     end
                 end
@@ -1864,7 +1895,7 @@ if Champion == nil and myHero.charName == 'Brand' then
                     local enemyList = AIO:GetEnemyHeroes(1200 - (i * 100))
                     for j = 1, #enemyList do
                         local unit = enemyList[j]
-                        if unit and SDKBuff:GetBuffDuration(unit, "brandablaze") > 1.33 then
+                        if unit and GG_Buff:GetBuffDuration(unit, "brandablaze") > 1.33 then
                             blazeList[#blazeList + 1] = unit
                         end
                     end
@@ -2015,7 +2046,7 @@ if Champion == nil and myHero.charName == 'Varus' then
 
     function Varus:Tick()
         -- Check Q Buff
-        self.HasQBuff = SDKBuff:HasBuff(myHero, "varusq")
+        self.HasQBuff = GG_Buff:HasBuff(myHero, "varusq")
         -- Is Attacking
         if not self.HasQBuff and GG_Orbwalker:IsAutoAttacking() then
             return
@@ -2050,7 +2081,7 @@ if Champion == nil and myHero.charName == 'Varus' then
             local eTargets = {}
             for i = 1, #enemyList do
                 local hero = enemyList[i]
-                if hero.distance < 925 and (SDKBuff:GetBuffCount(hero, "varuswdebuff") == 3 or not onlyStacksE or myHero:GetSpellData(_W).level == 0 or aaRange) then
+                if hero.distance < 925 and (GG_Buff:GetBuffCount(hero, "varuswdebuff") == 3 or not onlyStacksE or myHero:GetSpellData(_W).level == 0 or aaRange) then
                     eTargets[#eTargets + 1] = hero
                 end
             end
@@ -2080,7 +2111,7 @@ if Champion == nil and myHero.charName == 'Varus' then
                 local onlyStacksQ = Menu.qset.stacks:Value()
                 for i = 1, #enemyList do
                     local hero = enemyList[i]
-                    if hero.distance < 1500 and (SDKBuff:GetBuffCount(hero, "varuswdebuff") == 3 or not onlyStacksQ or myHero:GetSpellData(_W).level == 0 or wActive or aaRange) then
+                    if hero.distance < 1500 and (GG_Buff:GetBuffCount(hero, "varuswdebuff") == 3 or not onlyStacksQ or myHero:GetSpellData(_W).level == 0 or wActive or aaRange) then
                         Control.KeyDown(HK_Q)
                         GG_Spell.QTimer = Game.Timer()
                         result = true
@@ -2100,7 +2131,7 @@ if Champion == nil and myHero.charName == 'Varus' then
                 end
                 for i = 1, #enemyList do
                     local hero = enemyList[i]
-                    if hero.distance < 925 + qExtraRange and (SDKBuff:GetBuffCount(hero, "varuswdebuff") == 3 or not onlyStacksQ or myHero:GetSpellData(_W).level == 0 or wActive or aaRange) then
+                    if hero.distance < 925 + qExtraRange and (GG_Buff:GetBuffCount(hero, "varuswdebuff") == 3 or not onlyStacksQ or myHero:GetSpellData(_W).level == 0 or wActive or aaRange) then
                         table.insert(qTargets, hero)
                     end
                 end
@@ -2116,7 +2147,7 @@ if Champion == nil and myHero.charName == 'Varus' then
     end
 
     function Varus:CanAttack()
-        self.HasQBuff = SDKBuff:HasBuff(myHero, "varusq")
+        self.HasQBuff = GG_Buff:HasBuff(myHero, "varusq")
         if not GG_Spell:CheckSpellDelays({q = 0.33, w = 0, e = 0.33, r = 0.33}) then
             return false
         end
@@ -2174,7 +2205,7 @@ if Champion == nil and myHero.charName == 'Jhin' then
     function Jhin:Tick
         ()
         
-        self.HasPBuff = SDKBuff:HasBuff(myHero, "jhinpassivereload")
+        self.HasPBuff = GG_Buff:HasBuff(myHero, "jhinpassivereload")
         
         self:RLogic()
         
@@ -2193,7 +2224,7 @@ if Champion == nil and myHero.charName == 'Jhin' then
             if AIO:IsReadyCombo(_W, Menu.wset.combo:Value(), Menu.wset.harass:Value(), {q = 0.35, w = 1, e = 0.35, r = 0.5, }) then
                 if AIO:CastSkillShot(HK_W, self.WData, DAMAGE_TYPE_PHYSICAL, false, HITCHANCE_HIGH, function(unit)
                     if (Menu.wset.stun:Value()) then
-                        if (SDKBuff:HasBuff(unit, "jhinespotteddebuff")) then
+                        if (GG_Buff:HasBuff(unit, "jhinespotteddebuff")) then
                             return true
                         end
                         return false
@@ -2330,6 +2361,9 @@ if Champion ~= nil then
         if Champion.Load then
             Champion:Load()
         end
+		if Champion.PreAttack then
+			GG_Orbwalker:OnPreAttack(Champion.OnPreAttack)
+		end
         if Champion.OnAttack then
         	GG_Orbwalker:OnAttack(Champion.OnAttack)
     	end
