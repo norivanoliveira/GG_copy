@@ -2,7 +2,7 @@ if _G.SDK then
     return
 end
 
-local Cached, Menu, Color, Action, Buff, Path, Math, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Cursor, Health, Attack
+local Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Cursor, Health, Attack
 
 local Version = '1.33'
 local myHero = _G.myHero
@@ -39,6 +39,64 @@ local ORBWALKER_MODE_LANECLEAR = 2
 local ORBWALKER_MODE_JUNGLECLEAR = 3
 local ORBWALKER_MODE_LASTHIT = 4
 local ORBWALKER_MODE_FLEE = 5
+
+local function IsInRange(v1, v2, range)
+    v1 = v1.pos or v1
+    v2 = v2.pos or v2
+    local dx = v1.x - v2.x
+    local dz = (v1.z or v1.y) - (v2.z or v2.y)
+    if dx * dx + dz * dz <= range * range then
+        return true
+    end
+    return false
+end
+
+local function GetDistance(v1, v2)
+    v1 = v1.pos or v1
+    v2 = v2.pos or v2
+    local dx = v1.x - v2.x
+    local dz = (v1.z or v1.y) - (v2.z or v2.y)
+    return math_sqrt(dx * dx + dz * dz)
+end
+
+local function Polar(v1)
+    local x = v1.x
+    local z = v1.z or v1.y
+    if x == 0 then
+        if z > 0 then
+            return 90
+        end
+        return z < 0 and 270 or 0
+    end
+    local theta = math_atan(z / x) * (180.0 / math_pi)
+    if x < 0 then
+        theta = theta + 180
+    end
+    if theta < 0 then
+        theta = theta + 360
+    end
+    return theta
+end
+
+local function AngleBetween(vec1, vec2)
+    local theta = Polar(vec1) - Polar(vec2)
+    if theta < 0 then
+        theta = theta + 360
+    end
+    if theta > 180 then
+        theta = 360 - theta
+    end
+    return theta
+end
+
+local function IsFacing(source, target, angle)
+    angle = angle or 90
+    target = target.pos or Vector(target)
+    if AngleBetween(source.dir, target - source.pos) < angle then
+        return true
+    end
+    return false
+end
 
 -- cached
 Cached = {}
@@ -139,7 +197,7 @@ do
                     self.Buffs[id] = buffs
                 end
             end
-            return self.Buffs[id]
+            return self.Buffs[id] or {}
         end
         function class:GetPath(i)
             return _o:GetPath(i)
@@ -211,7 +269,7 @@ do
                     self.Buffs[id] = buffs
                 end
             end
-            return self.Buffs[id]
+            return self.Buffs[id] or {}
         end
         function class:GetPath(i)
             return _o:GetPath(i)
@@ -387,7 +445,7 @@ do
                 self.Buffs[id] = buffs
             end
         end
-        return self.Buffs[id]
+        return self.Buffs[id] or {}
     end
     -- init call
     Cached:__init()
@@ -738,327 +796,7 @@ do
     end
 end
 
-Path =
-{
-}
-
-function Path:GetLenght(path)
-    local result = 0
-    for i = 1, #path - 1 do
-        result = result + Math:GetDistance(path[i], path[i + 1])
-    end
-    return result
-end
-
-function Path:CutPath(path, distance)
-    local result = {}
-    
-    if distance <= 0 then
-        return path
-    end
-    
-    for i = 1, #path - 1 do
-        local a, b = path[i], path[i + 1]
-        local dist = Math:GetDistance(a, b)
-        if dist > distance then
-            table_insert(result, Math:Extended(a, Math:Normalized(b, a), distance))
-            for j = i + 1, #path do
-                table_insert(result, path[j])
-            end
-            break
-        end
-        distance = distance - dist
-    end
-    
-    return #result > 0 and result or {path[#path]}
-end
-
-function Path:ReversePath(path)
-    local result = {}
-    
-    for i = #path, 1, -1 do
-        table_insert(result, path[i])
-    end
-    
-    return result
-end
-
-function Path:GetPath(unit)
-    local result = {}
-    local path = unit.pathing
-    table_insert(result, Math:Get2D(unit.pos))
-    if path.isDashing then
-        table_insert(result, Math:Get2D(path.endPos))
-    else
-        for i = path.pathIndex, path.pathCount do
-            table_insert(result, Math:Get2D(unit:GetPath(i)))
-        end
-    end
-    return result
-end
-
-function Path:GetPredictedPath(source, speed, movespeed, path)
-    local result = {}
-    local tT = 0
-    for i = 1, #path - 1 do
-        local a = path[i]; table_insert(result, a)
-        local b = path[i + 1]
-        local tB = Math:GetDistance(a, b) / movespeed
-        local direction = Math:Normalized(b, a)
-        a = Math:Extended(a, direction, -(movespeed * tT))
-        local t = Math:Intercept(source, a, b, speed, movespeed)
-        if (t and t >= tT and t <= tT + tB) then
-            table_insert(result, Math:Extended(a, direction, t * movespeed))
-            return result, t
-        end
-        tT = tT + tB
-    end
-    
-    return nil, -1
-end
-
-Math =
-{
-}
-
-function Math:Get2D(p)
-    p = p.pos == nil and p or p.pos
-    return {x = p.x, z = p.z == nil and p.y or p.z}
-end
-
-function Math:PointOnSegment(p, p1, p2)
-    local result =
-    {
-        IsOnSegment = false,
-        PointSegment = nil,
-        PointLine = nil,
-        Point = 0,
-    }
-    local px, pz = p.x, (p.z or p.y)
-    local ax, az = p1.x, (p1.z or p1.y)
-    local bx, bz = p2.x, (p2.z or p2.y)
-    local bxax = bx - ax
-    local bzaz = bz - az
-    local t = ((px - ax) * bxax + (pz - az) * bzaz) / (bxax * bxax + bzaz * bzaz)
-    result.PointLine = {x = ax + t * bxax, y = az + t * bzaz}
-    if t < 0 then
-        result.IsOnSegment = false
-        result.PointSegment = p1
-        result.Point = 1
-    elseif t > 1 then
-        result.IsOnSegment = false
-        result.PointSegment = p2
-        result.Point = 2
-    else
-        result.IsOnSegment = true
-        result.PointSegment = result.PointLine
-    end
-    return result
-end
-
-function Math:RadianToDegree(angle)
-    return angle * (180.0 / math_pi)
-end
-
-function Math:Polar(v1)
-    local x = v1.x
-    local z = v1.z or v1.y
-    if x == 0 then
-        if z > 0 then
-            return 90
-        end
-        return z < 0 and 270 or 0
-    end
-    local theta = self:RadianToDegree(math_atan(z / x))
-    if x < 0 then
-        theta = theta + 180
-    end
-    if theta < 0 then
-        theta = theta + 360
-    end
-    return theta
-end
-
-function Math:AngleBetween(vec1, vec2)
-    local theta = self:Polar(vec1) - self:Polar(vec2)
-    if theta < 0 then
-        theta = theta + 360
-    end
-    if theta > 180 then
-        theta = 360 - theta
-    end
-    return theta
-end
-
-function Math:EqualVector(vec1, vec2)
-    local diffX = vec1.x - vec2.x
-    local diffZ = (vec1.z or vec1.y) - (vec2.z or vec2.y)
-    if diffX >= -10 and diffX <= 10 and diffZ >= -10 and diffZ <= 10 then
-        return true
-    end
-    return false
-end
-
-function Math:Intercept(src, spos, epos, sspeed, tspeed)
-    local dx = epos.x - spos.x
-    local dz = epos.z - spos.z
-    local magnitude = math_sqrt(dx * dx + dz * dz)
-    local tx = spos.x - src.x
-    local tz = spos.z - src.z
-    local tvx = (dx / magnitude) * tspeed
-    local tvz = (dz / magnitude) * tspeed
-    
-    local a = tvx * tvx + tvz * tvz - sspeed * sspeed
-    local b = 2 * (tvx * tx + tvz * tz)
-    local c = tx * tx + tz * tz
-    
-    local ts
-    if (math_abs(a) < 1e-6) then
-        if (math_abs(b) < 1e-6) then
-            if (math_abs(c) < 1e-6) then
-                ts = {0, 0}
-            end
-        else
-            ts = {-c / b, -c / b}
-        end
-    else
-        local disc = b * b - 4 * a * c
-        if (disc >= 0) then
-            disc = math_sqrt(disc)
-            local a = 2 * a
-            ts = {(-b - disc) / a, (-b + disc) / a}
-        end
-    end
-    
-    local sol
-    if (ts) then
-        local t0 = ts[1]
-        local t1 = ts[2]
-        local t = math_min(t0, t1)
-        if (t < 0) then
-            t = math_max(t0, t1)
-        end
-        if (t > 0) then
-            sol = t
-        end
-    end
-    
-    return sol
-end
-
-function Math:IsInRange(v1, v2, range)
-    v1 = v1.pos or v1
-    v2 = v2.pos or v2
-    local dx = v1.x - v2.x
-    local dz = (v1.z or v1.y) - (v2.z or v2.y)
-    if dx * dx + dz * dz <= range * range then
-        return true
-    end
-    return false
-end
-
-function Math:GetDistanceSquared(v1, v2)
-    v1 = v1.pos or v1
-    v2 = v2.pos or v2
-    local dx = v1.x - v2.x
-    local dz = (v1.z or v1.y) - (v2.z or v2.y)
-    return dx * dx + dz * dz
-end
-
-function Math:InsidePolygon(polygon, point)
-    local result = false
-    local j = #polygon
-    point = point.pos or point
-    local pointx = point.x
-    local pointz = point.z or point.y
-    for i = 1, #polygon do
-        if (polygon[i].z < pointz and polygon[j].z >= pointz or polygon[j].z < pointz and polygon[i].z >= pointz) then
-            if (polygon[i].x + (pointz - polygon[i].z) / (polygon[j].z - polygon[i].z) * (polygon[j].x - polygon[i].x) < pointx) then
-                result = not result
-            end
-        end
-        j = i
-    end
-    return result
-end
-
-function Math:GetDistance(v1, v2)
-    v1 = v1.pos or v1
-    v2 = v2.pos or v2
-    local dx = v1.x - v2.x
-    local dz = (v1.z or v1.y) - (v2.z or v2.y)
-    return math_sqrt(dx * dx + dz * dz)
-end
-
-function Math:EqualDirection(vec1, vec2)
-    return self:AngleBetween(vec1, vec2) <= 5
-end
-
-function Math:Normalized(vec1, vec2)
-    local vec = {x = vec1.x - vec2.x, y = 0, z = (vec1.z or vec1.y) - (vec2.z or vec2.y)}
-    local length = math_sqrt(vec.x * vec.x + vec.z * vec.z)
-    if length > 0 then
-        local inv = 1.0 / length
-        return Vector(vec.x * inv, 0, vec.z * inv)
-    end
-    return Vector(0, 0, 0)
-end
-
-function Math:Extended(vec, dir, range)
-    local vecz = vec.z or vec.y
-    local dirz = dir.z or dir.y
-    return Vector(vec.x + dir.x * range, 0, vecz + dirz * range)
-end
-
-function Math:IsFacing(source, target, angle)
-    angle = angle or 90
-    target = target.pos or Vector(target)
-    if self:AngleBetween(source.dir, target - source.pos) < angle then
-        return true
-    end
-    return false
-end
-
-function Math:IsBothFacing(source, target, angle)
-    if self:IsFacing(source, target, angle) and self:IsFacing(target, source, angle) then
-        return true
-    end
-    return false
-end
-
-function Math:ProjectOn(p, p1, p2)
-    local isOnSegment, pointSegment, pointLine
-    local px, pz = p.x, (p.z or p.y)
-    local ax, az = p1.x, (p1.z or p1.y)
-    local bx, bz = p2.x, (p2.z or p2.y)
-    local bxax = bx - ax
-    local bzaz = bz - az
-    local t = ((px - ax) * bxax + (pz - az) * bzaz) / (bxax * bxax + bzaz * bzaz)
-    local pointLine = {x = ax + t * bxax, y = az + t * bzaz}
-    if t < 0 then
-        isOnSegment = false
-        pointSegment = p1
-    elseif t > 1 then
-        isOnSegment = false
-        pointSegment = p2
-    else
-        isOnSegment = true
-        pointSegment = pointLine
-    end
-    return isOnSegment, pointSegment, pointLine
-end
-
-function Math:FindAngle(p0, p1, p2)
-    local b = math_pow(p1.x - p0.x, 2) + math_pow(p1.z - p0.z, 2)
-    local a = math_pow(p1.x - p2.x, 2) + math_pow(p1.z - p2.z, 2)
-    local c = math_pow(p2.x - p0.x, 2) + math_pow(p2.z - p0.z, 2)
-    local angle = math_acos((a + b - c) / math_sqrt(4 * a * b)) * (180 / math_pi)
-    if (angle > 90) then
-        angle = 180 - angle
-    end
-    return angle
-end
-
+-- damage
 Damage = {}
 do
     -- init
@@ -1483,6 +1221,7 @@ do
     Damage:__init()
 end
 
+-- data
 Data = {
     JungleTeam =
     300,
@@ -1959,12 +1698,12 @@ end
 
 function Data:IsInAutoAttackRange(from, target, extrarange)
     local range = extrarange or 0
-    return Math:IsInRange(from.pos, target.pos, self:GetAutoAttackRange(from, target) + range)
+    return IsInRange(from.pos, target.pos, self:GetAutoAttackRange(from, target) + range)
 end
 
 function Data:IsInAutoAttackRange2(from, target, extrarange)
     local range = self:GetAutoAttackRange(from, target) + (extrarange or 0)
-    if Math:IsInRange(from.pos, target.pos, range) and Math:IsInRange(from.pos, target.posTo, range) then
+    if IsInRange(from.pos, target.pos, range) and IsInRange(from.pos, target.posTo, range) then
         return true
     end
     return false
@@ -2782,7 +2521,7 @@ function Item:UseBotrk()
         return true
     end
     
-    if target.distance >= self.MenuBotrk.FleeRange:Value() and 100 * (target.health / target.maxHealth) <= self.MenuBotrk.FleeHealth:Value() and Math:IsFacing(myHero, target, 90) and not Math:IsFacing(target, myHero, 90) then
+    if target.distance >= self.MenuBotrk.FleeRange:Value() and 100 * (target.health / target.maxHealth) <= self.MenuBotrk.FleeHealth:Value() and IsFacing(myHero, target, 90) and not IsFacing(target, myHero, 90) then
         Control.CastSpell(self.Hotkey, target)
         return true
     end
@@ -2836,7 +2575,7 @@ function Item:UseGunblade()
         return true
     end
     
-    if target.distance >= self.MenuGunblade.FleeRange:Value() and 100 * (target.health / target.maxHealth) <= self.MenuGunblade.FleeHealth:Value() and Math:IsFacing(myHero, target, 90) and not Math:IsFacing(target, myHero, 90) then
+    if target.distance >= self.MenuGunblade.FleeRange:Value() and 100 * (target.health / target.maxHealth) <= self.MenuGunblade.FleeHealth:Value() and IsFacing(myHero, target, 90) and not IsFacing(target, myHero, 90) then
         Control.CastSpell(self.Hotkey, target)
         return true
     end
@@ -3758,14 +3497,14 @@ function Health:OnTick()
     local cachedminions = Cached:GetMinions()
     for i = 1, #cachedminions do
         local obj = cachedminions[i]
-        if Math:IsInRange(myHero, obj, 2000) then
+        if IsInRange(myHero, obj, 2000) then
             table_insert(self.CachedMinions, obj)
         end
     end
     local cachedwards = Cached:GetWards()
     for i = 1, #cachedwards do
         local obj = cachedwards[i]
-        if obj.isEnemy and Math:IsInRange(myHero, obj, 2000) then
+        if obj.isEnemy and IsInRange(myHero, obj, 2000) then
             table_insert(self.CachedWards, obj)
         end
     end
@@ -3778,11 +3517,11 @@ function Health:OnTick()
         if team == Data.AllyTeam then
             self.AllyMinionsHandles[handle] = obj
         elseif team == Data.EnemyTeam then
-            if Math:IsInRange(myHero, obj, attackRange + obj.boundingRadius) then
+            if IsInRange(myHero, obj, attackRange + obj.boundingRadius) then
                 table_insert(self.EnemyMinionsInAttackRange, obj)
             end
         elseif team == Data.JungleTeam then
-            if Math:IsInRange(myHero, obj, attackRange + obj.boundingRadius) then
+            if IsInRange(myHero, obj, attackRange + obj.boundingRadius) then
                 table_insert(self.JungleMinionsInAttackRange, obj)
             end
         end
@@ -3790,7 +3529,7 @@ function Health:OnTick()
     
     for i = 1, #self.CachedWards do
         local obj = self.CachedWards[i]
-        if Math:IsInRange(myHero, obj, attackRange + 35) then
+        if IsInRange(myHero, obj, attackRange + 35) then
             table_insert(self.EnemyWardsInAttackRange, obj)
         end
     end
@@ -3820,7 +3559,7 @@ function Health:OnTick()
                 objRadius = obj.boundingRadius
             end
             
-            if Math:IsInRange(myHero, obj, attackRange + objRadius) then
+            if IsInRange(myHero, obj, attackRange + objRadius) then
                 table_insert(self.EnemyStructuresInAttackRange, obj)
             end
         end
@@ -3899,7 +3638,7 @@ function Health:GetPrediction(target, time)
             local speed, startT, flyT, endT, damage
             speed = attack.Speed
             startT = attack.StartTime
-            flyT = speed > 0 and Math:GetDistance(attacker.pos, pos) / speed or 0
+            flyT = speed > 0 and GetDistance(attacker.pos, pos) / speed or 0
             endT = (startT + attack.WindUpTime + flyT) - timer
             
             if endT > 0 and endT < time then
@@ -3939,7 +3678,7 @@ function Health:LocalGetPrediction(target, time)
             local speed, startT, flyT, endT, damage
             speed = attack.Speed
             startT = attack.StartTime
-            flyT = speed > 0 and Math:GetDistance(attacker.pos, pos) / speed or 0
+            flyT = speed > 0 and GetDistance(attacker.pos, pos) / speed or 0
             endT = (startT + attack.WindUpTime + flyT) - timer
             
             -- laneClear
@@ -3990,7 +3729,7 @@ function Health:LocalGetPrediction(target, time)
             local isMoving = obj.pathing.hasMovePath
             
             if aaData == nil or aaData.target == nil or self.Handles[aaData.target] == nil or isMoving or self.ActiveAttacks[attackerHandle] == nil then
-                local distance = Math:GetDistance(obj.pos, pos)
+                local distance = GetDistance(obj.pos, pos)
                 local range = Data:GetAutoAttackRange(obj, target)
                 local extraRange = isMoving and 250 or 0
                 
@@ -4107,7 +3846,7 @@ function Health:SetLastHitable(target, anim, time, damage)
         maxHP = target.maxHealth
         startTime = turretAttack.endTime - 1.20048
         windUpTime = 0.16686
-        flyTime = Math:GetDistance(self.AllyTurret, target) / 1200
+        flyTime = GetDistance(self.AllyTurret, target) / 1200
         turretDamage = Damage:GetAutoAttackDamage(self.AllyTurret, target)
         
         turretHits = 1
@@ -4794,7 +4533,7 @@ do
                 for i = 1, #t do
                     local enemy = t[i]
                     local range = Data:GetAutoAttackRange(enemy, myHero)
-                    Draw.Circle(enemy.pos, range, 1, Math:IsInRange(enemy, myHero, range) and Color.EnemyRange or Color.Range)
+                    Draw.Circle(enemy.pos, range, 1, IsInRange(enemy, myHero, range) and Color.EnemyRange or Color.Range)
                 end
             end
         end)
@@ -5035,7 +4774,7 @@ do
             end
             
             local mePos = myHero.pos
-            if Math:IsInRange(mePos, _G.mousePos, self.Menu.General.HoldRadius:Value()) then
+            if IsInRange(mePos, _G.mousePos, self.Menu.General.HoldRadius:Value()) then
                 if self.CanHoldPosition then
                     Control.Hold(self.HoldPositionButton:Key())
                 end
@@ -5068,7 +4807,7 @@ do
                     return
                 end
                 
-                local pos = Math:IsInRange(mePos, mousePos, 100) and mePos:Extend(mousePos, 100) or nil
+                local pos = IsInRange(mePos, mousePos, 100) and mePos:Extend(mousePos, 100) or nil
                 
                 Control.Move(pos)
                 
@@ -5109,7 +4848,6 @@ SDK.Menu = Menu
 SDK.Color = Color
 SDK.Action = Action
 SDK.BuffManager = Buff
-SDK.Math = Math
 SDK.Damage = Damage
 SDK.Data = Data
 SDK.Spell = Spell
