@@ -206,6 +206,12 @@ do
                     members[k] = _o.ms
                 elseif k == 'distance' then
                     members[k] = _o.distance
+                elseif k == 'activeSpell' then
+                    members[k] = _o.activeSpell
+                elseif k == 'attackData' then
+                    members[k] = _o.attackData
+                elseif k == 'pathing' then
+                    members[k] = _o.pathing
                 else
                     members[k] = _o[k]
                 end
@@ -278,6 +284,12 @@ do
                     members[k] = _o.ms
                 elseif k == 'distance' then
                     members[k] = _o.distance
+                elseif k == 'activeSpell' then
+                    members[k] = _o.activeSpell
+                elseif k == 'attackData' then
+                    members[k] = _o.attackData
+                elseif k == 'pathing' then
+                    members[k] = _o.pathing
                 else
                     members[k] = _o[k]
                 end
@@ -2403,6 +2415,7 @@ do
     Item:__init()
 end
 
+-- object
 Object = {}
 do
     -- init
@@ -2628,18 +2641,23 @@ do
         local result = {}
         local a = self:GetEnemyMinions(range, bbox, visible, immortal, func)
         local b = self:GetAllyMinions(range, bbox, visible, immortal, func)
+        local index = 0
         for i = 1, #a do
-            table_insert(result, a[i])
+            index = index + 1
+            result[index] = a[i]
         end
         for i = 1, #b do
-            table_insert(result, b[i])
+            index = index + 1
+            result[index] = b[i]
         end
         return result
     end
     -- get enemy minions
     function Object:GetEnemyMinions(range, bbox, visible, immortal, func)
         local result = {}
-        for i, obj in ipairs(Cached:GetMinions()) do
+        local cachedminions = Cached:GetMinions()
+        for i = 1, #cachedminions do
+            local obj = cachedminions[i]
             if obj.isEnemy and obj.team < 300 then
                 if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
                     table_insert(result, obj)
@@ -2651,7 +2669,9 @@ do
     -- get monsters
     function Object:GetMonsters(range, bbox, visible, immortal, func)
         local result = {}
-        for i, obj in ipairs(Cached:GetMinions()) do
+        local cachedminions = Cached:GetMinions()
+        for i = 1, #cachedminions do
+            local obj = cachedminions[i]
             if obj.isEnemy and obj.team == 300 then
                 if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
                     table_insert(result, obj)
@@ -2663,7 +2683,9 @@ do
     -- get ally minions
     function Object:GetAllyMinions(range, bbox, visible, immortal, func)
         local result = {}
-        for i, obj in ipairs(Cached:GetMinions()) do
+        local cachedminions = Cached:GetMinions()
+        for i = 1, #cachedminions do
+            local obj = cachedminions[i]
             if obj.isAlly and obj.team < 300 then
                 if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
                     table_insert(result, obj)
@@ -2688,7 +2710,9 @@ do
     -- get other ally minions
     function Object:GetOtherAllyMinions(range, bbox, visible, immortal, func)
         local result = {}
-        for i, obj in ipairs(Cached:GetWards()) do
+        local cachedwards = Cached:GetWards()
+        for i = 1, #cachedwards do
+            local obj = cachedwards[i]
             if obj.isAlly then
                 if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
                     table_insert(result, obj)
@@ -2700,7 +2724,9 @@ do
     -- get other enemy minions
     function Object:GetOtherEnemyMinions(range, bbox, visible, immortal, func)
         local result = {}
-        for i, obj in ipairs(Cached:GetWards()) do
+        local cachedwards = Cached:GetWards()
+        for i = 1, #cachedwards do
+            local obj = cachedwards[i]
             if obj.isEnemy then
                 if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
                     table_insert(result, obj)
@@ -3096,43 +3122,79 @@ do
             self.AllyTurret = nil
             self.AllyTurretHandle = nil
             self.StaticAutoAttackDamage = nil
-            self.FarmMinions = {}
-            self.EnemyWardsInAttackRange = {}
-            self.EnemyMinionsInAttackRange = {}
-            self.JungleMinionsInAttackRange = {}
-            self.EnemyStructuresInAttackRange = {}
-            self.AttackersDamage = {}
-            self.ActiveAttacks = {}
-            self.AllyMinionsHandles = {}
-            self.TargetsHealth = {}
-            self.Handles = {}
-            self.CachedMinions = {}
-            self.CachedWards = {}
+            for i = #self.FarmMinions, 1, -1 do
+                self.FarmMinions[i] = nil
+            end
+            for i = #self.EnemyWardsInAttackRange, 1, -1 do
+                self.EnemyWardsInAttackRange[i] = nil
+            end
+            for i = #self.EnemyMinionsInAttackRange, 1, -1 do
+                self.EnemyMinionsInAttackRange[i] = nil
+            end
+            for i = #self.JungleMinionsInAttackRange, 1, -1 do
+                self.JungleMinionsInAttackRange[i] = nil
+            end
+            for i = #self.EnemyStructuresInAttackRange, 1, -1 do
+                self.EnemyStructuresInAttackRange[i] = nil
+            end
+            for k, v in pairs(self.AttackersDamage) do
+                for k2 in pairs(v) do
+                    self.AttackersDamage[k][k2] = nil
+                end
+                self.AttackersDamage[k] = nil
+            end
+            for k in pairs(self.ActiveAttacks) do
+                self.ActiveAttacks[k] = nil
+            end
+            for k in pairs(self.AllyMinionsHandles) do
+                self.AllyMinionsHandles[k] = nil
+            end
+            for k in pairs(self.TargetsHealth) do
+                self.TargetsHealth[k] = nil
+            end
+            for k in pairs(self.Handles) do
+                self.Handles[k] = nil
+            end
+            for i = #self.CachedMinions, 1, -1 do
+                self.CachedMinions[i] = nil
+            end
+            for i = #self.CachedWards, 1, -1 do
+                self.CachedWards[i] = nil
+            end
         end
         -- SPELLS
         for i = 1, #self.Spells do
             self.Spells[i]:Reset()
         end
-        if Orbwalker.IsNone or Orbwalker.Modes[ORBWALKER_MODE_COMBO] then return end
+        if Orbwalker.IsNone or Orbwalker.Modes[ORBWALKER_MODE_COMBO] then
+            return
+        end
         self.IsLastHitable = false
         self.ShouldRemoveObjects = true
         self.StaticAutoAttackDamage = Damage:GetStaticAutoAttackDamage(myHero, true)
         -- SET OBJECTS
         attackRange = myHero.range + myHero.boundingRadius
         local cachedminions = Cached:GetMinions()
+        local index1, index2
+        index1 = 0
         for i = 1, #cachedminions do
             local obj = cachedminions[i]
             if IsInRange(myHero, obj, 2000) then
-                table_insert(self.CachedMinions, obj)
+                index1 = index1 + 1
+                self.CachedMinions[index1] = obj
             end
         end
+        index1 = 0
         local cachedwards = Cached:GetWards()
         for i = 1, #cachedwards do
             local obj = cachedwards[i]
             if obj.isEnemy and IsInRange(myHero, obj, 2000) then
-                table_insert(self.CachedWards, obj)
+                index1 = index1 + 1
+                self.CachedWards[index1] = obj
             end
         end
+        index1 = 0
+        index2 = 0
         for i = 1, #self.CachedMinions do
             local obj = self.CachedMinions[i]
             local handle = obj.handle
@@ -3142,20 +3204,25 @@ do
                 self.AllyMinionsHandles[handle] = obj
             elseif team == Data.EnemyTeam then
                 if IsInRange(myHero, obj, attackRange + obj.boundingRadius) then
-                    table_insert(self.EnemyMinionsInAttackRange, obj)
+                    index1 = index1 + 1
+                    self.EnemyMinionsInAttackRange[index1] = obj
                 end
             elseif team == Data.JungleTeam then
                 if IsInRange(myHero, obj, attackRange + obj.boundingRadius) then
-                    table_insert(self.JungleMinionsInAttackRange, obj)
+                    index2 = index2 + 1
+                    self.JungleMinionsInAttackRange[index2] = obj
                 end
             end
         end
+        index1 = 0
         for i = 1, #self.CachedWards do
             local obj = self.CachedWards[i]
             if IsInRange(myHero, obj, attackRange + 35) then
-                table_insert(self.EnemyWardsInAttackRange, obj)
+                index1 = index1 + 1
+                self.EnemyWardsInAttackRange[index1] = obj
             end
         end
+        index1 = 0
         structures = Object:GetAllStructures(2000, false, true)
         for i = 1, #structures do
             local obj = structures[i]
@@ -3177,7 +3244,8 @@ do
                     objRadius = obj.boundingRadius
                 end
                 if IsInRange(myHero, obj, attackRange + objRadius) then
-                    table_insert(self.EnemyStructuresInAttackRange, obj)
+                    index1 = index1 + 1
+                    self.EnemyStructuresInAttackRange[index1] = obj
                 end
             end
         end
@@ -3205,6 +3273,7 @@ do
             end
         end
         -- SET FARM MINIONS
+        index1 = 0
         pos = myHero.pos
         speed = Attack:GetProjectileSpeed()
         windup = Attack:GetWindup()
@@ -3212,7 +3281,8 @@ do
         anim = Attack:GetAnimation()
         for i = 1, #self.EnemyMinionsInAttackRange do
             local target = self.EnemyMinionsInAttackRange[i]
-            table_insert(self.FarmMinions, self:SetLastHitable(target, anim, time + target.distance / speed, Damage:GetAutoAttackDamage(myHero, target, self.StaticAutoAttackDamage)))
+            index1 = index1 + 1
+            self.FarmMinions[index1] = self:SetLastHitable(target, anim, time + target.distance / speed, Damage:GetAutoAttackDamage(myHero, target, self.StaticAutoAttackDamage))
         end
         -- SPELLS
         for i = 1, #self.Spells do
@@ -3760,14 +3830,6 @@ do
         self.CastPos = castPos
         if self.CastPos ~= nil then
             self:SetToCastPos()
-            if self.CastPos.type and self.CastPos.type == Obj_AI_Hero then
-                self.IsHero = true
-            end
-        end
-        
-        -- PRESS KEY
-        if self.IsHero then
-            Control.KeyDown(_G.HK_TCO)
         end
         
         if (self.Msg) then
@@ -3780,10 +3842,6 @@ do
         else
             Control.KeyDown(self.WParam)
             Control.KeyUp(self.WParam)
-        end
-        
-        if self.IsHero then
-            Control.KeyUp(_G.HK_TCO)
         end
     end
     -- get humanizer
@@ -3835,11 +3893,8 @@ do
         self.TestDamage = false
         self.TestCount = 0
         self.TestStartTime = 0
-        self.IsJhin = myHero.charName == 'Jhin'
         self.IsGraves = myHero.charName == 'Graves'
         self.SpecialWindup = Data.SpecialWindup[myHero.charName:lower()]
-        self.BaseAttackSpeed = Data.HEROES[Data.HeroName][3]
-        self.BaseWindupTime = nil
         self.Reset = false
         self.ServerStart = 0
         self.CastEndTime = 1
@@ -3878,9 +3933,6 @@ do
     end
     -- get windup
     function Attack:GetWindup()
-        if self.IsJhin then
-            return self.AttackWindup
-        end
         if self.IsGraves then
             return myHero.attackData.windUpTime * 0.2
         end
@@ -3890,24 +3942,14 @@ do
                 return windup
             end
         end
-        if self.BaseWindupTime then
-            return math_max(self.AttackWindup, 1 / (myHero.attackSpeed * self.BaseAttackSpeed) / self.BaseWindupTime)
-        end
-        local data = myHero.attackData
-        if data.animationTime > 0 and data.windUpTime > 0 then
-            self.BaseWindupTime = data.animationTime / data.windUpTime
-        end
-        return math_max(self.AttackWindup, myHero.attackData.windUpTime)
+        return self.AttackWindup
     end
     -- get animation
     function Attack:GetAnimation()
-        if self.IsJhin then
-            return self.AttackAnimation
-        end
         if self.IsGraves then
             return myHero.attackData.animationTime * 0.9
         end
-        return 1 / (myHero.attackSpeed * self.BaseAttackSpeed)
+        return self.AttackAnimation
     end
     -- get projectileSpeed
     function Attack:GetProjectileSpeed()
