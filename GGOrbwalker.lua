@@ -27,6 +27,7 @@ local math_random = assert(math.random)
 local table_sort = assert(table.sort)
 local table_remove = assert(table.remove)
 local table_insert = assert(table.insert)
+local GameCanUseSpell = _G.Game.CanUseSpell
 
 local DAMAGE_TYPE_PHYSICAL = 0
 local DAMAGE_TYPE_MAGICAL = 1
@@ -1222,1012 +1223,868 @@ do
 end
 
 -- data
-Data = {
-    JungleTeam =
-    300,
-    
-    AllyTeam =
-    myHero.team,
-    
-    EnemyTeam =
-    300 - myHero.team,
-    
-    HeroName =
-    myHero.charName:lower(),
-    
-    ChannelingBuffs =
-    {
-        ['caitlyn'] = function()
-            return Buff:HasBuff(myHero, 'CaitlynAceintheHole')
-        end,
-        ['fiddlesticks'] = function()
-            return Buff:HasBuff(myHero, 'Drain') or Buff:HasBuff(myHero, 'Crowstorm')
-        end,
-        ['galio'] = function()
-            return Buff:HasBuff(myHero, 'GalioIdolOfDurand')
-        end,
-        ['janna'] = function()
-            return Buff:HasBuff(myHero, 'ReapTheWhirlwind')
-        end,
-        ['kaisa'] = function()
-            return Buff:HasBuff(myHero, 'KaisaE')
-        end,
-        ['karthus'] = function()
-            return Buff:HasBuff(myHero, 'karthusfallenonecastsound')
-        end,
-        ['katarina'] = function()
-            return Buff:HasBuff(myHero, 'katarinarsound')
-        end,
-        ['lucian'] = function()
-            return Buff:HasBuff(myHero, 'LucianR')
-        end,
-        ['malzahar'] = function()
-            return Buff:HasBuff(myHero, 'alzaharnethergraspsound')
-        end,
-        ['masteryi'] = function()
-            return Buff:HasBuff(myHero, 'Meditate')
-        end,
-        ['missfortune'] = function()
-            return Buff:HasBuff(myHero, 'missfortunebulletsound')
-        end,
-        ['nunu'] = function()
-            return Buff:HasBuff(myHero, 'AbsoluteZero')
-        end,
-        ['pantheon'] = function()
-            return Buff:HasBuff(myHero, 'pantheonesound') or Buff:HasBuff(myHero, 'PantheonRJump')
-        end,
-        ['shen'] = function()
-            return Buff:HasBuff(myHero, 'shenstandunitedlock')
-        end,
-        ['twistedfate'] = function()
-            return Buff:HasBuff(myHero, 'Destiny')
-        end,
-        ['urgot'] = function()
-            return Buff:HasBuff(myHero, 'UrgotSwap2')
-        end,
-        ['varus'] = function()
-            return Buff:HasBuff(myHero, 'VarusQ')
-        end,
-        ['velkoz'] = function()
-            return Buff:HasBuff(myHero, 'VelkozR')
-        end,
-        ['vi'] = function()
-            return Buff:HasBuff(myHero, 'ViQ')
-        end,
-        ['vladimir'] = function()
-            return Buff:HasBuff(myHero, 'VladimirE')
-        end,
-        ['warwick'] = function()
-            return Buff:HasBuff(myHero, 'infiniteduresssound')
-        end,
-        ['xerath'] = function()
-            return Buff:HasBuff(myHero, 'XerathArcanopulseChargeUp') or Buff:HasBuff(myHero, 'XerathLocusOfPower2')
-        end,
-    },
-    
-    SpecialWindup =
-    {
-        ['twistedfate'] = function()
-            if Buff:HasBuff(myHero, 'BlueCardPreAttack') or Buff:HasBuff(myHero, 'RedCardPreAttack') or Buff:HasBuff(myHero, 'GoldCardPreAttack') then
-                return 0.125
-            end
-            return nil
-        end,
-        ['jayce'] = function()
-            if Buff:HasBuff(myHero, 'JayceHyperCharge') then
-                return 0.125
-            end
-            return nil
-        end
-    },
-    
-    AllowMovement =
-    {
-        ['kaisa'] = function()
-            return Buff:HasBuff(myHero, 'KaisaE')
-        end,
-        ['lucian'] = function()
-            return Buff:HasBuff(myHero, 'LucianR')
-        end,
-        ['varus'] = function()
-            return Buff:HasBuff(myHero, 'VarusQ')
-        end,
-        ['vi'] = function()
-            return Buff:HasBuff(myHero, 'ViQ')
-        end,
-        ['vladimir'] = function()
-            return Buff:HasBuff(myHero, 'VladimirE')
-        end,
-        ['xerath'] = function()
-            return Buff:HasBuff(myHero, 'XerathArcanopulseChargeUp')
-        end,
-    },
-    
-    DisableAttackBuffs =
-    {
-        ['urgot'] = function()
-            return Buff:HasBuff(myHero, 'UrgotW')
-        end,
-        ['darius'] = function()
-            return Buff:HasBuff(myHero, 'dariusqcast')
-        end,
-        ['graves'] = function()
-            if myHero.hudAmmo == 0 then
-                return true
-            end
-            return false
-        end,
-        ['jhin'] = function()
-            if Buff:HasBuff(myHero, 'JhinPassiveReload') then
-                return true
-            end
-            if myHero.hudAmmo == 0 then
-                return true
-            end
-            return false
-        end,
-    },
-    
-    SpecialMissileSpeeds =
-    {
-        ['caitlyn'] = function()
-            if Buff:HasBuff(myHero, 'caitlynheadshot') then
-                return 3000
-            end
-            return nil
-        end,
-        ['graves'] = function()
-            return 3800
-        end,
-        ['illaoi'] = function()
-            if Buff:HasBuff(myHero, 'IllaoiW') then
-                return 1600
-            end
-            return nil
-        end,
-        ['jayce'] = function()
-            if Buff:HasBuff(myHero, 'jaycestancegun') then
-                return 2000
-            end
-            return nil
-        end,
-        ['jhin'] = function()
-            if Buff:HasBuff(myHero, 'jhinpassiveattackbuff') then
-                return 3000
-            end
-            return nil
-        end,
-        ['jinx'] = function()
-            if Buff:HasBuff(myHero, 'JinxQ') then
-                return 2000
-            end
-            return nil
-        end,
-        ['poppy'] = function()
-            if Buff:HasBuff(myHero, 'poppypassivebuff') then
-                return 1600
-            end
-            return nil
-        end,
-        ['twitch'] = function()
-            if Buff:HasBuff(myHero, 'TwitchFullAutomatic') then
-                return 4000
-            end
-            return nil
-        end,
-        ['kayle'] = function()
-            if Buff:HasBuff(myHero, 'KayleE') then
-                return 1750
-            end
-            return nil
-        end,
-    },
-    
-    --10.3.1
-    HEROES = {aatrox = {3, true, 0.651}, ahri = {4, false, 0.668}, akali = {4, true, 0.625}, alistar = {1, true, 0.625}, amumu = {1, true, 0.736}, anivia = {4, false, 0.625}, annie = {4, false, 0.579}, aphelios = {5, false, 0.64}, ashe = {5, false, 0.658}, aurelionsol = {4, false, 0.625}, azir = {4, true, 0.625}, bard = {3, false, 0.625}, blitzcrank = {1, true, 0.625}, brand = {4, false, 0.625}, braum = {1, true, 0.644}, caitlyn = {5, false, 0.625}, camille = {3, true, 0.644}, cassiopeia = {4, false, 0.647}, chogath = {1, true, 0.625}, corki = {5, false, 0.638}, darius = {2, true, 0.625}, diana = {4, true, 0.625}, draven = {5, false, 0.679}, drmundo = {1, true, 0.721}, ekko = {4, true, 0.688}, elise = {3, false, 0.625}, evelynn = {4, true, 0.667}, ezreal = {5, false, 0.625}, fiddlesticks = {3, false, 0.625}, fiora = {3, true, 0.69}, fizz = {4, true, 0.658}, galio = {1, true, 0.625}, gangplank = {4, true, 0.658}, garen = {1, true, 0.625}, gnar = {1, false, 0.625}, gragas = {2, true, 0.675}, graves = {4, false, 0.475}, hecarim = {2, true, 0.67}, heimerdinger = {3, false, 0.625}, illaoi = {3, true, 0.571}, irelia = {3, true, 0.656}, ivern = {1, true, 0.644}, janna = {2, false, 0.625}, jarvaniv = {3, true, 0.658}, jax = {3, true, 0.638}, jayce = {4, false, 0.658}, jhin = {5, false, 0.625}, jinx = {5, false, 0.625}, kaisa = {5, false, 0.644}, kalista = {5, false, 0.694}, karma = {4, false, 0.625}, karthus = {4, false, 0.625}, kassadin = {4, true, 0.64}, katarina = {4, true, 0.658}, kayle = {4, false, 0.625}, kayn = {4, true, 0.669}, kennen = {4, false, 0.625}, khazix = {4, true, 0.668}, kindred = {4, false, 0.625}, kled = {2, true, 0.625}, kogmaw = {5, false, 0.665}, leblanc = {4, false, 0.625}, leesin = {3, true, 0.651}, leona = {1, true, 0.625}, lissandra = {4, false, 0.656}, lucian = {5, false, 0.638}, lulu = {3, false, 0.625}, lux = {4, false, 0.669}, malphite = {1, true, 0.736}, malzahar = {3, false, 0.625}, maokai = {2, true, 0.8}, masteryi = {5, true, 0.679}, missfortune = {5, false, 0.656}, monkeyking = {3, true, 0.711}, mordekaiser = {4, true, 0.625}, morgana = {3, false, 0.625}, nami = {3, false, 0.644}, nasus = {2, true, 0.638}, nautilus = {1, true, 0.706}, neeko = {4, false, 0.625}, nidalee = {4, false, 0.638}, nocturne = {4, true, 0.721}, nunu = {2, true, 0.625}, olaf = {2, true, 0.694}, orianna = {4, false, 0.658}, ornn = {2, true, 0.625}, pantheon = {3, true, 0.644}, poppy = {2, true, 0.625}, pyke = {4, true, 0.667}, qiyana = {4, true, 0.625}, quinn = {5, false, 0.668}, rakan = {3, true, 0.635}, rammus = {1, true, 0.625}, reksai = {2, true, 0.667}, renekton = {2, true, 0.665}, rengar = {4, true, 0.667}, riven = {4, true, 0.625}, rumble = {4, true, 0.644}, ryze = {4, false, 0.625}, sejuani = {2, true, 0.688}, senna = {5, true, 0.625}, sett = {2, true, 0.625}, shaco = {4, true, 0.694}, shen = {1, true, 0.751}, shyvana = {2, true, 0.658}, singed = {1, true, 0.613}, sion = {1, true, 0.679}, sivir = {5, false, 0.625}, skarner = {2, true, 0.625}, sona = {3, false, 0.644}, soraka = {3, false, 0.625}, swain = {3, false, 0.625}, sylas = {4, true, 0.645}, syndra = {4, false, 0.625}, tahmkench = {1, true, 0.658}, taliyah = {4, false, 0.625}, talon = {4, true, 0.625}, taric = {1, true, 0.625}, teemo = {4, false, 0.69}, thresh = {1, true, 0.625}, tristana = {5, false, 0.656}, trundle = {2, true, 0.67}, tryndamere = {4, true, 0.67}, twistedfate = {4, false, 0.651}, twitch = {5, false, 0.679}, udyr = {2, true, 0.658}, urgot = {2, true, 0.625}, varus = {5, false, 0.658}, vayne = {5, false, 0.658}, veigar = {4, false, 0.625}, velkoz = {4, false, 0.625}, vi = {2, true, 0.644}, viktor = {4, false, 0.658}, vladimir = {3, false, 0.658}, volibear = {2, true, 0.658}, warwick = {2, true, 0.638}, xayah = {5, false, 0.625}, xerath = {4, false, 0.625}, xinzhao = {3, true, 0.645}, yasuo = {4, true, 0.697}, yorick = {2, true, 0.625}, yuumi = {3, false, 0.625}, zac = {1, true, 0.736}, zed = {4, true, 0.651}, ziggs = {4, false, 0.656}, zilean = {3, false, 0.625}, zoe = {4, false, 0.625}, zyra = {2, false, 0.625}, },
-    
-    HeroSpecialMelees =
-    {
-        ['elise'] = function()
-            return myHero.range < 200
-        end,
-        ['gnar'] = function()
-            return myHero.range < 200
-        end,
-        ['jayce'] = function()
-            return myHero.range < 200
-        end,
-        ['kayle'] = function()
-            return myHero.range < 200
-        end,
-        ['nidalee'] = function()
-            return myHero.range < 200
-        end,
-    },
-    
-    IsAttackSpell =
-    {
-        ['CaitlynHeadshotMissile'] = true,
-        ['GarenQAttack'] = true,
-        ['KennenMegaProc'] = true,
-        ['MordekaiserQAttack'] = true,
-        ['MordekaiserQAttack1'] = true,
-        ['MordekaiserQAttack2'] = true,
-        ['QuinnWEnhanced'] = true,
-        ['BlueCardPreAttack'] = true,
-        ['RedCardPreAttack'] = true,
-        ['GoldCardPreAttack'] = true,
-        -- 9.9 patch
-        ['RenektonSuperExecute'] = true,
-        ['RenektonExecute'] = true,
-        ['XinZhaoQThrust1'] = true,
-        ['XinZhaoQThrust2'] = true,
-        ['XinZhaoQThrust3'] = true,
-        ['MasterYiDoubleStrike'] = true,
-    },
-    
-    IsNotAttack =
-    {
-        ['GravesAutoAttackRecoil'] = true,
-        ['LeonaShieldOfDaybreakAttack'] = true,
-    },
-    
-    MinionRange =
-    {
-        ["SRU_ChaosMinionMelee"] = 110,
-        ["SRU_ChaosMinionRanged"] = 550,
-        ["SRU_ChaosMinionSiege"] = 300,
-        ["SRU_ChaosMinionSuper"] = 170,
-        ["SRU_OrderMinionMelee"] = 110,
-        ["SRU_OrderMinionRanged"] = 550,
-        ["SRU_OrderMinionSiege"] = 300,
-        ["SRU_OrderMinionSuper"] = 170,
-        ["HA_ChaosMinionMelee"] = 110,
-        ["HA_ChaosMinionRanged"] = 550,
-        ["HA_ChaosMinionSiege"] = 300,
-        ["HA_ChaosMinionSuper"] = 170,
-        ["HA_OrderMinionMelee"] = 110,
-        ["HA_OrderMinionRanged"] = 550,
-        ["HA_OrderMinionSiege"] = 300,
-        ["HA_OrderMinionSuper"] = 170,
-    },
-    
-    ExtraAttackRanges =
-    {
-        ["caitlyn"] = function(target)
-            if target and Buff:HasBuff(target, "caitlynyordletrapinternal") then
-                return 650
-            end
-            return 0
-        end,
-    },
-    
-    AttackResets =
-    {
-        ["blitzcrank"] = {Slot = _E, Key = HK_E},
-        ["camille"] = {Slot = _Q, Key = HK_Q},
-        ["chogath"] = {Slot = _E, Key = HK_E},
-        ["darius"] = {Slot = _W, Key = HK_W},
-        ["drmundo"] = {Slot = _E, Key = HK_E},
-        ["elise"] = {Slot = _W, Key = HK_W, Name = "EliseSpiderW"},
-        ["fiora"] = {Slot = _E, Key = HK_E},
-        ["garen"] = {Slot = _Q, Key = HK_Q},
-        ["graves"] = {Slot = _E, Key = HK_E, OnCast = true, CanCancel = true},
-        ["kassadin"] = {Slot = _W, Key = HK_W},
-        ["illaoi"] = {Slot = _W, Key = HK_W},
-        ["jax"] = {Slot = _W, Key = HK_W},
-        ["jayce"] = {Slot = _W, Key = HK_W, Name = "JayceHyperCharge"},
-        ["kayle"] = {Slot = _E, Key = HK_E},
-        ["katarina"] = {Slot = _E, Key = HK_E, CanCancel = true, OnCast = true},
-        ["kindred"] = {Slot = _Q, Key = HK_Q},
-        ["leona"] = {Slot = _Q, Key = HK_Q},
-        ['lucian'] = {Slot = _E, Key = HK_E, OnCast = true, CanCancel = true}, -- Buff = {["lucianpassivebuff"] = true},
-        ["masteryi"] = {Slot = _W, Key = HK_W},
-        ["mordekaiser"] = {Slot = _Q, Key = HK_Q},
-        ["nautilus"] = {Slot = _W, Key = HK_W},
-        ["nidalee"] = {Slot = _Q, Key = HK_Q, Name = "Takedown"},
-        ["nasus"] = {Slot = _Q, Key = HK_Q},
-        ["reksai"] = {Slot = _Q, Key = HK_Q, Name = "RekSaiQ"},
-        ["renekton"] = {Slot = _W, Key = HK_W},
-        ["rengar"] = {Slot = _Q, Key = HK_Q},
-        ["riven"] = {Slot = _Q, Key = HK_Q},
-        -- RIVEN BUFFS ["riven"] = {'riventricleavesoundone', 'riventricleavesoundtwo', 'riventricleavesoundthree'},
-        ["sejuani"] = {Slot = _E, Key = HK_E, ReadyCheck = true, ActiveCheck = true, SpellName = "SejuaniE2"},
-        ["sivir"] = {Slot = _W, Key = HK_W},
-        ["trundle"] = {Slot = _Q, Key = HK_Q},
-        ["vayne"] = {Slot = _Q, Key = HK_Q, Buff = {["vaynetumblebonus"] = true}, CanCancel = true},
-        ["vi"] = {Slot = _E, Key = HK_E},
-        ["volibear"] = {Slot = _Q, Key = HK_Q},
-        ["monkeyking"] = {Slot = _Q, Key = HK_Q},
-        ["xinzhao"] = {Slot = _Q, Key = HK_Q},
-        ["yorick"] = {Slot = _Q, Key = HK_Q},
-    },
-}
-
-function Data:Init()
-    self.IsChanneling = self.ChannelingBuffs[self.HeroName]
-    self.CanDisableMove = self.AllowMovement[self.HeroName]
-    self.CanDisableAttack = self.DisableAttackBuffs[self.HeroName]
-    self.SpecialMissileSpeed = self.SpecialMissileSpeeds[self.HeroName]
-    self.IsHeroMelee = self.HEROES[self.HeroName][2]
-    self.IsHeroSpecialMelee = self.HeroSpecialMelees[self.HeroName]
-    self.ExtraAttackRange = self.ExtraAttackRanges[self.HeroName]
-    
-    table_insert(SDK.Load, function()
-        self:OnLoad()
-    end)
-end
-
-function Data:OnLoad()
-    self.AttackReset = self.AttackResets[self.HeroName]
-    if self.AttackReset then
-        self.AttackResetSuccess = false
-        self.AttackResetSlot = self.AttackReset.Slot
-        self.AttackResetBuff = self.AttackReset.Buff
-        self.AttackResetOnCast = self.AttackReset.OnCast
-        self.AttackResetCanCancel = self.AttackReset.CanCancel
-        self.AttackResetTimer = 0
-        self.AttackResetTimeout = 0
-        local AttackResetKey = self.AttackReset.Key
-        local AttackResetActiveSpell = self.AttackReset.ActiveCheck
-        local AttackResetIsReady = self.AttackReset.ReadyCheck
-        local AttackResetName = self.AttackReset.Name
-        local AttackResetSpellName = self.AttackReset.SpellName
-        local X, T = 0, 0
-        if not self.AttackResetCanCancel then--and not Object.IsRiven then
-            table_insert(SDK.WndMsg, function(msg, wParam)
-                if not self.AttackResetSuccess and not Control.IsKeyDown(HK_LUS) and not Game.IsChatOpen() and wParam == AttackResetKey then
-                    local checkNum = Object.IsRiven and 400 or 600
-                    if GetTickCount() <= self.AttackResetTimer + checkNum then
-                        return
-                    end
-                    if AttackResetIsReady and Game.CanUseSpell(self.AttackResetSlot) ~= 0 then
-                        return
-                    end
-                    local spellData = myHero:GetSpellData(self.AttackResetSlot)
-                    if (Object.IsRiven or spellData.mana <= myHero.mana) and spellData.currentCd == 0 and (not AttackResetName or spellData.name == AttackResetName) then
-                        if AttackResetActiveSpell then
-                            self.AttackResetTimer = GetTickCount()
-                            local startTime = GetTickCount() + 400
-                            Action:Add(function()
-                                local s = myHero.activeSpell
-                                if s and s.valid and s.name == AttackResetSpellName then
-                                    self.AttackResetTimer = GetTickCount()
-                                    self.AttackResetSuccess = true
-                                    --print("Attack Reset ActiveSpell")
-                                    --print(startTime - GetTickCount())
-                                    return true
-                                end
-                                if GetTickCount() < startTime then
-                                    return false
-                                end
-                                return true
-                            end)
-                            return
-                        end
-                        
-                        self.AttackResetTimer = GetTickCount()
-                        
-                        if Object.IsKindred then
-                            Orbwalker:SetMovement(false)
-                            local setTime = GetTickCount() + 550
-                            -- SET ATTACK
-                            Action:Add(function()
-                                if GetTickCount() < setTime then
-                                    return false
-                                end
-                                --print("Move True Kindred")
-                                Orbwalker:SetMovement(true)
-                                return true
-                            end)
-                            return
-                        end
-                        
-                        self.AttackResetSuccess = true
-                        --print("Attack Reset")
-                        
-                        -- RIVEN
-                        if Object.IsRiven then
-                            X = X + 1
-                            if X == 1 then
-                                T = GetTickCount()
-                            end
-                            if X == 3 then
-                                --print(GetTickCount() - T)
-                            end
-                            local isThree = Buff:HasBuff(myHero, 'riventricleavesoundtwo')
-                            if isThree then
-                                X = 0
-                            end
-                            local riven_start = GetTickCount() + 450 + (isThree and 100 or 0) - LATENCY
-                            Action:Add(function()
-                                if GetTickCount() < riven_start then
-                                    if Cursor.Step == 0 then
-                                        Cursor.MoveTimer = 0
-                                        Control.Move()
-                                    end
-                                    return false
-                                end
-                                Orbwalker:SetAttack(true)
-                                Attack.Reset = true
-                                return true
-                            end)
-                            Orbwalker:SetAttack(false)
-                            return
-                        end
-                    end
+Data = {}
+do
+    -- init
+    function Data:__init()
+        self.JungleTeam = 300
+        self.AllyTeam = myHero.team
+        self.EnemyTeam = self.JungleTeam - myHero.team
+        self.HeroName = myHero.charName:lower()
+        self.ChannelingBuffs =
+        {
+            ['caitlyn'] = function()
+                return Buff:HasBuff(myHero, 'CaitlynAceintheHole')
+            end,
+            ['fiddlesticks'] = function()
+                return Buff:HasBuff(myHero, 'Drain') or Buff:HasBuff(myHero, 'Crowstorm')
+            end,
+            ['galio'] = function()
+                return Buff:HasBuff(myHero, 'GalioIdolOfDurand')
+            end,
+            ['janna'] = function()
+                return Buff:HasBuff(myHero, 'ReapTheWhirlwind')
+            end,
+            ['kaisa'] = function()
+                return Buff:HasBuff(myHero, 'KaisaE')
+            end,
+            ['karthus'] = function()
+                return Buff:HasBuff(myHero, 'karthusfallenonecastsound')
+            end,
+            ['katarina'] = function()
+                return Buff:HasBuff(myHero, 'katarinarsound')
+            end,
+            ['lucian'] = function()
+                return Buff:HasBuff(myHero, 'LucianR')
+            end,
+            ['malzahar'] = function()
+                return Buff:HasBuff(myHero, 'alzaharnethergraspsound')
+            end,
+            ['masteryi'] = function()
+                return Buff:HasBuff(myHero, 'Meditate')
+            end,
+            ['missfortune'] = function()
+                return Buff:HasBuff(myHero, 'missfortunebulletsound')
+            end,
+            ['nunu'] = function()
+                return Buff:HasBuff(myHero, 'AbsoluteZero')
+            end,
+            ['pantheon'] = function()
+                return Buff:HasBuff(myHero, 'pantheonesound') or Buff:HasBuff(myHero, 'PantheonRJump')
+            end,
+            ['shen'] = function()
+                return Buff:HasBuff(myHero, 'shenstandunitedlock')
+            end,
+            ['twistedfate'] = function()
+                return Buff:HasBuff(myHero, 'Destiny')
+            end,
+            ['urgot'] = function()
+                return Buff:HasBuff(myHero, 'UrgotSwap2')
+            end,
+            ['varus'] = function()
+                return Buff:HasBuff(myHero, 'VarusQ')
+            end,
+            ['velkoz'] = function()
+                return Buff:HasBuff(myHero, 'VelkozR')
+            end,
+            ['vi'] = function()
+                return Buff:HasBuff(myHero, 'ViQ')
+            end,
+            ['vladimir'] = function()
+                return Buff:HasBuff(myHero, 'VladimirE')
+            end,
+            ['warwick'] = function()
+                return Buff:HasBuff(myHero, 'infiniteduresssound')
+            end,
+            ['xerath'] = function()
+                return Buff:HasBuff(myHero, 'XerathArcanopulseChargeUp') or Buff:HasBuff(myHero, 'XerathLocusOfPower2')
+            end,
+        }
+        self.SpecialWindup =
+        {
+            ['twistedfate'] = function()
+                if Buff:HasBuff(myHero, 'BlueCardPreAttack') or Buff:HasBuff(myHero, 'RedCardPreAttack') or Buff:HasBuff(myHero, 'GoldCardPreAttack') then
+                    return 0.125
                 end
-            end)
-        end
-    end
-end
-
-function Data:IdEquals(a, b)
-    if a == nil or b == nil then
-        return false
-    end
-    return a.networkID == b.networkID
-end
-
-function Data:GetAutoAttackRange(from, target)
-    local result = from.range
-    local fromType = from.type
-    if fromType == Obj_AI_Minion then
-        local fromName = from.charName
-        result = self.MinionRange[fromName] ~= nil and self.MinionRange[fromName] or 0
-    elseif fromType == Obj_AI_Turret then
-        result = 775
-    end
-    if target then
-        local targetType = target.type
-        if targetType == Obj_AI_Barracks then
-            result = result + 270
-        elseif targetType == Obj_AI_Nexus then
-            result = result + 380
-        else
-            result = result + from.boundingRadius + target.boundingRadius
-            if targetType == Obj_AI_Hero and self.ExtraAttackRange then
-                result = result + self.ExtraAttackRange(target)
+                return nil
+            end,
+            ['jayce'] = function()
+                if Buff:HasBuff(myHero, 'JayceHyperCharge') then
+                    return 0.125
+                end
+                return nil
             end
-        end
-    else
-        result = result + from.boundingRadius + 35
-    end
-    return result
-end
-
-function Data:IsInAutoAttackRange(from, target, extrarange)
-    local range = extrarange or 0
-    return IsInRange(from.pos, target.pos, self:GetAutoAttackRange(from, target) + range)
-end
-
-function Data:IsInAutoAttackRange2(from, target, extrarange)
-    local range = self:GetAutoAttackRange(from, target) + (extrarange or 0)
-    if IsInRange(from.pos, target.pos, range) and IsInRange(from.pos, target.posTo, range) then
-        return true
-    end
-    return false
-end
-
-function Data:CanResetAttack()
-    if self.AttackReset == nil then
-        return false
-    end
-    
-    if self.AttackResetCanCancel then
-        if self.AttackResetOnCast then
-            if self.AttackResetBuff == nil or Buff:HasBuff(myHero, self.AttackResetBuff) then
-                local spellData = myHero:GetSpellData(self.AttackResetSlot)
-                local startTime = spellData.castTime - spellData.cd
-                if not self.AttackResetSuccess and Game.Timer() - startTime > 0.075 and Game.Timer() - startTime < 0.5 and GetTickCount() > self.AttackResetTimer + 1000 then
-                    --print('Reset Cast, Buff ' .. tostring(os.clock()))
-                    self.AttackResetSuccess = true
-                    self.AttackResetTimeout = GetTickCount()
-                    self.AttackResetTimer = GetTickCount()
+        }
+        self.AllowMovement =
+        {
+            ['kaisa'] = function()
+                return Buff:HasBuff(myHero, 'KaisaE')
+            end,
+            ['lucian'] = function()
+                return Buff:HasBuff(myHero, 'LucianR')
+            end,
+            ['varus'] = function()
+                return Buff:HasBuff(myHero, 'VarusQ')
+            end,
+            ['vi'] = function()
+                return Buff:HasBuff(myHero, 'ViQ')
+            end,
+            ['vladimir'] = function()
+                return Buff:HasBuff(myHero, 'VladimirE')
+            end,
+            ['xerath'] = function()
+                return Buff:HasBuff(myHero, 'XerathArcanopulseChargeUp')
+            end,
+        }
+        self.DisableAttackBuffs =
+        {
+            ['urgot'] = function()
+                return Buff:HasBuff(myHero, 'UrgotW')
+            end,
+            ['darius'] = function()
+                return Buff:HasBuff(myHero, 'dariusqcast')
+            end,
+            ['graves'] = function()
+                if myHero.hudAmmo == 0 then
                     return true
                 end
-                if self.AttackResetSuccess and GetTickCount() > self.AttackResetTimeout + 200 then
-                    --print('Reset Timeout')
-                    self.AttackResetSuccess = false
+                return false
+            end,
+            ['jhin'] = function()
+                if Buff:HasBuff(myHero, 'JhinPassiveReload') then
+                    return true
+                end
+                if myHero.hudAmmo == 0 then
+                    return true
+                end
+                return false
+            end,
+        }
+        self.SpecialMissileSpeeds =
+        {
+            ['caitlyn'] = function()
+                if Buff:HasBuff(myHero, 'caitlynheadshot') then
+                    return 3000
+                end
+                return nil
+            end,
+            ['graves'] = function()
+                return 3800
+            end,
+            ['illaoi'] = function()
+                if Buff:HasBuff(myHero, 'IllaoiW') then
+                    return 1600
+                end
+                return nil
+            end,
+            ['jayce'] = function()
+                if Buff:HasBuff(myHero, 'jaycestancegun') then
+                    return 2000
+                end
+                return nil
+            end,
+            ['jhin'] = function()
+                if Buff:HasBuff(myHero, 'jhinpassiveattackbuff') then
+                    return 3000
+                end
+                return nil
+            end,
+            ['jinx'] = function()
+                if Buff:HasBuff(myHero, 'JinxQ') then
+                    return 2000
+                end
+                return nil
+            end,
+            ['poppy'] = function()
+                if Buff:HasBuff(myHero, 'poppypassivebuff') then
+                    return 1600
+                end
+                return nil
+            end,
+            ['twitch'] = function()
+                if Buff:HasBuff(myHero, 'TwitchFullAutomatic') then
+                    return 4000
+                end
+                return nil
+            end,
+            ['kayle'] = function()
+                if Buff:HasBuff(myHero, 'KayleE') then
+                    return 1750
+                end
+                return nil
+            end,
+        }
+        --10.3.1
+        self.HEROES = {aatrox = {3, true, 0.651}, ahri = {4, false, 0.668}, akali = {4, true, 0.625}, alistar = {1, true, 0.625}, amumu = {1, true, 0.736}, anivia = {4, false, 0.625}, annie = {4, false, 0.579}, aphelios = {5, false, 0.64}, ashe = {5, false, 0.658}, aurelionsol = {4, false, 0.625}, azir = {4, true, 0.625}, bard = {3, false, 0.625}, blitzcrank = {1, true, 0.625}, brand = {4, false, 0.625}, braum = {1, true, 0.644}, caitlyn = {5, false, 0.625}, camille = {3, true, 0.644}, cassiopeia = {4, false, 0.647}, chogath = {1, true, 0.625}, corki = {5, false, 0.638}, darius = {2, true, 0.625}, diana = {4, true, 0.625}, draven = {5, false, 0.679}, drmundo = {1, true, 0.721}, ekko = {4, true, 0.688}, elise = {3, false, 0.625}, evelynn = {4, true, 0.667}, ezreal = {5, false, 0.625}, fiddlesticks = {3, false, 0.625}, fiora = {3, true, 0.69}, fizz = {4, true, 0.658}, galio = {1, true, 0.625}, gangplank = {4, true, 0.658}, garen = {1, true, 0.625}, gnar = {1, false, 0.625}, gragas = {2, true, 0.675}, graves = {4, false, 0.475}, hecarim = {2, true, 0.67}, heimerdinger = {3, false, 0.625}, illaoi = {3, true, 0.571}, irelia = {3, true, 0.656}, ivern = {1, true, 0.644}, janna = {2, false, 0.625}, jarvaniv = {3, true, 0.658}, jax = {3, true, 0.638}, jayce = {4, false, 0.658}, jhin = {5, false, 0.625}, jinx = {5, false, 0.625}, kaisa = {5, false, 0.644}, kalista = {5, false, 0.694}, karma = {4, false, 0.625}, karthus = {4, false, 0.625}, kassadin = {4, true, 0.64}, katarina = {4, true, 0.658}, kayle = {4, false, 0.625}, kayn = {4, true, 0.669}, kennen = {4, false, 0.625}, khazix = {4, true, 0.668}, kindred = {4, false, 0.625}, kled = {2, true, 0.625}, kogmaw = {5, false, 0.665}, leblanc = {4, false, 0.625}, leesin = {3, true, 0.651}, leona = {1, true, 0.625}, lissandra = {4, false, 0.656}, lucian = {5, false, 0.638}, lulu = {3, false, 0.625}, lux = {4, false, 0.669}, malphite = {1, true, 0.736}, malzahar = {3, false, 0.625}, maokai = {2, true, 0.8}, masteryi = {5, true, 0.679}, missfortune = {5, false, 0.656}, monkeyking = {3, true, 0.711}, mordekaiser = {4, true, 0.625}, morgana = {3, false, 0.625}, nami = {3, false, 0.644}, nasus = {2, true, 0.638}, nautilus = {1, true, 0.706}, neeko = {4, false, 0.625}, nidalee = {4, false, 0.638}, nocturne = {4, true, 0.721}, nunu = {2, true, 0.625}, olaf = {2, true, 0.694}, orianna = {4, false, 0.658}, ornn = {2, true, 0.625}, pantheon = {3, true, 0.644}, poppy = {2, true, 0.625}, pyke = {4, true, 0.667}, qiyana = {4, true, 0.625}, quinn = {5, false, 0.668}, rakan = {3, true, 0.635}, rammus = {1, true, 0.625}, reksai = {2, true, 0.667}, renekton = {2, true, 0.665}, rengar = {4, true, 0.667}, riven = {4, true, 0.625}, rumble = {4, true, 0.644}, ryze = {4, false, 0.625}, sejuani = {2, true, 0.688}, senna = {5, true, 0.625}, sett = {2, true, 0.625}, shaco = {4, true, 0.694}, shen = {1, true, 0.751}, shyvana = {2, true, 0.658}, singed = {1, true, 0.613}, sion = {1, true, 0.679}, sivir = {5, false, 0.625}, skarner = {2, true, 0.625}, sona = {3, false, 0.644}, soraka = {3, false, 0.625}, swain = {3, false, 0.625}, sylas = {4, true, 0.645}, syndra = {4, false, 0.625}, tahmkench = {1, true, 0.658}, taliyah = {4, false, 0.625}, talon = {4, true, 0.625}, taric = {1, true, 0.625}, teemo = {4, false, 0.69}, thresh = {1, true, 0.625}, tristana = {5, false, 0.656}, trundle = {2, true, 0.67}, tryndamere = {4, true, 0.67}, twistedfate = {4, false, 0.651}, twitch = {5, false, 0.679}, udyr = {2, true, 0.658}, urgot = {2, true, 0.625}, varus = {5, false, 0.658}, vayne = {5, false, 0.658}, veigar = {4, false, 0.625}, velkoz = {4, false, 0.625}, vi = {2, true, 0.644}, viktor = {4, false, 0.658}, vladimir = {3, false, 0.658}, volibear = {2, true, 0.658}, warwick = {2, true, 0.638}, xayah = {5, false, 0.625}, xerath = {4, false, 0.625}, xinzhao = {3, true, 0.645}, yasuo = {4, true, 0.697}, yorick = {2, true, 0.625}, yuumi = {3, false, 0.625}, zac = {1, true, 0.736}, zed = {4, true, 0.651}, ziggs = {4, false, 0.656}, zilean = {3, false, 0.625}, zoe = {4, false, 0.625}, zyra = {2, false, 0.625}, }
+        self.HeroSpecialMelees =
+        {
+            ['elise'] = function()
+                return myHero.range < 200
+            end,
+            ['gnar'] = function()
+                return myHero.range < 200
+            end,
+            ['jayce'] = function()
+                return myHero.range < 200
+            end,
+            ['kayle'] = function()
+                return myHero.range < 200
+            end,
+            ['nidalee'] = function()
+                return myHero.range < 200
+            end,
+        }
+        self.IsAttackSpell =
+        {
+            ['CaitlynHeadshotMissile'] = true,
+            ['GarenQAttack'] = true,
+            ['KennenMegaProc'] = true,
+            ['MordekaiserQAttack'] = true,
+            ['MordekaiserQAttack1'] = true,
+            ['MordekaiserQAttack2'] = true,
+            ['QuinnWEnhanced'] = true,
+            ['BlueCardPreAttack'] = true,
+            ['RedCardPreAttack'] = true,
+            ['GoldCardPreAttack'] = true,
+            -- 9.9 patch
+            ['RenektonSuperExecute'] = true,
+            ['RenektonExecute'] = true,
+            ['XinZhaoQThrust1'] = true,
+            ['XinZhaoQThrust2'] = true,
+            ['XinZhaoQThrust3'] = true,
+            ['MasterYiDoubleStrike'] = true,
+        }
+        self.IsNotAttack =
+        {
+            ['GravesAutoAttackRecoil'] = true,
+            ['LeonaShieldOfDaybreakAttack'] = true,
+        }
+        self.MinionRange =
+        {
+            ["SRU_ChaosMinionMelee"] = 110,
+            ["SRU_ChaosMinionRanged"] = 550,
+            ["SRU_ChaosMinionSiege"] = 300,
+            ["SRU_ChaosMinionSuper"] = 170,
+            ["SRU_OrderMinionMelee"] = 110,
+            ["SRU_OrderMinionRanged"] = 550,
+            ["SRU_OrderMinionSiege"] = 300,
+            ["SRU_OrderMinionSuper"] = 170,
+            ["HA_ChaosMinionMelee"] = 110,
+            ["HA_ChaosMinionRanged"] = 550,
+            ["HA_ChaosMinionSiege"] = 300,
+            ["HA_ChaosMinionSuper"] = 170,
+            ["HA_OrderMinionMelee"] = 110,
+            ["HA_OrderMinionRanged"] = 550,
+            ["HA_OrderMinionSiege"] = 300,
+            ["HA_OrderMinionSuper"] = 170,
+        }
+        self.ExtraAttackRanges =
+        {
+            ["caitlyn"] = function(target)
+                if target and Buff:HasBuff(target, "caitlynyordletrapinternal") then
+                    return 650
+                end
+                return 0
+            end,
+        }
+        self.AttackResets =
+        {
+            ["blitzcrank"] = {Slot = _E, Key = HK_E},
+            ["camille"] = {Slot = _Q, Key = HK_Q},
+            ["chogath"] = {Slot = _E, Key = HK_E},
+            ["darius"] = {Slot = _W, Key = HK_W},
+            ["drmundo"] = {Slot = _E, Key = HK_E},
+            ["elise"] = {Slot = _W, Key = HK_W, Name = "EliseSpiderW"},
+            ["fiora"] = {Slot = _E, Key = HK_E},
+            ["garen"] = {Slot = _Q, Key = HK_Q},
+            ["graves"] = {Slot = _E, Key = HK_E, OnCast = true, CanCancel = true},
+            ["kassadin"] = {Slot = _W, Key = HK_W},
+            ["illaoi"] = {Slot = _W, Key = HK_W},
+            ["jax"] = {Slot = _W, Key = HK_W},
+            ["jayce"] = {Slot = _W, Key = HK_W, Name = "JayceHyperCharge"},
+            ["kayle"] = {Slot = _E, Key = HK_E},
+            ["katarina"] = {Slot = _E, Key = HK_E, CanCancel = true, OnCast = true},
+            ["kindred"] = {Slot = _Q, Key = HK_Q},
+            ["leona"] = {Slot = _Q, Key = HK_Q},
+            ['lucian'] = {Slot = _E, Key = HK_E, OnCast = true, CanCancel = true}, -- Buff = {["lucianpassivebuff"] = true},
+            ["masteryi"] = {Slot = _W, Key = HK_W},
+            ["mordekaiser"] = {Slot = _Q, Key = HK_Q},
+            ["nautilus"] = {Slot = _W, Key = HK_W},
+            ["nidalee"] = {Slot = _Q, Key = HK_Q, Name = "Takedown"},
+            ["nasus"] = {Slot = _Q, Key = HK_Q},
+            ["reksai"] = {Slot = _Q, Key = HK_Q, Name = "RekSaiQ"},
+            ["renekton"] = {Slot = _W, Key = HK_W},
+            ["rengar"] = {Slot = _Q, Key = HK_Q},
+            ["riven"] = {Slot = _Q, Key = HK_Q},
+            -- RIVEN BUFFS ["riven"] = {'riventricleavesoundone', 'riventricleavesoundtwo', 'riventricleavesoundthree'},
+            ["sejuani"] = {Slot = _E, Key = HK_E, ReadyCheck = true, ActiveCheck = true, SpellName = "SejuaniE2"},
+            ["sivir"] = {Slot = _W, Key = HK_W},
+            ["trundle"] = {Slot = _Q, Key = HK_Q},
+            ["vayne"] = {Slot = _Q, Key = HK_Q, Buff = {["vaynetumblebonus"] = true}, CanCancel = true},
+            ["vi"] = {Slot = _E, Key = HK_E},
+            ["volibear"] = {Slot = _Q, Key = HK_Q},
+            ["monkeyking"] = {Slot = _Q, Key = HK_Q},
+            ["xinzhao"] = {Slot = _Q, Key = HK_Q},
+            ["yorick"] = {Slot = _Q, Key = HK_Q},
+        }
+    end
+    -- init
+    function Data:Init()
+        self.IsChanneling = self.ChannelingBuffs[self.HeroName]
+        self.CanDisableMove = self.AllowMovement[self.HeroName]
+        self.CanDisableAttack = self.DisableAttackBuffs[self.HeroName]
+        self.SpecialMissileSpeed = self.SpecialMissileSpeeds[self.HeroName]
+        self.IsHeroMelee = self.HEROES[self.HeroName][2]
+        self.IsHeroSpecialMelee = self.HeroSpecialMelees[self.HeroName]
+        self.ExtraAttackRange = self.ExtraAttackRanges[self.HeroName]
+        
+        table_insert(SDK.Load, function()
+            self:OnLoad()
+        end)
+    end
+    -- on load
+    function Data:OnLoad()
+        self.AttackReset = self.AttackResets[self.HeroName]
+        if self.AttackReset then
+            self.AttackResetSuccess = false
+            self.AttackResetSlot = self.AttackReset.Slot
+            self.AttackResetBuff = self.AttackReset.Buff
+            self.AttackResetOnCast = self.AttackReset.OnCast
+            self.AttackResetCanCancel = self.AttackReset.CanCancel
+            self.AttackResetTimer = 0
+            self.AttackResetTimeout = 0
+            local AttackResetKey = self.AttackReset.Key
+            local AttackResetActiveSpell = self.AttackReset.ActiveCheck
+            local AttackResetIsReady = self.AttackReset.ReadyCheck
+            local AttackResetName = self.AttackReset.Name
+            local AttackResetSpellName = self.AttackReset.SpellName
+            local X, T = 0, 0
+            if not self.AttackResetCanCancel then--and not Object.IsRiven then
+                table_insert(SDK.WndMsg, function(msg, wParam)
+                    if not self.AttackResetSuccess and not Control.IsKeyDown(HK_LUS) and not Game.IsChatOpen() and wParam == AttackResetKey then
+                        local checkNum = Object.IsRiven and 400 or 600
+                        if GetTickCount() <= self.AttackResetTimer + checkNum then
+                            return
+                        end
+                        if AttackResetIsReady and Game.CanUseSpell(self.AttackResetSlot) ~= 0 then
+                            return
+                        end
+                        local spellData = myHero:GetSpellData(self.AttackResetSlot)
+                        if (Object.IsRiven or spellData.mana <= myHero.mana) and spellData.currentCd == 0 and (not AttackResetName or spellData.name == AttackResetName) then
+                            if AttackResetActiveSpell then
+                                self.AttackResetTimer = GetTickCount()
+                                local startTime = GetTickCount() + 400
+                                Action:Add(function()
+                                    local s = myHero.activeSpell
+                                    if s and s.valid and s.name == AttackResetSpellName then
+                                        self.AttackResetTimer = GetTickCount()
+                                        self.AttackResetSuccess = true
+                                        --print("Attack Reset ActiveSpell")
+                                        --print(startTime - GetTickCount())
+                                        return true
+                                    end
+                                    if GetTickCount() < startTime then
+                                        return false
+                                    end
+                                    return true
+                                end)
+                                return
+                            end
+                            
+                            self.AttackResetTimer = GetTickCount()
+                            
+                            if Object.IsKindred then
+                                Orbwalker:SetMovement(false)
+                                local setTime = GetTickCount() + 550
+                                -- SET ATTACK
+                                Action:Add(function()
+                                    if GetTickCount() < setTime then
+                                        return false
+                                    end
+                                    --print("Move True Kindred")
+                                    Orbwalker:SetMovement(true)
+                                    return true
+                                end)
+                                return
+                            end
+                            
+                            self.AttackResetSuccess = true
+                            --print("Attack Reset")
+                            
+                            -- RIVEN
+                            if Object.IsRiven then
+                                X = X + 1
+                                if X == 1 then
+                                    T = GetTickCount()
+                                end
+                                if X == 3 then
+                                    --print(GetTickCount() - T)
+                                end
+                                local isThree = Buff:HasBuff(myHero, 'riventricleavesoundtwo')
+                                if isThree then
+                                    X = 0
+                                end
+                                local riven_start = GetTickCount() + 450 + (isThree and 100 or 0) - LATENCY
+                                Action:Add(function()
+                                    if GetTickCount() < riven_start then
+                                        if Cursor.Step == 0 then
+                                            Cursor.MoveTimer = 0
+                                            Control.Move()
+                                        end
+                                        return false
+                                    end
+                                    Orbwalker:SetAttack(true)
+                                    Attack.Reset = true
+                                    return true
+                                end)
+                                Orbwalker:SetAttack(false)
+                                return
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+    end
+    -- id equals
+    function Data:IdEquals(a, b)
+        if a == nil or b == nil then
+            return false
+        end
+        return a.networkID == b.networkID
+    end
+    -- get auto attack range
+    function Data:GetAutoAttackRange(from, target)
+        local result = from.range
+        local fromType = from.type
+        if fromType == Obj_AI_Minion then
+            local fromName = from.charName
+            result = self.MinionRange[fromName] ~= nil and self.MinionRange[fromName] or 0
+        elseif fromType == Obj_AI_Turret then
+            result = 775
+        end
+        if target then
+            local targetType = target.type
+            if targetType == Obj_AI_Barracks then
+                result = result + 270
+            elseif targetType == Obj_AI_Nexus then
+                result = result + 380
+            else
+                result = result + from.boundingRadius + target.boundingRadius
+                if targetType == Obj_AI_Hero and self.ExtraAttackRange then
+                    result = result + self.ExtraAttackRange(target)
+                end
+            end
+        else
+            result = result + from.boundingRadius + 35
+        end
+        return result
+    end
+    -- is in auto attack range
+    function Data:IsInAutoAttackRange(from, target, extrarange)
+        local range = extrarange or 0
+        return IsInRange(from.pos, target.pos, self:GetAutoAttackRange(from, target) + range)
+    end
+    -- is in auto attack range 2
+    function Data:IsInAutoAttackRange2(from, target, extrarange)
+        local range = self:GetAutoAttackRange(from, target) + (extrarange or 0)
+        if IsInRange(from.pos, target.pos, range) and IsInRange(from.pos, target.posTo, range) then
+            return true
+        end
+        return false
+    end
+    -- can reset attack
+    function Data:CanResetAttack()
+        if self.AttackReset == nil then
+            return false
+        end
+        if self.AttackResetCanCancel then
+            if self.AttackResetOnCast then
+                if self.AttackResetBuff == nil or Buff:HasBuff(myHero, self.AttackResetBuff) then
+                    local spellData = myHero:GetSpellData(self.AttackResetSlot)
+                    local startTime = spellData.castTime - spellData.cd
+                    if not self.AttackResetSuccess and Game.Timer() - startTime > 0.075 and Game.Timer() - startTime < 0.5 and GetTickCount() > self.AttackResetTimer + 1000 then
+                        --print('Reset Cast, Buff ' .. tostring(os.clock()))
+                        self.AttackResetSuccess = true
+                        self.AttackResetTimeout = GetTickCount()
+                        self.AttackResetTimer = GetTickCount()
+                        return true
+                    end
+                    if self.AttackResetSuccess and GetTickCount() > self.AttackResetTimeout + 200 then
+                        --print('Reset Timeout')
+                        self.AttackResetSuccess = false
+                    end
+                    return false
+                end
+            elseif Buff:ContainsBuffs(myHero, self.AttackResetBuff) then
+                if not self.AttackResetSuccess then
+                    self.AttackResetSuccess = true
+                    --print('Reset Buff')
+                    return true
                 end
                 return false
             end
-        elseif Buff:ContainsBuffs(myHero, self.AttackResetBuff) then
-            if not self.AttackResetSuccess then
-                self.AttackResetSuccess = true
-                --print('Reset Buff')
-                return true
+            if self.AttackResetSuccess then
+                --print('Remove Reset')
+                self.AttackResetSuccess = false
             end
             return false
         end
         if self.AttackResetSuccess then
-            --print('Remove Reset')
             self.AttackResetSuccess = false
+            --print("AA RESET STOP !")
+            return true
         end
         return false
     end
-    
-    if self.AttackResetSuccess then
-        self.AttackResetSuccess = false
-        --print("AA RESET STOP !")
-        return true
-    end
-    
-    return false
-end
-
-function Data:IsAttack(name)
-    if self.IsAttackSpell[name] then
-        return true
-    end
-    if self.IsNotAttack[name] then
-        return false
-    end
-    return name:lower():find('attack')
-end
-
-function Data:GetLatency()
-    return LATENCY * 0.001
-end
-
-function Data:HeroCanMove()
-    if self.IsChanneling and self.IsChanneling() then
-        if self.CanDisableMove == nil or (not self.CanDisableMove()) then
+    -- is attack
+    function Data:IsAttack(name)
+        if self.IsAttackSpell[name] then
+            return true
+        end
+        if self.IsNotAttack[name] then
             return false
         end
+        return name:lower():find('attack')
     end
-    return true
-end
-
-function Data:HeroCanAttack()
-    if self.IsChanneling and self.IsChanneling() then
-        return false
+    -- get latency
+    function Data:GetLatency()
+        return LATENCY * 0.001
     end
-    if self.CanDisableAttack and self.CanDisableAttack() then
-        return false
-    end
-    if Buff:HasBuffTypes(myHero, {[25] = true, [31] = true}) then
-        return false
-    end
-    return true
-end
-
-function Data:IsMelee()
-    if self.IsHeroMelee or (self.IsHeroSpecialMelee and self.IsHeroSpecialMelee()) then
-        return true
-    end
-    return false
-end
-
-function Data:GetHeroPriority(name)
-    local p = self.HEROES[name:lower()]
-    return p and p[1] or 5
-end
-
-function Data:GetHeroData(obj)
-    if obj == nil then
-        return {}
-    end
-    local id = obj.networkID
-    if id == nil or id <= 0 then
-        return {}
-    end
-    local name = obj.charName
-    if name == nil then
-        return {}
-    end
-    if self.HEROES[name:lower()] == nil and not name:lower():find("dummy") then
-        return {}
-    end
-    local Team = obj.team
-    local IsEnemy = obj.isEnemy
-    local IsAlly = obj.isAlly
-    if Team == nil or Team < 100 or Team > 200 or IsEnemy == nil or IsAlly == nil or IsEnemy == IsAlly then
-        return {}
-    end
-    return
-    {
-        valid = true,
-        isEnemy = IsEnemy,
-        isAlly = IsAlly,
-        networkID = id,
-        charName = name,
-        team = Team,
-        unit = obj,
-    }
-end
-
-function Data:Join(t1, t2)
-    local t = {}
-    
-    for i = 1, #t1 do
-        table_insert(t, t1[i])
-    end
-    
-    for i = 1, #t2 do
-        table_insert(t, t2[i])
-    end
-    
-    return t
-end
-
-function Data:IsUnit(unit)
-    local type = unit.type
-    if type == Obj_AI_Hero or type == Obj_AI_Minion or type == Obj_AI_Turret or type == Obj_AI_Barracks or type == Obj_AI_Nexus then
-        return true
-    end
-    return false
-end
-
-function Data:GetTotalShield(obj)
-    local shieldAd, shieldAp
-    shieldAd = obj.shieldAD
-    shieldAp = obj.shieldAP
-    
-    return (shieldAd and shieldAd or 0) + (shieldAp and shieldAp or 0)
-end
-
-function Data:TotalShieldHealth(target)
-    local result = target.health + target.shieldAD + target.shieldAP
-    --[[if target.charName == "Blitzcrank" then
-        if not self:HasBuff(target, "manabarriercooldown") and not self:HasBuff(target, "manabarrier") then
-            result = result + target.mana * 0.5
-        end
-    end--]]
-    return result
-end
-
-function Data:GetBuildingBBox(unit)
-    local type = unit.type
-    if type == Obj_AI_Barracks then
-        return 270
-    end
-    if type == Obj_AI_Nexus then
-        return 380
-    end
-    return 0
-end
-
-function Data:IsAlly(unit)
-    local team = unit.team
-    if team == self.AllyTeam then
-        return true
-    end
-    return false
-end
-
-function Data:IsEnemy(unit)
-    local team = unit.team
-    if team == self.EnemyTeam then
-        return true
-    end
-    return false
-end
-
-function Data:IsJungle(unit)
-    local team = unit.team
-    if team == self.JungleTeam then
-        return true
-    end
-    return false
-end
-
-function Data:IsOtherMinion(unit)
-    if unit.maxHealth <= 6 then
-        return true
-    end
-    return false
-end
-
-function Data:IsLaneMinion(unit)
-    if not self:IsOtherMinion(unit) and not self:IsJungle(unit) then
-        return true
-    end
-    return false
-end
-
-function Data:Stop()
-    return Game.IsChatOpen() or (ExtLibEvade and ExtLibEvade.Evading) or (JustEvade and JustEvade.Evading()) or (not Game.IsOnTop())
-end
-
-Spell =
-{
-}
-
-function Spell:Init()
-    self.QTimer = 0
-    self.WTimer = 0
-    self.ETimer = 0
-    self.RTimer = 0
-    self.QkTimer = 0
-    self.WkTimer = 0
-    self.EkTimer = 0
-    self.RkTimer = 0
-    
-    self.GameCanUseSpell = _G.Game.CanUseSpell
-    _G.Game.CanUseSpell = function(spell)
-        if self:IsReady(spell) then
-            return 0
-        end
-        return 1
-    end;
-    
-    table_insert(SDK.Load, function()
-        self:OnLoad()
-    end)
-end
-
-function Spell:OnLoad()
-    table_insert(SDK.WndMsg, function(msg, wParam)
-        local timer = Game.Timer()
-        
-        if wParam == HK_Q then
-            if timer > self.QkTimer + 0.33 and self.GameCanUseSpell(_Q) == 0 then
-                self.QkTimer = timer
+    -- hero can move
+    function Data:HeroCanMove()
+        if self.IsChanneling and self.IsChanneling() then
+            if self.CanDisableMove == nil or (not self.CanDisableMove()) then
+                return false
             end
-            return
         end
-        
-        if wParam == HK_W then
-            if timer > self.WkTimer + 0.33 and self.GameCanUseSpell(_W) == 0 then
-                self.WkTimer = timer
-            end
-            return
-        end
-        
-        if wParam == HK_E then
-            if timer > self.EkTimer + 0.33 and self.GameCanUseSpell(_E) == 0 then
-                self.EkTimer = timer
-            end
-            return
-        end
-        
-        if wParam == HK_R then
-            if timer > self.RkTimer + 0.33 and self.GameCanUseSpell(_R) == 0 then
-                self.RkTimer = timer
-            end
-            return
-        end
-    end)
-end
-
-function Spell:IsReady(spell, delays)
-    if Cursor.Step > 0 then
-        return false
+        return true
     end
-    
-    if delays ~= nil then
-        local timer = Game.Timer()
-        if timer < self.QTimer + delays.q or timer < self.QkTimer + delays.q then
+    -- hero can attack
+    function Data:HeroCanAttack()
+        if self.IsChanneling and self.IsChanneling() then
             return false
         end
-        if timer < self.WTimer + delays.w or timer < self.WkTimer + delays.w then
+        if self.CanDisableAttack and self.CanDisableAttack() then
             return false
         end
-        if timer < self.ETimer + delays.e or timer < self.EkTimer + delays.e then
+        if Buff:HasBuffTypes(myHero, {[25] = true, [31] = true}) then
             return false
         end
-        if timer < self.RTimer + delays.r or timer < self.RkTimer + delays.r then
-            return false
+        return true
+    end
+    -- is melee
+    function Data:IsMelee()
+        if self.IsHeroMelee or (self.IsHeroSpecialMelee and self.IsHeroSpecialMelee()) then
+            return true
         end
-    end
-    
-    if self.GameCanUseSpell(spell) ~= 0 then
         return false
     end
-    
-    return true
-end
-
-function Spell:GetLastSpellTimers()
-    return self.QTimer, self.QkTimer, self.WTimer, self.WkTimer, self.ETimer, self.EkTimer, self.RTimer, self.RkTimer
-end
-
-function Spell:CheckSpellDelays(delays)
-    local timer = Game.Timer()
-    if timer < self.QTimer + delays.q or timer < self.QkTimer + delays.q then
-        return false
+    -- get hero priority
+    function Data:GetHeroPriority(name)
+        local p = self.HEROES[name:lower()]
+        return p and p[1] or 5
     end
-    if timer < self.WTimer + delays.w or timer < self.WkTimer + delays.w then
-        return false
-    end
-    if timer < self.ETimer + delays.e or timer < self.EkTimer + delays.e then
-        return false
-    end
-    if timer < self.RTimer + delays.r or timer < self.RkTimer + delays.r then
-        return false
-    end
-    return true
-end
-
-function Spell:CheckSpellDelays2(delays)
-    local timer = Game.Timer()
-    if timer < self.QTimer + delays[_Q] or timer < self.QkTimer + delays[_Q] then
-        return false
-    end
-    if timer < self.WTimer + delays[_W] or timer < self.WkTimer + delays[_W] then
-        return false
-    end
-    if timer < self.ETimer + delays[_E] or timer < self.EkTimer + delays[_E] then
-        return false
-    end
-    if timer < self.RTimer + delays[_R] or timer < self.RkTimer + delays[_R] then
-        return false
-    end
-    return true
-end
-
-function Spell:SpellClear(spell, spelldata, isReady, canLastHit, canLaneClear, getDamage)
-    local c =
-    {
-        HK = 0,
-        Radius = spelldata.Radius,
-        Delay = spelldata.Delay,
-        Speed = spelldata.Speed,
-        Range = spelldata.Range,
-        ShouldWaitTime = 0,
-        IsLastHitable = false,
-        LastHitHandle = 0,
-        LaneClearHandle = 0,
-        FarmMinions = {},
-    }
-    
-    if spell == _Q then
-        c.HK = HK_Q
-    elseif spell == _W then
-        c.HK = HK_W
-    elseif spell == _E then
-        c.HK = HK_E
-    elseif spell == _R then
-        c.HK = HK_R
-    else
-        print('SDK.Spell.SpellClear: error, spell must be _Q, _W, _E or _R')
+    -- get hero data
+    function Data:GetHeroData(obj)
+        if obj == nil then
+            return {}
+        end
+        local id = obj.networkID
+        if id == nil or id <= 0 then
+            return {}
+        end
+        local name = obj.charName
+        if name == nil then
+            return {}
+        end
+        if self.HEROES[name:lower()] == nil and not name:lower():find("dummy") then
+            return {}
+        end
+        local Team = obj.team
+        local IsEnemy = obj.isEnemy
+        local IsAlly = obj.isAlly
+        if Team == nil or Team < 100 or Team > 200 or IsEnemy == nil or IsAlly == nil or IsEnemy == IsAlly then
+            return {}
+        end
         return
+        {
+            valid = true,
+            isEnemy = IsEnemy,
+            isAlly = IsAlly,
+            networkID = id,
+            charName = name,
+            team = Team,
+            unit = obj,
+        }
     end
-    
-    function c:GetLastHitTargets
-        ()
-        
-        local result = {}
-        
-        for i, minion in pairs(self.FarmMinions) do
-            if minion.LastHitable then
+    -- get total shield
+    function Data:GetTotalShield(obj)
+        local shieldAd, shieldAp
+        shieldAd = obj.shieldAD
+        shieldAp = obj.shieldAP
+        return (shieldAd and shieldAd or 0) + (shieldAp and shieldAp or 0)
+    end
+    -- get building bbox
+    function Data:GetBuildingBBox(unit)
+        local type = unit.type
+        if type == Obj_AI_Barracks then
+            return 270
+        end
+        if type == Obj_AI_Nexus then
+            return 380
+        end
+        return 0
+    end
+    -- stop
+    function Data:Stop()
+        return Game.IsChatOpen() or (ExtLibEvade and ExtLibEvade.Evading) or (JustEvade and JustEvade.Evading()) or (not Game.IsOnTop())
+    end
+    -- init call
+    Data:__init()
+end
+
+-- spell
+Spell = {}
+do
+    -- init
+    function Spell:__init()
+        self.QkTimer = 0
+        self.WkTimer = 0
+        self.EkTimer = 0
+        self.RkTimer = 0
+        _G.Game.CanUseSpell = function(spell)
+            if Cursor.Step > 0 then
+                return 1
+            end
+            return GameCanUseSpell(spell)
+        end
+    end
+    -- init
+    function Spell:Init()
+        table_insert(SDK.Load, function()
+            self:OnLoad()
+        end)
+    end
+    -- on load
+    function Spell:OnLoad()
+        table_insert(SDK.WndMsg, function(msg, wParam)
+            local timer = Game.Timer()
+            if wParam == HK_Q then
+                if timer > self.QkTimer + 0.33 and GameCanUseSpell(_Q) == 0 then
+                    self.QkTimer = timer
+                end
+                return
+            end
+            if wParam == HK_W then
+                if timer > self.WkTimer + 0.33 and GameCanUseSpell(_W) == 0 then
+                    self.WkTimer = timer
+                end
+                return
+            end
+            if wParam == HK_E then
+                if timer > self.EkTimer + 0.33 and GameCanUseSpell(_E) == 0 then
+                    self.EkTimer = timer
+                end
+                return
+            end
+            if wParam == HK_R then
+                if timer > self.RkTimer + 0.33 and GameCanUseSpell(_R) == 0 then
+                    self.RkTimer = timer
+                end
+                return
+            end
+        end)
+    end
+    -- is ready
+    function Spell:IsReady(spell, delays)
+        if Cursor.Step > 0 then
+            return false
+        end
+        if delays ~= nil then
+            local timer = Game.Timer()
+            if timer < self.QkTimer + delays.q then
+                return false
+            end
+            if timer < self.WkTimer + delays.w then
+                return false
+            end
+            if timer < self.EkTimer + delays.e then
+                return false
+            end
+            if timer < self.RkTimer + delays.r then
+                return false
+            end
+        end
+        if GameCanUseSpell(spell) ~= 0 then
+            return false
+        end
+        return true
+    end
+    -- check spell delays
+    function Spell:CheckSpellDelays(delays)
+        local timer = Game.Timer()
+        if timer < self.QkTimer + delays.q then
+            return false
+        end
+        if timer < self.WkTimer + delays.w then
+            return false
+        end
+        if timer < self.EkTimer + delays.e then
+            return false
+        end
+        if timer < self.RkTimer + delays.r then
+            return false
+        end
+        return true
+    end
+    -- spell clear
+    function Spell:SpellClear(spell, spelldata, isReady, canLastHit, canLaneClear, getDamage)
+        -- class
+        local c = {}
+        -- init
+        function c:__init()
+            self.HK = 0
+            self.Radius = spelldata.Radius
+            self.Delay = spelldata.Delay
+            self.Speed = spelldata.Speed
+            self.Range = spelldata.Range
+            self.ShouldWaitTime = 0
+            self.IsLastHitable = false
+            self.LastHitHandle = 0
+            self.LaneClearHandle = 0
+            self.FarmMinions = {}
+            if spell == _Q then
+                self.HK = HK_Q
+            elseif spell == _W then
+                self.HK = HK_W
+            elseif spell == _E then
+                self.HK = HK_E
+            elseif spell == _R then
+                self.HK = HK_R
+            end
+        end
+        -- get last hit targets
+        function c:GetLastHitTargets()
+            local result = {}
+            for i, minion in pairs(self.FarmMinions) do
+                if minion.LastHitable then
+                    local unit = minion.Minion
+                    if unit.handle ~= Health.LastHitHandle then
+                        table_insert(result, unit)
+                    end
+                end
+            end
+            return result
+        end
+        -- get lane clear targets
+        function c:GetLaneClearTargets()
+            local result = {}
+            for i, minion in pairs(self.FarmMinions) do
                 local unit = minion.Minion
-                if unit.handle ~= Health.LastHitHandle then
+                if unit.handle ~= Health.LaneClearHandle then
                     table_insert(result, unit)
                 end
             end
+            return result
         end
-        
-        return result
-    end
-    
-    function c:GetLaneClearTargets
-        ()
-        
-        local result = {}
-        
-        for i, minion in pairs(self.FarmMinions) do
-            local unit = minion.Minion
-            if unit.handle ~= Health.LaneClearHandle then
-                table_insert(result, unit)
+        -- should wait
+        function c:ShouldWait()
+            return Game.Timer() <= self.ShouldWaitTime + 1
+        end
+        -- set last hitable
+        function c:SetLastHitable(target, time, damage)
+            local hpPred = Health:GetPrediction(target, time)
+            local lastHitable = false
+            local almostLastHitable = false
+            if hpPred - damage < 0 then
+                lastHitable = true
+                self.IsLastHitable = true
+            elseif Health:GetPrediction(target, myHero:GetSpellData(spell).cd + (time * 3)) - damage < 0 then
+                almostLastHitable = true
+                self.ShouldWaitTime = Game.Timer()
             end
+            return {LastHitable = lastHitable, Unkillable = hpPred < 0, Time = time, AlmostLastHitable = almostLastHitable, PredictedHP = hpPred, Minion = target}
         end
-        
-        return result
-    end
-    
-    function c:ShouldWait
-        ()
-        
-        return Game.Timer() <= self.ShouldWaitTime + 1
-    end
-    
-    function c:SetLastHitable
-        (target, time, damage)
-        
-        local hpPred = Health:GetPrediction(target, time)
-        
-        local lastHitable = false
-        local almostLastHitable = false
-        
-        if hpPred - damage < 0 then
-            lastHitable = true
-            self.IsLastHitable = true
-        elseif Health:GetPrediction(target, myHero:GetSpellData(spell).cd + (time * 3)) - damage < 0 then
-            almostLastHitable = true
-            self.ShouldWaitTime = Game.Timer()
+        -- reset
+        function c:Reset()
+            for i = 1, #self.FarmMinions do
+                table_remove(self.FarmMinions, i)
+            end
+            self.IsLastHitable = false
+            self.LastHitHandle = 0
+            self.LaneClearHandle = 0
         end
-        
-        return {LastHitable = lastHitable, Unkillable = hpPred < 0, Time = time, AlmostLastHitable = almostLastHitable, PredictedHP = hpPred, Minion = target}
-    end
-    
-    function c:Reset()
-        for i = 1, #self.FarmMinions do
-            table_remove(self.FarmMinions, i)
-        end
-        self.IsLastHitable = false
-        self.LastHitHandle = 0
-        self.LaneClearHandle = 0
-    end
-    
-    function c:Tick
-        ()
-        
-        if Orbwalker:IsAutoAttacking() or not isReady() then
-            return
-        end
-        
-        local isLastHit = canLastHit() and (Orbwalker.Modes[ORBWALKER_MODE_LASTHIT] or Orbwalker.Modes[ORBWALKER_MODE_LANECLEAR])
-        local isLaneClear = canLaneClear() and Orbwalker.Modes[ORBWALKER_MODE_LANECLEAR]
-        
-        if not isLastHit and not isLaneClear then
-            return
-        end
-        
-        if Cursor.Step ~= 0 then
-            return
-        end
-        
-        if myHero:GetSpellData(spell).level == 0 then
-            return
-        end
-        
-        if myHero.mana < myHero:GetSpellData(spell).mana then
-            return
-        end
-        
-        if Game.CanUseSpell(spell) ~= 0 and myHero:GetSpellData(spell).currentCd > 0.5 then
-            return
-        end
-        
-        local targets = Object:GetEnemyMinions(self.Range, false, true, true)
-        for i = 1, #targets do
-            local target = targets[i]
-            table_insert(self.FarmMinions, self:SetLastHitable(target, self.Delay + target.distance / self.Speed + Data:GetLatency(), getDamage()))
-        end
-        
-        if self.IsLastHitable and (isLastHit or isLaneClear) then
-            local targets = self:GetLastHitTargets()
+        -- tick
+        function c:Tick()
+            if Orbwalker:IsAutoAttacking() or not isReady() then
+                return
+            end
+            local isLastHit = canLastHit() and (Orbwalker.Modes[ORBWALKER_MODE_LASTHIT] or Orbwalker.Modes[ORBWALKER_MODE_LANECLEAR])
+            local isLaneClear = canLaneClear() and Orbwalker.Modes[ORBWALKER_MODE_LANECLEAR]
+            if not isLastHit and not isLaneClear then
+                return
+            end
+            if Cursor.Step ~= 0 then
+                return
+            end
+            if myHero:GetSpellData(spell).level == 0 then
+                return
+            end
+            if myHero.mana < myHero:GetSpellData(spell).mana then
+                return
+            end
+            if Game.CanUseSpell(spell) ~= 0 and myHero:GetSpellData(spell).currentCd > 0.5 then
+                return
+            end
+            local targets = Object:GetEnemyMinions(self.Range, false, true, true)
             for i = 1, #targets do
-                local unit = targets[i]
-                if unit.alive and unit:GetCollision(self.Radius + 35, self.Speed, self.Delay) == 1 then
-                    if Control.CastSpell(self.HK, unit:GetPrediction(self.Speed, self.Delay)) then
-                        self.LastHitHandle = unit.handle
-                        Orbwalker:SetAttack(false)
-                        Action:Add(function()
-                            Orbwalker:SetAttack(true)
-                        end, self.Delay + (unit.distance / self.Speed) + 0.05, 0)
-                        break
+                local target = targets[i]
+                table_insert(self.FarmMinions, self:SetLastHitable(target, self.Delay + target.distance / self.Speed + Data:GetLatency(), getDamage()))
+            end
+            if self.IsLastHitable and (isLastHit or isLaneClear) then
+                local targets = self:GetLastHitTargets()
+                for i = 1, #targets do
+                    local unit = targets[i]
+                    if unit.alive and unit:GetCollision(self.Radius + 35, self.Speed, self.Delay) == 1 then
+                        if Control.CastSpell(self.HK, unit:GetPrediction(self.Speed, self.Delay)) then
+                            self.LastHitHandle = unit.handle
+                            Orbwalker:SetAttack(false)
+                            Action:Add(function()
+                                Orbwalker:SetAttack(true)
+                            end, self.Delay + (unit.distance / self.Speed) + 0.05, 0)
+                            break
+                        end
                     end
                 end
             end
-        end
-        
-        if isLaneClear and self.LastHitHandle == 0 and not self:ShouldWait() then
-            local targets = self:GetLaneClearTargets()
-            for i = 1, #targets do
-                local unit = targets[i]
-                if unit.alive and unit:GetCollision(self.Radius + 35, self.Speed, self.Delay) == 1 then
-                    if Control.CastSpell(self.HK, unit:GetPrediction(self.Speed, self.Delay)) then
-                        self.LaneClearHandle = unit.handle
+            if isLaneClear and self.LastHitHandle == 0 and not self:ShouldWait() then
+                local targets = self:GetLaneClearTargets()
+                for i = 1, #targets do
+                    local unit = targets[i]
+                    if unit.alive and unit:GetCollision(self.Radius + 35, self.Speed, self.Delay) == 1 then
+                        if Control.CastSpell(self.HK, unit:GetPrediction(self.Speed, self.Delay)) then
+                            self.LaneClearHandle = unit.handle
+                        end
                     end
                 end
             end
-        end
-        
-        local targets = self.FarmMinions
-        for i = 1, #targets do
-            local minion = targets[i]
-            if minion.LastHitable then
-                Draw.Circle(minion.Minion.pos, 50, 1, Draw.Color(150, 255, 255, 255))
-            elseif minion.AlmostLastHitable then
-                Draw.Circle(minion.Minion.pos, 50, 1, Draw.Color(150, 239, 159, 55))
+            local targets = self.FarmMinions
+            for i = 1, #targets do
+                local minion = targets[i]
+                if minion.LastHitable then
+                    Draw.Circle(minion.Minion.pos, 50, 1, Draw.Color(150, 255, 255, 255))
+                elseif minion.AlmostLastHitable then
+                    Draw.Circle(minion.Minion.pos, 50, 1, Draw.Color(150, 239, 159, 55))
+                end
             end
         end
+        -- init call
+        c:__init()
+        Health:AddSpell(c)
     end
-    
-    Health:AddSpell(c)
+    -- init call
+    Spell:__init()
 end
 
 SummonerSpell =
