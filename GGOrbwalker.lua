@@ -216,7 +216,7 @@ do
             return _o:GetBuff(i)
         end
         function class:GetBuffs()
-            if self.Buffs[id] == nil then
+            if Cached.Buffs[id] == nil then
                 local count = o.buffCount
                 if count and count >= 0 and count < 10000 then
                     local b, b2 = nil, nil
@@ -225,17 +225,17 @@ do
                     for i = 0, count do
                         b = _o:GetBuff(i)
                         if b then
-                            b2 = self:Buff(b)
+                            b2 = Cached:Buff(b)
                             if b2.count > 0 then
                                 index = index + 1
                                 buffs[index] = b2
                             end
                         end
                     end
-                    self.Buffs[id] = buffs
+                    Cached.Buffs[id] = buffs
                 end
             end
-            return self.Buffs[id] or {}
+            return Cached.Buffs[id] or {}
         end
         function class:GetPath(i)
             return _o:GetPath(i)
@@ -288,7 +288,7 @@ do
             return _o:GetBuff(i)
         end
         function class:GetBuffs()
-            if self.Buffs[id] == nil then
+            if Cached.Buffs[id] == nil then
                 local count = o.buffCount
                 if count and count >= 0 and count < 10000 then
                     local b, b2 = nil, nil
@@ -297,17 +297,17 @@ do
                     for i = 0, count do
                         b = _o:GetBuff(i)
                         if b then
-                            b2 = self:Buff(b)
+                            b2 = Cached:Buff(b)
                             if b2.count > 0 then
                                 index = index + 1
                                 buffs[index] = b2
                             end
                         end
                     end
-                    self.Buffs[id] = buffs
+                    Cached.Buffs[id] = buffs
                 end
             end
-            return self.Buffs[id] or {}
+            return Cached.Buffs[id] or {}
         end
         function class:GetPath(i)
             return _o:GetPath(i)
