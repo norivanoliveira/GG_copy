@@ -377,11 +377,11 @@ if Champion == nil and myHero.charName == 'Twitch' then
             local id = hero.networkID
             if EBuffs[id] == nil then EBuffs[id] = {count = 0, duration = 0} end
             local ebuff = GG_Buff:GetBuff(hero, 'twitchdeadlyvenom')
-            if ebuff and ebuff.Count > 0 and ebuff.Duration > 0 then
-                if EBuffs[id].count < 6 and ebuff.Duration > EBuffs[id].duration then
+            if ebuff and ebuff.count > 0 and ebuff.duration > 0 then
+                if EBuffs[id].count < 6 and ebuff.duration > EBuffs[id].duration then
                     EBuffs[id].count = EBuffs[id].count + 1
                 end
-                EBuffs[id].duration = ebuff.Duration
+                EBuffs[id].duration = ebuff.duration
             else
                 EBuffs[id].count = 0
                 EBuffs[id].duration = 0
