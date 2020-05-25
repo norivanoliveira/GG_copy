@@ -2371,19 +2371,19 @@ if Champion ~= nil then
             GG_Orbwalker:OnPostAttack(Champion.OnPostAttack)
         end
         if Champion.Tick then
-            table.insert(_G.SDK.FastTick, function()
+            table.insert(_G.SDK.OnTick, function()
                 Champion:PreTick()
                 Champion:Tick()
                 Utils.CanUseSpell = true
             end)
         end
         if Champion.Draw then
-            table.insert(_G.SDK.Draw, function()
+            table.insert(_G.SDK.OnDraw, function()
                 Champion:Draw()
             end)
         end
         if Champion.WndMsg then
-            table.insert(_G.SDK.WndMsg, function(msg, wParam)
+            table.insert(_G.SDK.OnWndMsg, function(msg, wParam)
                 Champion:WndMsg(msg, wParam)
             end)
         end
