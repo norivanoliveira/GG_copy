@@ -783,6 +783,7 @@ if Champion == nil and myHero.charName == 'Ezreal' then
             return GG_Spell:CanTakeAction({q = 0.23, w = 0.23, e = 0.23, r = 1})
         end,
         OnPostAttackTick = function()
+            Champion:PreTick()
             Champion.QWTargets = Utils:GetEnemyHeroes(QPrediction.Range)
             Champion:WLogic()
             Champion:QLogic()
@@ -942,6 +943,7 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     Menu.r_semi_useon = Menu.r.semi:MenuElement({name = "Use on", id = "useon", type = _G.MENU})
     
     -- locals
+    local LastW = 0
     local QPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 70, Range = 1175, Speed = 1650, Collision = true, Type = GGPrediction.SPELLTYPE_LINE})
     local EPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 120, Range = 1280, Speed = 1350, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
     local RPrediction = GGPrediction:SpellPrediction({Delay = 1.3, Radius = 90, Range = 0, Speed = math.huge, Collision = false, Type = GGPrediction.SPELLTYPE_CIRCLE})
@@ -956,16 +958,25 @@ if Champion == nil and myHero.charName == 'KogMaw' then
             return GG_Spell:CanTakeAction({q = 0.2, w = 0, e = 0.2, r = 0.2})
         end,
         OnPreAttack = function(args)
-            if not GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 0.33}) then
+            Champion:PreTick()
+            if Game.CanUseSpell(_W) ~= 0 then
                 return
             end
             if not((Champion.IsCombo and Menu.w_combo:Value()) or (Champion.IsHarass and Menu.w_harass:Value())) then
                 return
             end
             local enemies = GG_Object:GetEnemyHeroes(610 + (20 * myHero:GetSpellData(_W).level) + myHero.boundingRadius - 35, true, true, true, true)
-            if #enemies > 0 and Utils:Cast(HK_W) then
+            if #enemies > 0 then
+                Utils:Cast(HK_W)
+                LastW = GetTickCount()
                 args.Process = false
             end
+        end,
+        OnPostAttackTick = function()
+            Champion:PreTick()
+            Champion:RLogic()
+            Champion:QLogic()
+            Champion:ELogic()
         end,
     }
     -- load
@@ -974,13 +985,13 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     end
     -- tick
     function Champion:OnTick()
+        self:WLogic()
         if self.IsAttacking or self.CanAttackTarget then
             return
         end
-        self:WLogic()
         self.HasWBuff = GG_Buff:HasBuff(myHero, "KogMawBioArcaneBarrage")
         self.WMana = myHero.mana - 40 - (myHero:GetSpellData(_W).currentCd * myHero.mpRegen)
-        if self.AttackTarget == nil and (GetTickCount() < Utils.LastW + 300 or self.Timer < GG_Spell.WkTimer + 0.3) then
+        if self.AttackTarget == nil and (GetTickCount() < LastW + 300 or self.Timer < GG_Spell.WkTimer + 0.3) then
             return
         end
         self:RLogic()
@@ -999,7 +1010,7 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     end
     -- w logic
     function Champion:WLogic()
-        if not GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 0.33}) then
+        if Game.CanUseSpell(_W) ~= 0 then
             return
         end
         self:WCombo()
@@ -1045,12 +1056,13 @@ if Champion == nil and myHero.charName == 'KogMaw' then
         if not((self.IsCombo and Menu.w_combo:Value()) or (self.IsHarass and Menu.w_harass:Value())) then
             return
         end
-        if not GG_Attack:IsBefore(0.55) then
+        if self.AttackTarget then
             return
         end
         local enemies = GG_Object:GetEnemyHeroes(610 + (20 * myHero:GetSpellData(_W).level) + myHero.boundingRadius - 35, true, true, true, true)
         if #enemies > 0 then
             Utils:Cast(HK_W)
+            LastW = GetTickCount()
         end
     end
     -- e combo
