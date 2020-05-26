@@ -1891,7 +1891,7 @@ do
         return true
     end
     -- check spell delays
-    function Spell:CheckSpellDelays(delays)
+    function Spell:CanTakeAction(delays)
         local timer = Game.Timer()
         if timer < self.QkTimer + delays.q then
             return false
