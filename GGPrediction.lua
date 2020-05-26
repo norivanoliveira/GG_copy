@@ -674,9 +674,9 @@ function Prediction:SpellPrediction(args)
             self.HitChance = 0
             return false
         end
-        if self.Type ~= SPELLTYPE_CIRCLE and self.TimeToHit > 0.7 and Math:FindAngle(self.CastPosition, self.Target.pos, myHero.pos) > 90 - self.TimeToHit * 30 then
+        --[[if self.Type ~= SPELLTYPE_CIRCLE and self.TimeToHit > 0.7 and Math:FindAngle(self.CastPosition, self.Target.pos, myHero.pos) > 90 - self.TimeToHit * 30 then
             return false
-        end
+        end]]
         self.HitChance = HITCHANCE_NORMAL
         if hitChance > HITCHANCE_NORMAL and self.TargetIsHero then
             local duration, spelltime, attacktime, knockduration = Immobile:GetDuration(self.Target)
