@@ -69,14 +69,6 @@ Utils = {}
 do
     -- can use spell
     Utils.CanUseSpell = true
-    -- last q
-    Utils.LastQ = 0
-    -- last w
-    Utils.LastW = 0
-    -- last e
-    Utils.LastE = 0
-    -- last r
-    Utils.LastR = 0
     -- interruptable spells
     Utils.InterruptableSpells =
     {
@@ -101,12 +93,6 @@ do
         ["InfiniteDuress"] = true,
         ["XerathLocusOfPower2"] = true
     }
-    -- on spell cast cb
-    Utils.OnSpellCastCb = {}
-    -- on spell cast
-    function Utils:OnSpellCast(cb)
-        table_insert(self.OnSpellCastCb, cb)
-    end
     -- draw text on hero
     function Utils:DrawTextOnHero(hero, text, color)
         local pos2D = hero.pos:To2D()
@@ -134,77 +120,26 @@ do
         if not self.CanUseSpell and (target or spellprediction) then
             return false
         end
-        if not self:CanCast(spell) then
-            return false
-        end
         if spellprediction == nil then
             if target == nil then
                 Control.KeyDown(spell)
                 Control.KeyUp(spell)
-                self:AddTimer(spell)
-                for i, cb in ipairs(self.OnSpellCastCb) do
-                    cb(spell, target, spellprediction)
-                end
                 return true
             end
-            if Control.CastSpell(spell, target) then
-                self.CanUseSpell = false
-                self:AddTimer(spell)
-                for i, cb in ipairs(self.OnSpellCastCb) do
-                    cb(spell, target, spellprediction)
-                end
-                return true
-            end
-            return false
+            Control.CastSpell(spell, target)
+            self.CanUseSpell = false
+            return true
         end
         if target == nil then
             return false
         end
         spellprediction:GetPrediction(target, myHero)
         if spellprediction:CanHit(hitchance or HITCHANCE_HIGH) then
-            if Control.CastSpell(spell, spellprediction.CastPosition) then
-                self.CanUseSpell = false
-                self:AddTimer(spell)
-                for i, cb in ipairs(self.OnSpellCastCb) do
-                    cb(spell, target, spellprediction)
-                end
-                return true
-            end
+            Control.CastSpell(spell, spellprediction.CastPosition)
+            self.CanUseSpell = false
+            return true
         end
         return false
-    end
-    function Utils:CanCast(spell)
-        if spell == HK_Q then
-            return GetTickCount() > self.LastQ + 100
-        end
-        if spell == HK_W then
-            return GetTickCount() > self.LastW + 100
-        end
-        if spell == HK_E then
-            return GetTickCount() > self.LastE + 100
-        end
-        if spell == HK_R then
-            return GetTickCount() > self.LastR + 100
-        end
-        return false
-    end
-    function Utils:AddTimer(spell)
-        if spell == HK_Q then
-            self.LastQ = GetTickCount()
-            return
-        end
-        if spell == HK_W then
-            self.LastW = GetTickCount()
-            return
-        end
-        if spell == HK_E then
-            self.LastE = GetTickCount()
-            return
-        end
-        if spell == HK_R then
-            self.LastR = GetTickCount()
-            return
-        end
     end
 end
 
@@ -263,10 +198,10 @@ if Champion == nil and myHero.charName == 'Twitch' then
                 end
                 return false
             end
-            return GG_Spell:CheckSpellDelays({q = 0, w = 0.33, e = 0.33, r = 0})
+            return GG_Spell:CanTakeAction({q = 0, w = 0.33, e = 0.33, r = 0})
         end,
         CanMoveCb = function()
-            return GG_Spell:CheckSpellDelays({q = 0, w = 0.2, e = 0.2, r = 0})
+            return GG_Spell:CanTakeAction({q = 0, w = 0.2, e = 0.2, r = 0})
         end,
         OnPostAttack = function()
             local preInvisibleDuration = 1.35 - (Game.Timer() - GG_Spell.QkTimer)
@@ -292,7 +227,7 @@ if Champion == nil and myHero.charName == 'Twitch' then
         end,
     }
     -- tick
-    function Champion:Tick()
+    function Champion:OnTick()
         self:RLogic()
         self:QLogic()
         if self.IsAttacking or self.CanAttackTarget then
@@ -302,7 +237,7 @@ if Champion == nil and myHero.charName == 'Twitch' then
         self:WLogic()
     end
     -- draw
-    function Champion:Draw()
+    function Champion:OnDraw()
         self:DrawTimer()
         self:DrawInvisibleCircles()
     end
@@ -365,7 +300,7 @@ if Champion == nil and myHero.charName == 'Twitch' then
         if Menu.w_stopq:Value() and GG_Buff:HasBuff(myHero, "globalcamouflage") then
             return
         end
-        if Menu.w_stopr:Value() and Game.Timer() < GG_Spell.RkTimer + 5.45 then
+        if Menu.w_stopr:Value() and self.Timer < GG_Spell.RkTimer + 5.45 then
             return
         end
         local target = self.AttackTarget ~= nil and self.AttackTarget or GG_Target:GetTarget(Utils:GetEnemyHeroes(950), DAMAGE_TYPE_PHYSICAL)
@@ -440,7 +375,7 @@ if Champion == nil and myHero.charName == 'Twitch' then
         if not Menu.d_qtimer:Value() then
             return
         end
-        local preInvisibleDuration = 1.35 - (Game.Timer() - GG_Spell.QkTimer)
+        local preInvisibleDuration = 1.35 - (self.Timer - GG_Spell.QkTimer)
         if preInvisibleDuration > 0 then
             Utils:DrawTextOnHero(myHero, tostring(math.floor(preInvisibleDuration * 1000)), TIMER_COLOR)
             return
@@ -520,7 +455,7 @@ if Champion == nil and myHero.charName == 'Morgana' then
     Champion =
     {
         CanAttackCb = function()
-            if not GG_Spell:CheckSpellDelays({q = 0.33, w = 0.33, e = 0.33, r = 0.33}) then
+            if not GG_Spell:CanTakeAction({q = 0.33, w = 0.33, e = 0.33, r = 0.33}) then
                 return false
             end
             -- LastHit, LaneClear
@@ -535,18 +470,18 @@ if Champion == nil and myHero.charName == 'Morgana' then
             return true
         end,
         CanMoveCb = function()
-            return GG_Spell:CheckSpellDelays({q = 0.25, w = 0.25, e = 0.25, r = 0.25})
+            return GG_Spell:CanTakeAction({q = 0.25, w = 0.25, e = 0.25, r = 0.25})
         end,
     }
     -- load
-    function Champion:Load()
+    function Champion:OnLoad()
         GG_Object:OnEnemyHeroLoad(function(args)
             Menu.q_auto_useon:MenuElement({id = args.charName, name = args.charName, value = true})
             Menu.q_useon:MenuElement({id = args.charName, name = args.charName, value = true})
         end)
     end
     -- tick
-    function Champion:Tick()
+    function Champion:OnTick()
         self:QLogic()
         self:WLogic()
         self:ELogic()
@@ -625,7 +560,7 @@ if Champion == nil and myHero.charName == 'Morgana' then
         end
         for i, unit in ipairs(self.QTargets) do
             local spell = unit.activeSpell
-            if spell and spell.valid and Utils.InterruptableSpells[spell.name] and spell.castEndTime - Game.Timer() > 0.33 then
+            if spell and spell.valid and Utils.InterruptableSpells[spell.name] and spell.castEndTime - self.Timer > 0.33 then
                 Utils:Cast(HK_Q, enemy, QPrediction, HITCHANCE_NORMAL)
             end
         end
@@ -835,32 +770,26 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     
     -- locals
     local LastEFake = 0
-    local CanUseQCombo = true
     local QPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 60, Range = 1150, Speed = 2000, Collision = true, Type = GGPrediction.SPELLTYPE_LINE})
     local WPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 60, Range = 1150, Speed = 1200, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
-    
-    -- on spell cast
-    Utils:OnSpellCast(function(spell, target, pred)
-        if spell == HK_W then
-            CanUseQCombo = false
-        end
-    end)
     
     -- champion
     Champion =
     {
         CanAttackCb = function()
-            return GG_Spell:CheckSpellDelays({q = 0.23, w = 0.23, e = 0.33, r = 1.13})
+            return GG_Spell:CanTakeAction({q = 0.33, w = 0.33, e = 0.33, r = 1.13})
         end,
         CanMoveCb = function()
-            return GG_Spell:CheckSpellDelays({q = 0.1, w = 0.1, e = 0.2, r = 1})
+            return GG_Spell:CanTakeAction({q = 0.23, w = 0.23, e = 0.23, r = 1})
         end,
-        OnAttack = function()
-            CanUseQCombo = true
+        OnPostAttackTick = function()
+            Champion.QWTargets = Utils:GetEnemyHeroes(QPrediction.Range)
+            Champion:WLogic()
+            Champion:QLogic()
         end,
     }
     -- load
-    function Champion:Load()
+    function Champion:OnLoad()
         local getDamage = function()
             return ((25 * myHero:GetSpellData(_Q).level) - 10) + (1.1 * myHero.totalDamage) + (0.4 * myHero.ap)
         end
@@ -880,15 +809,18 @@ if Champion == nil and myHero.charName == 'Ezreal' then
         GG_Spell:SpellClear(_Q, QPrediction, isQReady, canLastHit, canLaneClear, getDamage)
     end
     -- wnd msg
-    function Champion:WndMsg(msg, wParam)
+    function Champion:OnWndMsg(msg, wParam)
         if wParam == Menu.e_fake:Key() then
             LastEFake = os.clock()
         end
     end
     -- tick
-    function Champion:Tick()
+    function Champion:OnTick()
         self:ELogic()
         if self.IsAttacking or self.CanAttackTarget then
+            return
+        end
+        if self.AttackTarget and not GG_Attack:IsBefore(0.55) then
             return
         end
         self.QWTargets = Utils:GetEnemyHeroes(QPrediction.Range)
@@ -901,9 +833,9 @@ if Champion == nil and myHero.charName == 'Ezreal' then
         if not GG_Spell:IsReady(_Q, {q = 0.5, w = 0.33, e = 0.33, r = 1.13}) then
             return
         end
-        if (self.IsCombo or self.IsHarass) and GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 1.13}) and self.ManaPercent >= Menu.w_mana:Value() then
+        --[[if (self.IsCombo or self.IsHarass) and GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 1.13}) and self.ManaPercent >= Menu.w_mana:Value() then
             return
-        end
+        end]]
         self:QAuto()
         self:QCombo()
     end
@@ -940,9 +872,6 @@ if Champion == nil and myHero.charName == 'Ezreal' then
         if not((self.IsCombo and Menu.q_combo:Value()) or (self.IsHarass and Menu.q_harass:Value())) then
             return
         end
-        if not CanUseQCombo and self.AttackTarget then
-            return
-        end
         local target = self.AttackTarget ~= nil and self.AttackTarget or GG_Target:GetTarget(self.QWTargets, DAMAGE_TYPE_PHYSICAL)
         Utils:Cast(HK_Q, target, QPrediction, Menu.q_hitchance:Value() + 1)
     end
@@ -958,7 +887,7 @@ if Champion == nil and myHero.charName == 'Ezreal' then
         Utils:Cast(HK_W, target, WPrediction, Menu.w_hitchance:Value() + 1)
     end
     -- draw
-    function Champion:Draw()
+    function Champion:OnDraw()
         if Menu.d_autoq_enabled:Value() then
             local posX, posY
             if Menu.d_autoq_custom:Value() then
@@ -1021,10 +950,10 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     Champion =
     {
         CanAttackCb = function()
-            return GG_Spell:CheckSpellDelays({q = 0.33, w = 0, e = 0.33, r = 0.33})
+            return GG_Spell:CanTakeAction({q = 0.33, w = 0, e = 0.33, r = 0.33})
         end,
         CanMoveCb = function()
-            return GG_Spell:CheckSpellDelays({q = 0.2, w = 0, e = 0.2, r = 0.2})
+            return GG_Spell:CanTakeAction({q = 0.2, w = 0, e = 0.2, r = 0.2})
         end,
         OnPreAttack = function(args)
             if not GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 0.33}) then
@@ -1040,18 +969,18 @@ if Champion == nil and myHero.charName == 'KogMaw' then
         end,
     }
     -- load
-    function Champion:Load()
+    function Champion:OnLoad()
         GG_Object:OnEnemyHeroLoad(function(args) Menu.r_semi_useon:MenuElement({id = args.charName, name = args.charName, value = true}) end)
     end
     -- tick
-    function Champion:Tick()
+    function Champion:OnTick()
         if self.IsAttacking or self.CanAttackTarget then
             return
         end
         self:WLogic()
         self.HasWBuff = GG_Buff:HasBuff(myHero, "KogMawBioArcaneBarrage")
         self.WMana = myHero.mana - 40 - (myHero:GetSpellData(_W).currentCd * myHero.mpRegen)
-        if self.AttackTarget == nil and (GetTickCount() < Utils.LastW + 300 or Game.Timer() < GG_Spell.WkTimer + 0.3) then
+        if self.AttackTarget == nil and (GetTickCount() < Utils.LastW + 300 or self.Timer < GG_Spell.WkTimer + 0.3) then
             return
         end
         self:RLogic()
@@ -1220,6 +1149,201 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     end
 end
 
+if Champion == nil and myHero.charName == 'Varus' then
+    -- menu values
+    local MENU_Q_COMBO = true
+    local MENU_Q_HARASS = false
+    local MENU_Q_WSTACKS = true
+    local MENU_Q_TIME = 0.5
+    local MENU_Q_HITCHANCE = 2
+    local MENU_W_COMBO = true
+    local MENU_W_HARASS = false
+    local MENU_W_HP = 50
+    local MENU_E_COMBO = true
+    local MENU_E_HARASS = false
+    local MENU_E_WSTACKS = false
+    local MENU_E_HITCHANCE = 2
+    local MENU_R_COMBO = true
+    local MENU_R_HARASS = false
+    local MENU_R_XRANGE = 500
+    local MENU_R_HITCHANCE = 2
+    
+    -- menu
+    Menu.q:MenuElement({id = "combo", name = "Combo", value = MENU_Q_COMBO, callback = function(x) MENU_Q_COMBO = x end})
+    Menu.q:MenuElement({id = "harass", name = "Harass", value = MENU_Q_HARASS, callback = function(x) MENU_Q_HARASS = x end})
+    Menu.q:MenuElement({id = "wstacks", name = "when enemy has W buff x3", value = MENU_Q_WSTACKS, callback = function(x) MENU_Q_WSTACKS = x end})
+    Menu.q:MenuElement({id = "xtime", name = "minimum charging time", value = MENU_Q_TIME, min = 0.1, max = 1.4, step = 0.1, callback = function(x) MENU_Q_TIME = x end})
+    Menu.q:MenuElement({id = "hitchance", name = "Hitchance", value = MENU_Q_HITCHANCE, drop = {"normal", "high", "immobile"}, callback = function(x) MENU_Q_HITCHANCE = x end})
+    Menu.w:MenuElement({id = "combo", name = "Combo", value = MENU_W_COMBO, callback = function(x) MENU_W_COMBO = x end})
+    Menu.w:MenuElement({id = "harass", name = "Harass", value = MENU_W_HARASS, callback = function(x) MENU_W_HARASS = x end})
+    Menu.w:MenuElement({id = "hp", name = "enemy %hp less than", value = MENU_W_HP, min = 1, max = 100, step = 1, callback = function(x) MENU_W_HP = x end})
+    Menu.e:MenuElement({id = "combo", name = "Combo", value = MENU_E_COMBO, callback = function(x) MENU_E_COMBO = x end})
+    Menu.e:MenuElement({id = "harass", name = "Harass", value = MENU_E_HARASS, callback = function(x) MENU_E_HARASS = x end})
+    Menu.e:MenuElement({id = "wstacks", name = "when enemy has W buff x3", value = MENU_E_WSTACKS, callback = function(x) MENU_E_WSTACKS = x end})
+    Menu.e:MenuElement({id = "hitchance", name = "Hitchance", value = MENU_E_HITCHANCE, drop = {"normal", "high", "immobile"}, callback = function(x) MENU_E_HITCHANCE = x end})
+    Menu.r:MenuElement({id = "combo", name = "Use R Combo", value = MENU_R_COMBO, callback = function(x) MENU_R_COMBO = x end})
+    Menu.r:MenuElement({id = "harass", name = "Use R Harass", value = MENU_R_HARASS, callback = function(x) MENU_R_HARASS = x end})
+    Menu.r:MenuElement({id = "xrange", name = "enemy in range", value = MENU_R_XRANGE, min = 250, max = 1000, step = 50, callback = function(x) MENU_R_XRANGE = x end})
+    Menu.r:MenuElement({id = "hitchance", name = "Hitchance", value = MENU_R_HITCHANCE, drop = {"normal", "high", "immobile"}, callback = function(x) MENU_R_HITCHANCE = x end})
+    
+    -- locals
+    local QReleaseTime = 0
+    local QPrediction = GGPrediction:SpellPrediction({Delay = 0.1, Radius = 70, Range = 1650, Speed = 1900, Collision = false, Type = _G.SPELLTYPE_LINE})
+    local EPrediction = GGPrediction:SpellPrediction({Delay = 0.5, Radius = 235, Range = 925, Speed = 1500, Collision = false, Type = _G.SPELLTYPE_CIRCLE})
+    local RPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 120, Range = 1075, Speed = 1950, Collision = false, Type = _G.SPELLTYPE_LINE})
+    
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return not Champion:HasQBuff() and GG_Spell:CanTakeAction({q = 0.33, w = 0, e = 0.33, r = 0.33})
+        end,
+        CanMoveCb = function()
+            return GG_Spell:CanTakeAction({q = 0.2, w = 0, e = 0.2, r = 0.2})
+        end,
+    }
+    -- has q buff
+    function Champion:HasQBuff()
+        if GetTickCount() < QReleaseTime + 1000 then
+            return false
+        end
+        return GG_Buff:HasBuff(myHero, "varusq") or self.Timer < GG_Spell.QkTimer + 0.5
+    end
+    -- on tick
+    function Champion:OnTick()
+        if self:HasQBuff() then
+            self:QBuffLogic()
+            return
+        end
+        if Control.IsKeyDown(HK_Q) and (self.IsCombo or self.IsHarass) and not GG_Buff:HasBuff(myHero, "varusq") and self.Timer > GG_Spell.QkTimer + 0.5 and Game.CanUseSpell(_Q) == 0 then
+            Control.KeyUp(HK_Q)
+        end
+        if self.IsAttacking or self.CanAttackTarget then
+            return
+        end
+        self.WSpellData = myHero:GetSpellData(_W)
+        self:RLogic()
+        self:ELogic()
+        self:QLogic()
+    end
+    -- q can up
+    function Champion:QCanUp(target)
+        if target == nil then
+            return false
+        end
+        QPrediction:GetPrediction(target, myHero)
+        return QPrediction:CanHit(MENU_Q_HITCHANCE + 1)
+    end
+    -- q buff logic
+    function Champion:QBuffLogic()
+        if not Control.IsKeyDown(HK_Q) then
+            return
+        end
+        local qtimer = self.Timer - GG_Spell.QkTimer
+        if qtimer > 6 then
+            return
+        end
+        if self.AttackTarget == nil and qtimer < MENU_Q_TIME then
+            return
+        end
+        local canusew = GG_Spell:IsReady(_W) and ((self.IsCombo and MENU_W_COMBO) or (self.IsHarass and MENU_W_HARASS))
+        local enemies = Utils:GetEnemyHeroes(925 + (qtimer * 0.7 * 700))
+        if self:QCanUp(self.AttackTarget) then
+            if canusew and 100 * self.AttackTarget.health / self.AttackTarget.maxHealth < MENU_W_HP then
+                Control.KeyDown(HK_W)
+                Control.KeyUp(HK_W)
+            end
+            Control.CastSpell(HK_Q, QPrediction.CastPosition)
+            QReleaseTime = GetTickCount()
+            return
+        end
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            if self:QCanUp(enemy) then
+                if canusew and 100 * enemy.health / enemy.maxHealth < MENU_W_HP then
+                    Control.KeyDown(HK_W)
+                    Control.KeyUp(HK_W)
+                end
+                Control.CastSpell(HK_Q, QPrediction.CastPosition)
+                QReleaseTime = GetTickCount()
+                break
+            end
+        end
+    end
+    -- q logic
+    function Champion:QLogic()
+        if not GG_Spell:IsReady(_Q, {q = 0.33, w = 0, e = 0.6, r = 0.33}) or GetTickCount() < QReleaseTime + 1000 then
+            return
+        end
+        self:QCombo()
+    end
+    -- q combo
+    function Champion:QCombo()
+        if not((self.IsCombo and MENU_Q_COMBO) or (self.IsHarass and MENU_Q_HARASS)) then
+            return
+        end
+        local enemies = Utils:GetEnemyHeroes(1500)
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            if not MENU_Q_WSTACKS or self.WSpellData.level == 0 or GG_Buff:GetBuffCount(enemy, "varuswdebuff") == 3 or self.AttackTarget == nil then
+                Control.KeyDown(HK_Q)
+                break
+            end
+        end
+    end
+    -- e logic
+    function Champion:ELogic()
+        if not GG_Spell:IsReady(_E, {q = 0.33, w = 0, e = 0.63, r = 0.33}) then
+            return
+        end
+        self:ECombo()
+    end
+    -- e combo
+    function Champion:ECombo()
+        if not((self.IsCombo and MENU_E_COMBO) or (self.IsHarass and MENU_E_HARASS)) then
+            return
+        end
+        if self.AttackTarget and (not MENU_E_WSTACKS or self.WSpellData.level == 0 or GG_Buff:GetBuffCount(self.AttackTarget, "varuswdebuff") == 3) then
+            if Utils:Cast(HK_E, self.AttackTarget, EPrediction, MENU_E_HITCHANCE + 1) then
+                return
+            end
+        end
+        local enemies = Utils:GetEnemyHeroes(EPrediction.Range)
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            if not MENU_E_WSTACKS or self.WSpellData.level == 0 or GG_Buff:GetBuffCount(enemy, "varuswdebuff") == 3 or self.AttackTarget == nil then
+                if Utils:Cast(HK_E, enemy, EPrediction, MENU_E_HITCHANCE + 1) then
+                    break
+                end
+            end
+        end
+    end
+    -- r logic
+    function Champion:RLogic()
+        if not GG_Spell:IsReady(_R, {q = 0.33, w = 0, e = 0.63, r = 0.5}) then
+            return
+        end
+        self:RCombo()
+    end
+    -- r combo
+    function Champion:RCombo()
+        if not((self.IsCombo and MENU_R_COMBO) or (self.IsHarass and MENU_R_HARASS)) then
+            return
+        end
+        if self.AttackTarget then
+            if Utils:Cast(HK_R, self.AttackTarget, RPrediction, MENU_R_HITCHANCE + 1) then
+                return
+            end
+        end
+        local enemies = Utils:GetEnemyHeroes(RPrediction.Range)
+        for i = 1, #enemies do
+            if Utils:Cast(HK_R, enemies[i], RPrediction, MENU_R_HITCHANCE + 1) then
+                break
+            end
+        end
+    end
+end
+
 --[[
 if Champion == nil and myHero.charName == 'Karthus' then
     class "Karthus"
@@ -1378,7 +1502,7 @@ if Champion == nil and myHero.charName == 'Karthus' then
     end
  
     function Karthus:CanAttack()
-        if not GG_Spell:CheckSpellDelays({q = 0.33, w = 0.33, e = 0.33, r = 3.23}) then
+        if not GG_Spell:CanTakeAction({q = 0.33, w = 0.33, e = 0.33, r = 3.23}) then
             return false
         end
         if not Menu.qset.disaa:Value() then
@@ -1394,7 +1518,7 @@ if Champion == nil and myHero.charName == 'Karthus' then
     end
  
     function Karthus:CanMove()
-        if not GG_Spell:CheckSpellDelays({q = 0.2, w = 0.2, e = 0.2, r = 3.13}) then
+        if not GG_Spell:CanTakeAction({q = 0.2, w = 0.2, e = 0.2, r = 3.13}) then
             return false
         end
         return true
@@ -1600,14 +1724,14 @@ if Champion == nil and myHero.charName == 'Vayne' then
     end
  
     function Vayne:CanAttack()
-        if not GG_Spell:CheckSpellDelays({q = 0.3, w = 0, e = 0.5, r = 0}) then
+        if not GG_Spell:CanTakeAction({q = 0.3, w = 0, e = 0.5, r = 0}) then
             return false
         end
         return true
     end
  
     function Vayne:CanMove()
-        if not GG_Spell:CheckSpellDelays({q = 0.2, w = 0, e = 0.4, r = 0}) then
+        if not GG_Spell:CanTakeAction({q = 0.2, w = 0, e = 0.4, r = 0}) then
             return false
         end
         return true
@@ -1967,14 +2091,14 @@ if Champion == nil and myHero.charName == 'Brand' then
     end
  
     function Brand:CanMove()
-        if not GG_Spell:CheckSpellDelays({q = 0.2, w = 0.2, e = 0.2, r = 0.2}) then
+        if not GG_Spell:CanTakeAction({q = 0.2, w = 0.2, e = 0.2, r = 0.2}) then
             return false
         end
         return true
     end
  
     function Brand:CanAttack()
-        if not GG_Spell:CheckSpellDelays({q = 0.33, w = 0.33, e = 0.33, r = 0.33}) then
+        if not GG_Spell:CanTakeAction({q = 0.33, w = 0.33, e = 0.33, r = 0.33}) then
             return false
         end
         -- LastHit, LaneClear
@@ -1989,176 +2113,6 @@ if Champion == nil and myHero.charName == 'Brand' then
         -- E
         local eData = myHero:GetSpellData(_E);
         if Menu.eset.disaa:Value() and eData.level > 0 and myHero.mana > eData.mana and (Game.CanUseSpell(_E) == 0 or eData.currentCd < 1) then
-            return false
-        end
-        return true
-    end
-end
- 
-if Champion == nil and myHero.charName == 'Varus' then
-    class "Varus"
- 
-    function Varus:__init()
-        self.HasQBuff = false;
-        self.QStartTime = 0;
-        self.QData = {Delay = 0.1, Radius = 70, Range = 1650, Speed = 1900, Collision = false, Type = _G.SPELLTYPE_LINE};
-        self.EData = {Delay = 0.5, Radius = 235, Range = 925, Speed = 1500, Collision = false, Type = _G.SPELLTYPE_CIRCLE};
-        self.RData = {Delay = 0.25, Radius = 120, Range = 1075, Speed = 1950, Collision = false, Type = _G.SPELLTYPE_LINE};
-    end
- 
-    function Varus:CreateMenu()
-        Menu = MenuElement({name = "Gamsteron Varus", id = "Gamsteron_Varus", type = _G.MENU})
-        -- Q
-        Menu:MenuElement({name = "Q settings", id = "qset", type = _G.MENU})
-        Menu.qset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.qset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu.qset:MenuElement({id = "stacks", name = "If enemy has 3 W stacks [ W passive ]", value = true})
-        Menu.qset:MenuElement({id = "active", name = "If varus has W buff [ W active ]", value = true})
-        Menu.qset:MenuElement({id = "range", name = "No enemies in AA range", value = true})
-        Menu.qset:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
-        -- W
-        Menu:MenuElement({name = "W settings", id = "wset", type = _G.MENU})
-        Menu.wset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.wset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu.wset:MenuElement({id = "whp", name = "min. hp %", value = 50, min = 1, max = 100, step = 1})
-        -- E
-        Menu:MenuElement({name = "E settings", id = "eset", type = _G.MENU})
-        Menu.eset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.eset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu.eset:MenuElement({id = "range", name = "No enemies in AA range", value = true})
-        Menu.eset:MenuElement({id = "stacks", name = "If enemy has 3 W stacks [ W passive ]", value = false})
-        Menu.eset:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
-        -- R
-        Menu:MenuElement({name = "R settings", id = "rset", type = _G.MENU})
-        Menu.rset:MenuElement({id = "combo", name = "Use R Combo", value = true})
-        Menu.rset:MenuElement({id = "harass", name = "Use R Harass", value = false})
-        Menu.rset:MenuElement({id = "rci", name = "Use R if enemy isImmobile", value = true})
-        Menu.rset:MenuElement({id = "rcd", name = "Use R if enemy distance < X", value = true})
-        Menu.rset:MenuElement({id = "rdist", name = "use R if enemy distance < X", value = 500, min = 250, max = 1000, step = 50})
-        Menu.rset:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
-    end
- 
-    function Varus:WndMsg(msg, wParam)
-        if wParam == HK_Q then
-            self.QStartTime = os.clock()
-        end
-    end
- 
-    function Varus:Tick()
-        -- Check Q Buff
-        self.HasQBuff = GG_Buff:HasBuff(myHero, "varusq")
-        -- Is Attacking
-        if not self.HasQBuff and GG_Orbwalker:IsAutoAttacking() then
-            return
-        end
-        -- Can Attack
-        local AATarget = GG_Target:GetComboTarget()
-        if not self.HasQBuff and AATarget and not GG_Orbwalker.IsNone and GG_Orbwalker:CanAttack() then
-            return
-        end
-        local result = false
-        -- Get Enemies
-        local enemyList = AIO:GetEnemyHeroes()
-        --R
-        if ((GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.rset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.rset.harass:Value())) and GG_Spell:IsReady(_R, {q = 0.33, w = 0, e = 0.63, r = 0.5}) then
-            if Menu.rset.rcd:Value() then
-                local enemy = AIO:GetClosestEnemy(enemyList, Menu.rset.rdist:Value())
-                if enemy then
-                    result = AIO:Cast(HK_R, enemy, self.RData, Menu.rset.hitchance:Value() + 1)
-                end
-            end
-            if not result and Menu.rset.rci:Value() then
-                local t = AIO:GetImmobileEnemy(enemyList, 900, 0.25)
-                if t and t.distance < self.RData.Range then
-                    result = AIO:Cast(HK_R, t)
-                end
-            end
-        end if result then return end
-        --E
-        if ((GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.eset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.eset.harass:Value())) and GG_Spell:IsReady(_E, {q = 0.33, w = 0, e = 0.63, r = 0.33}) then
-            local aaRange = Menu.eset.range:Value() and not AATarget
-            local onlyStacksE = Menu.eset.stacks:Value()
-            local eTargets = {}
-            for i = 1, #enemyList do
-                local hero = enemyList[i]
-                if hero.distance < 925 and (GG_Buff:GetBuffCount(hero, "varuswdebuff") == 3 or not onlyStacksE or myHero:GetSpellData(_W).level == 0 or aaRange) then
-                    eTargets[#eTargets + 1] = hero
-                end
-            end
-            result = AIO:Cast(HK_E, GG_Target:GetTarget(eTargets, 0), self.EData, Menu.eset.hitchance:Value() + 1)
-        end if result then return end
-        -- Q
-        if (GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.qset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.qset.harass:Value()) then
-            local aaRange = Menu.qset.range:Value() and not AATarget
-            local wActive = Menu.qset.active:Value() and Game.Timer() < GG_Spell.WkTimer + 3
-            -- Q1
-            if not self.HasQBuff and GG_Spell:IsReady(_Q, {q = 0.5, w = 0.1, e = 1, r = 0.33}) then
-                if Control.IsKeyDown(HK_Q) then
-                    Control.KeyUp(HK_Q)
-                end
-                -- W
-                if ((GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.wset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.wset.harass:Value())) and GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.63, r = 0.33}) then
-                    local whp = Menu.wset.whp:Value()
-                    for i = 1, #enemyList do
-                        local hero = enemyList[i]
-                        local hp = 100 * (hero.health / hero.maxHealth)
-                        if hp < whp and hero.distance < 1500 then
-                            result = AIO:Cast(HK_W)
-                            if result then break end
-                        end
-                    end
-                end if result then return end
-                local onlyStacksQ = Menu.qset.stacks:Value()
-                for i = 1, #enemyList do
-                    local hero = enemyList[i]
-                    if hero.distance < 1500 and (GG_Buff:GetBuffCount(hero, "varuswdebuff") == 3 or not onlyStacksQ or myHero:GetSpellData(_W).level == 0 or wActive or aaRange) then
-                        Control.KeyDown(HK_Q)
-                        GG_Spell.QTimer = Game.Timer()
-                        result = true
-                        break
-                    end
-                end
-                -- Q2
-            elseif self.HasQBuff and GG_Spell:IsReady(_Q, {q = 0.2, w = 0, e = 0.63, r = 0.33}) then
-                local qTargets = {}
-                local onlyStacksQ = Menu.qset.stacks:Value()
-                local qTimer = os.clock() - self.QStartTime
-                local qExtraRange
-                if qTimer < 2 then
-                    qExtraRange = qTimer * 0.5 * 700
-                else
-                    qExtraRange = 700
-                end
-                for i = 1, #enemyList do
-                    local hero = enemyList[i]
-                    if hero.distance < 925 + qExtraRange and (GG_Buff:GetBuffCount(hero, "varuswdebuff") == 3 or not onlyStacksQ or myHero:GetSpellData(_W).level == 0 or wActive or aaRange) then
-                        table.insert(qTargets, hero)
-                    end
-                end
-                local qt = GG_Target:GetTarget(qTargets, 0)
-                if qt then
-                    local Pred = GetGamsteronPrediction(qt, self.QData, myHero)
-                    if Pred.Hitchance >= Menu.qset.hitchance:Value() + 1 and SDKMath:IsInRange(Pred.CastPosition, myHero.pos, 925 + qExtraRange) and SDKMath:IsInRange(Pred.UnitPosition, myHero.pos, 925 + qExtraRange) then
-                        AIO:Cast(HK_Q, Pred.CastPosition)
-                    end
-                end
-            end
-        end
-    end
- 
-    function Varus:CanAttack()
-        self.HasQBuff = GG_Buff:HasBuff(myHero, "varusq")
-        if not GG_Spell:CheckSpellDelays({q = 0.33, w = 0, e = 0.33, r = 0.33}) then
-            return false
-        end
-        if self.HasQBuff == true then
-            return false
-        end
-        return true
-    end
- 
-    function Varus:CanMove()
-        if not GG_Spell:CheckSpellDelays({q = 0.2, w = 0, e = 0.2, r = 0.2}) then
             return false
         end
         return true
@@ -2310,7 +2264,7 @@ if Champion == nil and myHero.charName == 'Jhin' then
     function Jhin:CanAttack
         ()
         
-        if GG_Spell:CheckSpellDelays({q = 0.25, w = 0.75, e = 0.25, r = 0.5}) and not self.HasPBuff and not self.HasRBuff then
+        if GG_Spell:CanTakeAction({q = 0.25, w = 0.75, e = 0.25, r = 0.5}) and not self.HasPBuff and not self.HasRBuff then
             return true
         end
         return false
@@ -2319,7 +2273,7 @@ if Champion == nil and myHero.charName == 'Jhin' then
     function Jhin:CanMove
         ()
         
-        if GG_Spell:CheckSpellDelays({q = 0.15, w = 0.6, e = 0.15, r = 0.5}) and not self.HasRBuff then
+        if GG_Spell:CanTakeAction({q = 0.15, w = 0.6, e = 0.15, r = 0.5}) and not self.HasRBuff then
             return true
         end
         return false
@@ -2344,6 +2298,7 @@ if Champion ~= nil then
                 self.CanAttackTarget = false
             end
         end
+        self.Timer = Game.Timer()
         self.ManaPercent = 100 * myHero.mana / myHero.maxMana
         self.EnemyHeroes = GG_Object:GetEnemyHeroes(false, false, true, true)
         Utils.CachedDistance = {}
@@ -2358,8 +2313,8 @@ if Champion ~= nil then
         GG_Attack = _G.SDK.Attack
         GG_Orbwalker:CanAttackEvent(Champion.CanAttackCb)
         GG_Orbwalker:CanMoveEvent(Champion.CanMoveCb)
-        if Champion.Load then
-            Champion:Load()
+        if Champion.OnLoad then
+            Champion:OnLoad()
         end
         if Champion.OnPreAttack then
             GG_Orbwalker:OnPreAttack(Champion.OnPreAttack)
@@ -2370,21 +2325,24 @@ if Champion ~= nil then
         if Champion.OnPostAttack then
             GG_Orbwalker:OnPostAttack(Champion.OnPostAttack)
         end
-        if Champion.Tick then
+        if Champion.OnPostAttackTick then
+            GG_Orbwalker:OnPostAttackTick(Champion.OnPostAttackTick)
+        end
+        if Champion.OnTick then
             table.insert(_G.SDK.OnTick, function()
                 Champion:PreTick()
-                Champion:Tick()
+                Champion:OnTick()
                 Utils.CanUseSpell = true
             end)
         end
-        if Champion.Draw then
+        if Champion.OnDraw then
             table.insert(_G.SDK.OnDraw, function()
-                Champion:Draw()
+                Champion:OnDraw()
             end)
         end
-        if Champion.WndMsg then
+        if Champion.OnWndMsg then
             table.insert(_G.SDK.OnWndMsg, function(msg, wParam)
-                Champion:WndMsg(msg, wParam)
+                Champion:OnWndMsg(msg, wParam)
             end)
         end
     end)
