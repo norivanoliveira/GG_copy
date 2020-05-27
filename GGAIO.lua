@@ -238,6 +238,8 @@ if Champion == nil and myHero.charName == 'Twitch' then
         if not GG_Spell:IsReady(_E, {q = 0, w = 0.33, e = 1, r = 0}) then
             return
         end
+        self.ETargets = Utils:GetEnemyHeroes(1200 - 35)
+        self:EBuffManager()
         self:ECombo()
     end
     -- r logic
@@ -299,14 +301,14 @@ if Champion == nil and myHero.charName == 'Twitch' then
     end
     -- e ks
     function Champion:EKS()
-        self.ETargets = Utils:GetEnemyHeroes(1200 - 35)
-        self:EBuffManager()
         if not Menu.e_ks_enabled:Value() then
             return
         end
-        if not GG_Spell:IsReady(_E, {q = 0, w = 0.25, e = 0.5, r = 0}) then
+        if not GG_Spell:IsReady(_E, {q = 0, w = 0.33, e = 1, r = 0}) then
             return
         end
+        self.ETargets = Utils:GetEnemyHeroes(1200 - 35)
+        self:EBuffManager()
         for _, hero in ipairs(self.ETargets) do
             local ecount = EBuffs[hero.networkID].count
             if ecount > 0 then
@@ -931,10 +933,13 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     Champion =
     {
         CanAttackCb = function()
+            if Game.CanUseSpell(_W) == 0 and Game.Timer() < GG_Spell.WTimer + 0.33 then
+                return
+            end
             return GG_Spell:CanTakeAction({q = 0.33, w = 0, e = 0.33, r = 0.33})
         end,
         CanMoveCb = function()
-            return GG_Spell:CanTakeAction({q = 0.2, w = 0, e = 0.2, r = 0.2})
+            return GG_Spell:CanTakeAction({q = 0.23, w = 0, e = 0.23, r = 0.23})
         end,
         OnPreAttack = function(args)
             Champion:PreTick()
@@ -948,14 +953,13 @@ if Champion == nil and myHero.charName == 'KogMaw' then
             if #enemies > 0 then
                 Utils:Cast(HK_W)
                 LastW = GetTickCount()
-                args.Process = false
             end
         end,
         OnPostAttackTick = function()
             Champion:PreTick()
-            Champion:RLogic()
             Champion:QLogic()
             Champion:ELogic()
+            Champion:RLogic()
         end,
     }
     -- load
@@ -964,22 +968,25 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     end
     -- tick
     function Champion:OnTick()
+        self.WMana = myHero.mana - 40 - (myHero:GetSpellData(_W).currentCd * myHero.mpRegen)
+        if not self.IsAttacking then
+            self:RKS()
+        end
         self:WLogic()
-        if self.IsAttacking or self.CanAttackTarget then
+        if self.IsAttacking or self.CanAttackTarget or self.AttackTarget then
             return
         end
         self.HasWBuff = GG_Buff:HasBuff(myHero, "KogMawBioArcaneBarrage")
-        self.WMana = myHero.mana - 40 - (myHero:GetSpellData(_W).currentCd * myHero.mpRegen)
-        if self.AttackTarget == nil and (GetTickCount() < LastW + 300 or self.Timer < GG_Spell.WkTimer + 0.3) then
+        if GetTickCount() < LastW + 300 or self.Timer < GG_Spell.WkTimer + 0.3 then
             return
         end
-        self:RLogic()
         self:QLogic()
         self:ELogic()
+        self:RLogic()
     end
     -- q logic
     function Champion:QLogic()
-        if not GG_Spell:IsReady(_Q, {q = 0.5, w = 0.15, e = 0.33, r = 0.33}) then
+        if not GG_Spell:IsReady(_Q, {q = 1, w = 0, e = 0.33, r = 0.33}) then
             return
         end
         if self.WMana < myHero:GetSpellData(_Q).mana then
@@ -996,7 +1003,7 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     end
     -- e logic
     function Champion:ELogic()
-        if not GG_Spell:IsReady(_E, {q = 0.33, w = 0.15, e = 0.5, r = 0.33}) then
+        if not GG_Spell:IsReady(_E, {q = 0.33, w = 0, e = 1, r = 0.33}) then
             return
         end
         if self.WMana < myHero:GetSpellData(_E).mana then
@@ -1006,7 +1013,7 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     end
     -- r logic
     function Champion:RLogic()
-        if not GG_Spell:IsReady(_R, {q = 0.33, w = 0.15, e = 0.33, r = 0.5}) then
+        if not GG_Spell:IsReady(_R, {q = 0.33, w = 0, e = 0.33, r = 1}) then
             return
         end
         if self.WMana < myHero:GetSpellData(_R).mana then
@@ -1015,7 +1022,6 @@ if Champion == nil and myHero.charName == 'KogMaw' then
         RPrediction.Range = 900 + 300 * myHero:GetSpellData(_R).level
         self.RTargets = Utils:GetEnemyHeroes(RPrediction.Range)
         self.RStacks = GG_Buff:GetBuffCount(myHero, "kogmawlivingartillerycost")
-        self:RKS()
         self:RSemiManual()
         self:RCombo()
     end
@@ -1092,6 +1098,15 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     end
     -- r ks
     function Champion:RKS()
+        if not GG_Spell:IsReady(_R, {q = 0.33, w = 0, e = 0.33, r = 1}) then
+            return
+        end
+        if self.WMana < myHero:GetSpellData(_R).mana then
+            return
+        end
+        RPrediction.Range = 900 + 300 * myHero:GetSpellData(_R).level
+        self.RTargets = Utils:GetEnemyHeroes(RPrediction.Range)
+        self.RStacks = GG_Buff:GetBuffCount(myHero, "kogmawlivingartillerycost")
         if not Menu.r_ks_enabled:Value() then
             return
         end
