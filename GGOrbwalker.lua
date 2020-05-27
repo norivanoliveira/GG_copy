@@ -1832,10 +1832,59 @@ Spell = {}
 do
     -- init
     function Spell:__init()
+        self.QTimer = 0
+        self.WTimer = 0
+        self.ETimer = 0
+        self.RTimer = 0
         self.QkTimer = 0
         self.WkTimer = 0
         self.EkTimer = 0
         self.RkTimer = 0
+        self.OnSpellCastCb = {}
+        self.ControlKeyDown = _G.Control.KeyDown
+        _G.Control.KeyDown = function(key)
+            if key == HK_Q then
+                local timer = Game.Timer()
+                if timer > self.QkTimer + 0.33 and GameCanUseSpell(_Q) == 0 then
+                    self.QTimer = timer
+                    for i = 1, #self.OnSpellCastCb do
+                        self.OnSpellCastCb[i](_Q)
+                    end
+                end
+            end
+            if key == HK_W then
+                local timer = Game.Timer()
+                if timer > self.WkTimer + 0.33 and GameCanUseSpell(_W) == 0 then
+                    self.WTimer = timer
+                    for i = 1, #self.OnSpellCastCb do
+                        self.OnSpellCastCb[i](_W)
+                    end
+                end
+            end
+            if key == HK_E then
+                local timer = Game.Timer()
+                if timer > self.EkTimer + 0.33 and GameCanUseSpell(_E) == 0 then
+                    self.ETimer = timer
+                    for i = 1, #self.OnSpellCastCb do
+                        self.OnSpellCastCb[i](_E)
+                    end
+                end
+            end
+            if key == HK_R then
+                local timer = Game.Timer()
+                if timer > self.RkTimer + 0.33 and GameCanUseSpell(_R) == 0 then
+                    self.RTimer = timer
+                    for i = 1, #self.OnSpellCastCb do
+                        self.OnSpellCastCb[i](_R)
+                    end
+                end
+            end
+            self.ControlKeyDown(key)
+        end
+    end
+    -- on spell cast
+    function Spell:OnSpellCast(cb)
+        self.OnSpellCastCb[#self.OnSpellCastCb + 1] = cb
     end
     -- wnd msg
     function Spell:WndMsg(msg, wParam)
@@ -1870,39 +1919,31 @@ do
         if Cursor.Step > 0 then
             return false
         end
-        if delays ~= nil then
-            local timer = Game.Timer()
-            if timer < self.QkTimer + delays.q then
-                return false
-            end
-            if timer < self.WkTimer + delays.w then
-                return false
-            end
-            if timer < self.EkTimer + delays.e then
-                return false
-            end
-            if timer < self.RkTimer + delays.r then
-                return false
-            end
-        end
-        if GameCanUseSpell(spell) ~= 0 then
+        if not self:CanTakeAction(delays) then
             return false
         end
-        return true
+        return GameCanUseSpell(spell) == 0
     end
     -- check spell delays
     function Spell:CanTakeAction(delays)
-        local timer = Game.Timer()
-        if timer < self.QkTimer + delays.q then
+        if delays == nil then
+            return true
+        end
+        local t = Game.Timer()
+        local q = t - delays.q
+        local w = t - delays.w
+        local e = t - delays.e
+        local r = t - delays.r
+        if q < self.QkTimer or q < self.QTimer then
             return false
         end
-        if timer < self.WkTimer + delays.w then
+        if w < self.WkTimer or w < self.WTimer then
             return false
         end
-        if timer < self.EkTimer + delays.e then
+        if e < self.EkTimer or e < self.ETimer then
             return false
         end
-        if timer < self.RkTimer + delays.r then
+        if r < self.RkTimer or r < self.RTimer then
             return false
         end
         return true
