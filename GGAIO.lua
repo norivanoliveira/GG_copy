@@ -1167,6 +1167,7 @@ if Champion == nil and myHero.charName == 'Varus' then
     local MENU_Q_HARASS = false
     local MENU_Q_WSTACKS = true
     local MENU_Q_TIME = 0.5
+    local MENU_Q_RANGE = 300
     local MENU_Q_HITCHANCE = 2
     local MENU_W_COMBO = true
     local MENU_W_HARASS = false
@@ -1177,6 +1178,8 @@ if Champion == nil and myHero.charName == 'Varus' then
     local MENU_E_HITCHANCE = 2
     local MENU_R_COMBO = true
     local MENU_R_HARASS = false
+    local MENU_R_XHeroHP = 200
+    local MENU_R_XEnemyHP = 600
     local MENU_R_XRANGE = 500
     local MENU_R_HITCHANCE = 2
     
@@ -1185,6 +1188,7 @@ if Champion == nil and myHero.charName == 'Varus' then
     Menu.q:MenuElement({id = "harass", name = "Harass", value = MENU_Q_HARASS, callback = function(x) MENU_Q_HARASS = x end})
     Menu.q:MenuElement({id = "wstacks", name = "when enemy has W buff x3", value = MENU_Q_WSTACKS, callback = function(x) MENU_Q_WSTACKS = x end})
     Menu.q:MenuElement({id = "xtime", name = "minimum charging time", value = MENU_Q_TIME, min = 0.1, max = 1.4, step = 0.1, callback = function(x) MENU_Q_TIME = x end})
+    Menu.q:MenuElement({id = "xrange", name = "charging time only if no enemies in aarange + x", value = MENU_Q_RANGE, min = 100, max = 600, step = 10, callback = function(x) MENU_Q_RANGE = x end})
     Menu.q:MenuElement({id = "hitchance", name = "Hitchance", value = MENU_Q_HITCHANCE, drop = {"normal", "high", "immobile"}, callback = function(x) MENU_Q_HITCHANCE = x end})
     Menu.w:MenuElement({id = "combo", name = "Combo", value = MENU_W_COMBO, callback = function(x) MENU_W_COMBO = x end})
     Menu.w:MenuElement({id = "harass", name = "Harass", value = MENU_W_HARASS, callback = function(x) MENU_W_HARASS = x end})
@@ -1195,11 +1199,12 @@ if Champion == nil and myHero.charName == 'Varus' then
     Menu.e:MenuElement({id = "hitchance", name = "Hitchance", value = MENU_E_HITCHANCE, drop = {"normal", "high", "immobile"}, callback = function(x) MENU_E_HITCHANCE = x end})
     Menu.r:MenuElement({id = "combo", name = "Use R Combo", value = MENU_R_COMBO, callback = function(x) MENU_R_COMBO = x end})
     Menu.r:MenuElement({id = "harass", name = "Use R Harass", value = MENU_R_HARASS, callback = function(x) MENU_R_HARASS = x end})
+    Menu.r:MenuElement({id = "xherohp", name = "hero near to death hp", value = MENU_R_XHeroHP, min = 100, max = 1000, step = 50, callback = function(x) MENU_R_XHeroHP = x end})
+    Menu.r:MenuElement({id = "xenemyhp", name = "enemy health above", value = MENU_R_XEnemyHP, min = 100, max = 1000, step = 50, callback = function(x) MENU_R_XEnemyHP = x end})
     Menu.r:MenuElement({id = "xrange", name = "enemy in range", value = MENU_R_XRANGE, min = 250, max = 1000, step = 50, callback = function(x) MENU_R_XRANGE = x end})
     Menu.r:MenuElement({id = "hitchance", name = "Hitchance", value = MENU_R_HITCHANCE, drop = {"normal", "high", "immobile"}, callback = function(x) MENU_R_HITCHANCE = x end})
     
     -- locals
-    local QReleaseTime = 0
     local QPrediction = GGPrediction:SpellPrediction({Delay = 0.1, Radius = 70, Range = 1650, Speed = 1900, Collision = false, Type = _G.SPELLTYPE_LINE})
     local EPrediction = GGPrediction:SpellPrediction({Delay = 0.5, Radius = 235, Range = 925, Speed = 1500, Collision = false, Type = _G.SPELLTYPE_CIRCLE})
     local RPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 120, Range = 1075, Speed = 1950, Collision = false, Type = _G.SPELLTYPE_LINE})
@@ -1216,10 +1221,7 @@ if Champion == nil and myHero.charName == 'Varus' then
     }
     -- has q buff
     function Champion:HasQBuff()
-        if GetTickCount() < QReleaseTime + 1000 then
-            return false
-        end
-        return GG_Buff:HasBuff(myHero, "varusq") or self.Timer < GG_Spell.QkTimer + 0.5
+        return GG_Buff:HasBuff(myHero, "varusq") or self.Timer < GG_Spell.QTimer + 0.5
     end
     -- on tick
     function Champion:OnTick()
@@ -1227,7 +1229,7 @@ if Champion == nil and myHero.charName == 'Varus' then
             self:QBuffLogic()
             return
         end
-        if Control.IsKeyDown(HK_Q) and (self.IsCombo or self.IsHarass) and not GG_Buff:HasBuff(myHero, "varusq") and self.Timer > GG_Spell.QkTimer + 0.5 and Game.CanUseSpell(_Q) == 0 then
+        if Control.IsKeyDown(HK_Q) and (self.IsCombo or self.IsHarass) and not GG_Buff:HasBuff(myHero, "varusq") and self.Timer > GG_Spell.QTimer + 0.5 and self.Timer > GG_Spell.QkTimer + 0.5 and Game.CanUseSpell(_Q) == 0 then
             Control.KeyUp(HK_Q)
         end
         if self.IsAttacking or self.CanAttackTarget then
@@ -1255,18 +1257,18 @@ if Champion == nil and myHero.charName == 'Varus' then
         if qtimer > 6 then
             return
         end
-        if self.AttackTarget == nil and qtimer < MENU_Q_TIME then
+        local aaenemies = Utils:GetEnemyHeroes(myHero.range + MENU_Q_RANGE)
+        if #aaenemies == 0 and qtimer < MENU_Q_TIME then
             return
         end
-        local canusew = GG_Spell:IsReady(_W) and ((self.IsCombo and MENU_W_COMBO) or (self.IsHarass and MENU_W_HARASS))
-        local enemies = Utils:GetEnemyHeroes(925 + (qtimer * 0.7 * 700))
+        local canusew = Game.CanUseSpell(_W) == 0 and ((self.IsCombo and MENU_W_COMBO) or (self.IsHarass and MENU_W_HARASS))
+        local enemies = Utils:GetEnemyHeroes(925 + (qtimer * 0.5 * 700) - 50)
         if self:QCanUp(self.AttackTarget) then
             if canusew and 100 * self.AttackTarget.health / self.AttackTarget.maxHealth < MENU_W_HP then
                 Control.KeyDown(HK_W)
                 Control.KeyUp(HK_W)
             end
             Control.CastSpell(HK_Q, QPrediction.CastPosition)
-            QReleaseTime = GetTickCount()
             return
         end
         for i = 1, #enemies do
@@ -1277,14 +1279,13 @@ if Champion == nil and myHero.charName == 'Varus' then
                     Control.KeyUp(HK_W)
                 end
                 Control.CastSpell(HK_Q, QPrediction.CastPosition)
-                QReleaseTime = GetTickCount()
                 break
             end
         end
     end
     -- q logic
     function Champion:QLogic()
-        if not GG_Spell:IsReady(_Q, {q = 0.33, w = 0, e = 0.6, r = 0.33}) or GetTickCount() < QReleaseTime + 1000 then
+        if not GG_Spell:IsReady(_Q, {q = 0.33, w = 0, e = 0.6, r = 0.33}) then
             return
         end
         self:QCombo()
@@ -1342,15 +1343,19 @@ if Champion == nil and myHero.charName == 'Varus' then
         if not((self.IsCombo and MENU_R_COMBO) or (self.IsHarass and MENU_R_HARASS)) then
             return
         end
-        if self.AttackTarget then
+        local nearToDeath = myHero.health <= MENU_R_XHeroHP
+        if self.AttackTarget and (nearToDeath or self.AttackTarget.health >= MENU_R_XEnemyHP) then
             if Utils:Cast(HK_R, self.AttackTarget, RPrediction, MENU_R_HITCHANCE + 1) then
                 return
             end
         end
         local enemies = Utils:GetEnemyHeroes(RPrediction.Range)
         for i = 1, #enemies do
-            if Utils:Cast(HK_R, enemies[i], RPrediction, MENU_R_HITCHANCE + 1) then
-                break
+            local enemy = enemies[i]
+            if nearToDeath or enemy.health >= MENU_R_XEnemyHP then
+                if Utils:Cast(HK_R, enemy, RPrediction, MENU_R_HITCHANCE + 1) then
+                    break
+                end
             end
         end
     end
