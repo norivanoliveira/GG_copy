@@ -2,7 +2,7 @@ if _G.SDK then
     return
 end
 
-local Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Cursor, Health, Attack
+local Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, CastKey, Cursor, Health, Attack
 
 local Version = '1.33'
 local myHero = _G.myHero
@@ -134,6 +134,18 @@ local function WriteToFile(path, str)
     local output = io.open(path, 'wb')
     output:write(Base64Decode(str))
     output:close()
+end
+
+local function GetControlPos(a, b, c)
+    local pos
+    if (a and b and c) then
+        pos = Vector(a, b, c)
+    elseif (a and b) then
+        pos = {x = a, y = b}
+    elseif (a) then
+        pos = (a.pos ~= nil) and a or Vector(a)
+    end
+    return pos
 end
 
 -- cached
@@ -1614,7 +1626,7 @@ do
                     Action:Add(function()
                         if GetTickCount() < riven_start then
                             if Cursor.Step == 0 then
-                                Cursor.MoveTimer = 0
+                                Movement.MoveTimer = 0
                                 Control.Move()
                             end
                             return false
@@ -3715,212 +3727,304 @@ do
     Health:__init()
 end
 
+-- move
+Movement = {}
+do
+    local MenuRandomHumanizer = Menu.Orbwalker.RandomHumanizer
+    -- init
+    function Movement:__init()
+        self.MoveTimer = 0
+    end
+    -- get humanizer
+    function Movement:GetHumanizer()
+        local min = MenuRandomHumanizer.Min:Value()
+        local max = MenuRandomHumanizer.Max:Value()
+        return max <= min and min or math_random(min, max)
+    end
+    -- init call
+    Movement:__init()
+end
+
+-- Control
+do
+    local AttackKey = Menu.Main.AttackTKey
+    local FastKiting = Menu.Orbwalker.General.FastKiting
+    _G.Control.Flash = function(key, pos)
+        Cursor:Add(key, pos)
+        return true
+    end
+    _G.Control.Evade = function(pos)
+        if pos then
+            Cursor:Add(MOUSEEVENTF_RIGHTDOWN, pos)
+            return true
+        end
+        return false
+    end
+    _G.Control.Attack = function(target)
+        Cursor:Add(AttackKey:Key(), target.pos or target)
+        if FastKiting:Value() then
+            Movement.MoveTimer = 0
+        end
+        return true
+    end
+    _G.Control.CastSpell = function(key, a, b, c)
+        local pos = GetControlPos(a, b, c)
+        if pos then
+            Cursor:Add(key, pos)
+        else
+            CastKey:Add(key)
+        end
+        return true
+    end
+    _G.Control.Hold = function(key)
+        CastKey:Add(key)
+        Movement.MoveTimer = 0
+        Orbwalker.CanHoldPosition = false
+        return true
+    end
+    _G.Control.Move = function(a, b, c)
+        if CastKey.Step > 0 or Cursor.Step > 0 or GetTickCount() < Movement.MoveTimer then
+            return false
+        end
+        local pos = GetControlPos(a, b, c)
+        if pos then
+            Cursor:Add(MOUSEEVENTF_RIGHTDOWN, pos)
+        else
+            CastKey:Add(MOUSEEVENTF_RIGHTDOWN)
+        end
+        Movement.MoveTimer = GetTickCount() + Movement:GetHumanizer()
+        Orbwalker.CanHoldPosition = true
+        return true
+    end
+end
+
+-- cast key
+CastKey = {}
+do
+    -- init
+    function CastKey:__init()
+        self.Step = 0
+        self.Key = nil
+        self.MouseKey = false
+        self.Callbacks = {}
+    end
+    -- add
+    function CastKey:Add(key)
+        local ok = true
+        for i = 1, #self.Callbacks do
+            if key == self.Callbacks[i][1] then
+                ok = false
+            end
+        end
+        if not ok then
+            return
+        end
+        local mouseKey = key == MOUSEEVENTF_RIGHTDOWN and WM_RBUTTONUP or false
+        table_insert(self.Callbacks, {key, mouseKey})
+        if self.Step == 0 then
+            self.Key = self.Callbacks[1][1]
+            self.MouseKey = self.Callbacks[1][2]
+            self:Step_1_ReleaseKey()
+        end
+    end
+    -- on tick
+    function CastKey:OnTick()
+        if self.Step == 0 then
+            if #self.Callbacks > 0 then
+                print("CastKey.OnTick | not good | step 0 | #cb > 0")
+            end
+            return
+        end
+        if self.Step == 1 then
+            self:Step_1_ReleaseKey()
+            return
+        end
+        if self.Step == 2 then
+            self:Step_2_NewCallback()
+            print("CastKey.OnTick | not good | step 2")
+            return
+        end
+    end
+    -- on wnd msg
+    function CastKey:WndMsg(msg, wParam)
+        if self.Step == 1 then
+            if (self.MouseKey and msg == self.MouseKey) or (not self.MouseKey and wParam == self.Key) then
+                self:Step_2_NewCallback()
+            end
+        end
+    end
+    -- step 1 | release key
+    function CastKey:Step_1_ReleaseKey()
+        self.Step = 1
+        if self.MouseKey then
+            Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
+            Control.mouse_event(MOUSEEVENTF_RIGHTUP)
+        else
+            Control.KeyDown(self.Key)
+            Control.KeyUp(self.Key)
+        end
+    end
+    -- step 2 | new callback
+    function CastKey:Step_2_NewCallback()
+        self.Step = 2
+        table_remove(self.Callbacks, 1)
+        if #self.Callbacks > 0 then
+            self.Key = self.Callbacks[1][1]
+            self.MouseKey = self.Callbacks[1][2]
+            self:Step_1_ReleaseKey()
+            return
+        end
+        self.Step = 0
+    end
+    -- init call
+    CastKey:__init()
+end
+
 -- cursor
 Cursor = {}
 do
+    local MenuDrawCursor = Menu.Main.Drawings.Cursor
     -- init
     function Cursor:__init()
-        self.Hold = nil
         self.Step = 0
-        self.MoveTimer = 0
-        self.Flash = nil
-        self.WndChecked = false
-        self.EndTime = 0
-        self.Pos = nil
+        self.Key = nil
+        self.MouseKey = false
         self.CastPos = nil
-        self.IsHero = false
-        self.WParam = nil
-        self.Msg = nil
-        self.AAKey = Menu.Main.AttackTKey
-        self.MenuDelay = Menu.Main.CursorDelay
-        self.MenuOrbwalker = Menu.Orbwalker.General
-        self.MenuDrawCursor = Menu.Main.Drawings.Cursor
-        self.MenuRandomHumanizer = Menu.Orbwalker.RandomHumanizer
-        _G.Control.Hold = function(key)
-            if (self.Step == 0) then
-                self:New(key, nil, false)
-                Orbwalker.CanHoldPosition = false
-                self.MoveTimer = 0
-                return true
+        self.CursorPos = nil
+        self.Callbacks = {}
+    end
+    -- add
+    function Cursor:Add(key, castpos)
+        local ok = true
+        for i = 1, #self.Callbacks do
+            if key == self.Callbacks[i][1] then
+                ok = false
             end
-            self.Hold = {Key = key, Tick = GetTickCount()}
-            return true
         end
-        _G.Control.Evade = function(pos)
-            local cPos = nil
-            if self.Step > 0 and self.CastPos ~= nil then
-                cPos = self.Pos
-            end
-            self:New(MOUSEEVENTF_RIGHTDOWN, pos, false, cPos)
-            return true
+        if not ok then
+            return
         end
-        _G.Control.Flash = function(key, pos)
-            if (self.Step == 0) then
-                self:New(key, pos, false)
-                return true
+        if castpos.x and castpos.y then
+            local mouseKey = key == MOUSEEVENTF_RIGHTDOWN and WM_RBUTTONUP or false
+            if castpos.z then
+                table_insert(self.Callbacks, {key, mouseKey, castpos:To2D()})
+            else
+                table_insert(self.Callbacks, {key, mouseKey, castpos})
             end
-            self.Flash = {Key = key, Pos = pos, Tick = GetTickCount()}
-            return true
-        end
-        _G.Control.Attack = function(target)
-            if (self.Step > 0) then
-                return false
+            if self.Step == 0 then
+                --if #self.Callbacks > 1 then print("Cursor.Add | not good | step 0 | #cb > 1") end
+                self.CursorPos = _G.cursorPos
+                self.Key = self.Callbacks[1][1]
+                self.MouseKey = self.Callbacks[1][2]
+                self.CastPos = self.Callbacks[1][3]
+                self:Step_1_SetToCastPos()
+                if self.MouseKey then
+                    Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
+                    Control.mouse_event(MOUSEEVENTF_RIGHTUP)
+                else
+                    Control.KeyDown(self.Key)
+                    Control.KeyUp(self.Key)
+                end
             end
-            local key = self.AAKey:Key()
-            self:New(key, target, false)
-            if (self.MenuOrbwalker.FastKiting:Value()) then
-                self.MoveTimer = 0
-            end
-            return true
-        end
-        _G.Control.CastSpell = function(key, a, b, c)
-            if (self.Step > 0) then
-                return false
-            end
-            local pos = self:GetControlPos(a, b, c)
-            self:New(key, pos, false)
-            return true
-        end
-        _G.Control.Move = function(a, b, c)
-            if (self.Step > 0 or GetTickCount() < self.MoveTimer) then
-                return false
-            end
-            self:New(MOUSEEVENTF_RIGHTDOWN, self:GetControlPos(a, b, c), true)
-            return true
         end
     end
     -- on tick
     function Cursor:OnTick()
-        local step = self.Step
-        if (step == 0) then
-            if (self.Flash) then
-                if GetTickCount() > self.Flash.Tick + 300 then
-                    print('FLASH TIMEOUT !')
-                else
-                    self:New(self.Flash.Key, self.Flash.Pos, false)
-                end
-                self.Flash = nil
-                return
-            end
-            if (self.Hold) then
-                if GetTickCount() > self.Hold.Tick + 300 then
-                    print('HOLD TIMEOUT !')
-                else
-                    self:New(self.Hold.Key, nil, false)
-                    Orbwalker.CanHoldPosition = false
-                    self.MoveTimer = 0
-                end
-                self.Hold = nil
-                return
-            end
-        end
-        if (step == 1) then
-            self.Step = 2
-            if self.CastPos == nil then
-                self.Step = 0
-            else
-                self:SetToCastPos()
-            end
+        if self.Step == 0 then
+            --[[if #self.Callbacks > 0 then print("Cursor.OnTick | not good | step 0 | #cb > 0") end]]
             return
         end
-        if (step == 2) then
-            if (GetTickCount() > self.EndTime) then
-                self.Step = 3
-                self:SetToCursor()
-            elseif self.CastPos ~= nil then
-                self:SetToCastPos()
-            end
+        if self.Step == 1 then
+            self:Step_1_SetToCastPos()
+            --print("Cursor.OnTick | step 1")
             return
         end
-        if (step == 3) then
-            self:SetToCursor()
+        if self.Step == 2 then
+            self:Step_2_ReleaseKey()
+            --print("Cursor.OnTick | step 2")
+            return
+        end
+        if self.Step == 3 then
+            self:Step_3_NewCallback()
+            --print("Cursor.OnTick | not good | step 3")
+            return
+        end
+        if self.Step == 4 then
+            self:Step_4_SetToCursorPos()
+            --print("Cursor.OnTick | step 4")
             return
         end
     end
     -- on wnd msg
     function Cursor:WndMsg(msg, wParam)
-        if self.Step == 0 or self.WndChecked then
-            return
-        end
-        if (self.Msg and msg == self.Msg) or (self.WParam and wParam == self.WParam) then
-            self.EndTime = GetTickCount() + self.MenuDelay:Value()
-            self.WndChecked = true
+        if self.Step == 2 then
+            if (self.MouseKey and msg == self.MouseKey) or (not self.MouseKey and wParam == self.Key) then
+                self:Step_3_NewCallback()
+            end
         end
     end
     -- on draw
     function Cursor:OnDraw()
-        if self.MenuDrawCursor:Value() then
+        if MenuDrawCursor:Value() then
             Draw.Circle(mousePos, 150, 1, Color.Cursor)
         end
     end
-    -- new
-    function Cursor:New(key, castPos, isMove, cPos)
+    -- step 1 | set to cast pos
+    function Cursor:Step_1_SetToCastPos()
         self.Step = 1
-        if key == MOUSEEVENTF_RIGHTDOWN then
-            self.WParam = nil
-            self.Msg = WM_RBUTTONUP
-        else
-            self.WParam = key
-            self.Msg = nil
+        local castPos = self.CastPos
+        local currentCursorPos = _G.cursorPos
+        local dx = currentCursorPos.x - castPos.x
+        local dy = currentCursorPos.y - castPos.y
+        if dx * dx + dy * dy < 2500 then
+            self:Step_2_ReleaseKey()
+            return
         end
-        self.IsMove = isMove
-        self.Pos = cPos or cursorPos
-        self.WndChecked = false
-        self.EndTime = GetTickCount() + 70 + self.MenuDelay:Value()
-        self.IsHero = false
-        self.CastPos = castPos
-        if self.CastPos ~= nil then
-            self:SetToCastPos()
-        end
-        
-        if (self.Msg) then
+        Control.SetCursorPos(castPos.x, castPos.y)
+    end
+    -- step 2 | release key
+    function Cursor:Step_2_ReleaseKey()
+        self.Step = 2
+        if self.MouseKey then
             Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
             Control.mouse_event(MOUSEEVENTF_RIGHTUP)
-            if self.IsMove then
-                self.MoveTimer = GetTickCount() + self:GetHumanizer()
-                Orbwalker.CanHoldPosition = true
+        else
+            Control.KeyDown(self.Key)
+            Control.KeyUp(self.Key)
+        end
+    end
+    -- step 3 | new callback
+    function Cursor:Step_3_NewCallback()
+        self.Step = 3
+        table_remove(self.Callbacks, 1)
+        if #self.Callbacks > 0 then
+            self.Key = self.Callbacks[1][1]
+            self.MouseKey = self.Callbacks[1][2]
+            self.CastPos = self.Callbacks[1][3]
+            self:Step_1_SetToCastPos()
+            return
+        end
+        self:Step_4_SetToCursorPos()
+    end
+    -- step 4 | set to cursor
+    function Cursor:Step_4_SetToCursorPos()
+        self.Step = 4
+        local cursorPos = self.CursorPos
+        local currentCursorPos = _G.cursorPos
+        local dx = currentCursorPos.x - cursorPos.x
+        local dy = currentCursorPos.y - cursorPos.y
+        if dx * dx + dy * dy < 2500 then
+            if #self.Callbacks > 0 then
+                self.Key = self.Callbacks[1][1]
+                self.MouseKey = self.Callbacks[1][2]
+                self.CastPos = self.Callbacks[1][3]
+                self:Step_1_SetToCastPos()
+                return
             end
-        else
-            Control.KeyDown(self.WParam)
-            Control.KeyUp(self.WParam)
-        end
-    end
-    -- get humanizer
-    function Cursor:GetHumanizer()
-        local min = self.MenuRandomHumanizer.Min:Value()
-        local max = self.MenuRandomHumanizer.Max:Value()
-        return max <= min and min or math_random(min, max)
-    end
-    -- set to cast pos
-    function Cursor:SetToCastPos()
-        local pos = self.CastPos.pos
-        if pos then
-            pos = pos:To2D()
-        else
-            pos = (self.CastPos.z ~= nil) and self.CastPos:To2D() or self.CastPos
-        end
-        Control.SetCursorPos(pos.x, pos.y)
-    end
-    -- set to cursor
-    function Cursor:SetToCursor()
-        Control.SetCursorPos(self.Pos.x, self.Pos.y)
-        local dx = cursorPos.x - self.Pos.x
-        local dy = cursorPos.y - self.Pos.y
-        if (dx * dx + dy * dy < 15000) then
             self.Step = 0
+            return
         end
-    end
-    -- get control pos
-    function Cursor:GetControlPos(a, b, c)
-        local pos
-        if (a and b and c) then
-            pos = Vector(a, b, c)
-        elseif (a and b) then
-            pos = {x = a, y = b}
-        elseif (a) then
-            pos = (a.pos ~= nil) and a or Vector(a)
-        end
-        return pos
+        Control.SetCursorPos(cursorPos.x, cursorPos.y)
     end
     -- init call
     Cursor:__init()
@@ -3931,7 +4035,7 @@ Attack = {}
 do
     -- init
     function Attack:__init()
-        self.TestDamage = false
+        self.TestDamage = true
         self.TestCount = 0
         self.TestStartTime = 0
         self.IsGraves = myHero.charName == 'Graves'
@@ -4334,7 +4438,7 @@ do
                 end
                 return
             end
-            if GetTickCount() > Cursor.MoveTimer then
+            if GetTickCount() > Movement.MoveTimer then
                 local args = {Target = nil, Process = true}
                 for i = 1, #self.OnMoveCb do
                     self.OnMoveCb[i](args)
@@ -4409,6 +4513,7 @@ Callback.Add('Load', function()
     local wndmsgs = SDK.OnWndMsg
     Callback.Add("Draw", function()
         Cached:Reset()
+        CastKey:OnTick()
         Cursor:OnTick()
         Action:OnTick()
         Attack:OnTick()
@@ -4439,8 +4544,9 @@ Callback.Add('Load', function()
         Spell:WndMsg(msg, wParam)
         Target:WndMsg(msg, wParam)
         Cursor:WndMsg(msg, wParam)
+        CastKey:WndMsg(msg, wParam)
         for i = 1, #wndmsgs do
-            wndmsgs[i]()
+            wndmsgs[i](msg, wParam)
         end
     end)
     if _G.Orbwalker then
