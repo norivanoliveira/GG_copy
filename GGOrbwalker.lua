@@ -4445,7 +4445,7 @@ do
                 self.PostAttackTimer = Game.Timer()
                 self.PostAttackBool = false
             end
-            if not Attack:IsActive(0.025) and Game.Timer() < self.PostAttackTimer + 0.15 then
+            if not Attack:IsActive(0.025) and Game.Timer() < self.PostAttackTimer + 0.5 then
                 for i = 1, #self.OnPostAttackTickCb do
                     self.OnPostAttackTickCb[i]()
                 end
