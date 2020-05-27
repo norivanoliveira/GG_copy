@@ -3762,7 +3762,7 @@ do
     end
     _G.Control.Attack = function(target)
         if target then
-            Cursor:Add(AttackKey:Key(), target.pos or target)
+            Cursor:Add(AttackKey:Key(), target.pos or target, true)
             if FastKiting:Value() then
                 Movement.MoveTimer = 0
             end
@@ -3895,9 +3895,10 @@ do
         self.CastPos = nil
         self.CursorPos = nil
         self.Callbacks = {}
+        self.Timer = 0
     end
     -- add
-    function Cursor:Add(key, castpos)
+    function Cursor:Add(key, castpos, isattack)
         local ok = true
         for i = 1, #self.Callbacks do
             if key == self.Callbacks[i][1] then
@@ -3909,10 +3910,12 @@ do
         end
         if castpos.x and castpos.y then
             local mouseKey = key == MOUSEEVENTF_RIGHTDOWN and WM_RBUTTONUP or false
-            if castpos.z then
-                table_insert(self.Callbacks, {key, mouseKey, castpos:To2D()})
+            if isattack then
+                table_insert(self.Callbacks, {key, mouseKey, Vector(castpos.x, castpos.y, castpos.z + 50):To2D(), true})
+            elseif castpos.z then
+                table_insert(self.Callbacks, {key, mouseKey, castpos:To2D(), false})
             else
-                table_insert(self.Callbacks, {key, mouseKey, castpos})
+                table_insert(self.Callbacks, {key, mouseKey, castpos, false})
             end
             if self.Step == 0 then
                 --if #self.Callbacks > 1 then print("Cursor.Add | not good | step 0 | #cb > 1") end
@@ -3920,14 +3923,8 @@ do
                 self.Key = self.Callbacks[1][1]
                 self.MouseKey = self.Callbacks[1][2]
                 self.CastPos = self.Callbacks[1][3]
+                self.IsAttack = self.Callbacks[1][4]
                 self:Step_1_SetToCastPos()
-                if self.MouseKey then
-                    Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
-                    Control.mouse_event(MOUSEEVENTF_RIGHTUP)
-                else
-                    Control.KeyDown(self.Key)
-                    Control.KeyUp(self.Key)
-                end
             end
         end
     end
@@ -3960,7 +3957,7 @@ do
     end
     -- on wnd msg
     function Cursor:WndMsg(msg, wParam)
-        if self.Step == 2 then
+        if (self.IsAttack and self.Step == 1) or self.Step == 2 then
             if (self.MouseKey and msg == self.MouseKey) or (not self.MouseKey and wParam == self.Key) then
                 self:Step_3_NewCallback()
             end
@@ -3975,15 +3972,26 @@ do
     -- step 1 | set to cast pos
     function Cursor:Step_1_SetToCastPos()
         self.Step = 1
+        self.Timer = GetTickCount()
         local castPos = self.CastPos
         local currentCursorPos = _G.cursorPos
         local dx = currentCursorPos.x - castPos.x
         local dy = currentCursorPos.y - castPos.y
+        Control.SetCursorPos(castPos.x, castPos.y)
+        if self.IsAttack then
+            if self.MouseKey then
+                Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
+                Control.mouse_event(MOUSEEVENTF_RIGHTUP)
+            else
+                Control.KeyDown(self.Key)
+                Control.KeyUp(self.Key)
+            end
+            return
+        end
         if dx * dx + dy * dy < 2500 then
             self:Step_2_ReleaseKey()
             return
         end
-        Control.SetCursorPos(castPos.x, castPos.y)
     end
     -- step 2 | release key
     function Cursor:Step_2_ReleaseKey()
@@ -3999,11 +4007,15 @@ do
     -- step 3 | new callback
     function Cursor:Step_3_NewCallback()
         self.Step = 3
+        if GetTickCount() < self.Timer + 30 then
+            return
+        end
         table_remove(self.Callbacks, 1)
         if #self.Callbacks > 0 then
             self.Key = self.Callbacks[1][1]
             self.MouseKey = self.Callbacks[1][2]
             self.CastPos = self.Callbacks[1][3]
+            self.IsAttack = self.Callbacks[1][4]
             self:Step_1_SetToCastPos()
             return
         end
@@ -4016,18 +4028,19 @@ do
         local currentCursorPos = _G.cursorPos
         local dx = currentCursorPos.x - cursorPos.x
         local dy = currentCursorPos.y - cursorPos.y
+        Control.SetCursorPos(cursorPos.x, cursorPos.y)
         if dx * dx + dy * dy < 2500 then
             if #self.Callbacks > 0 then
                 self.Key = self.Callbacks[1][1]
                 self.MouseKey = self.Callbacks[1][2]
                 self.CastPos = self.Callbacks[1][3]
+                self.IsAttack = self.Callbacks[1][4]
                 self:Step_1_SetToCastPos()
                 return
             end
             self.Step = 0
             return
         end
-        Control.SetCursorPos(cursorPos.x, cursorPos.y)
     end
     -- init call
     Cursor:__init()
@@ -4445,7 +4458,7 @@ do
                 self.PostAttackTimer = Game.Timer()
                 self.PostAttackBool = false
             end
-            if not Attack:IsActive(0.025) and Game.Timer() < self.PostAttackTimer + 0.5 then
+            if not Attack:IsActive(0.025) and Game.Timer() < self.PostAttackTimer + 1 then
                 for i = 1, #self.OnPostAttackTickCb do
                     self.OnPostAttackTickCb[i]()
                 end
