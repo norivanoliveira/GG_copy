@@ -4035,7 +4035,7 @@ Attack = {}
 do
     -- init
     function Attack:__init()
-        self.TestDamage = true
+        self.TestDamage = false
         self.TestCount = 0
         self.TestStartTime = 0
         self.IsGraves = myHero.charName == 'Graves'
