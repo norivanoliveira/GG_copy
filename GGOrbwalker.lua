@@ -143,7 +143,7 @@ local function GetControlPos(a, b, c)
     elseif (a and b) then
         pos = {x = a, y = b}
     elseif (a) then
-        pos = (a.pos ~= nil) and a or Vector(a)
+        pos = (a.pos ~= nil) and a.pos or Vector(a)
     end
     return pos
 end
@@ -3761,11 +3761,14 @@ do
         return false
     end
     _G.Control.Attack = function(target)
-        Cursor:Add(AttackKey:Key(), target.pos or target)
-        if FastKiting:Value() then
-            Movement.MoveTimer = 0
+        if target then
+            Cursor:Add(AttackKey:Key(), target.pos or target)
+            if FastKiting:Value() then
+                Movement.MoveTimer = 0
+            end
+            return true
         end
-        return true
+        return false
     end
     _G.Control.CastSpell = function(key, a, b, c)
         local pos = GetControlPos(a, b, c)
@@ -3831,7 +3834,7 @@ do
     function CastKey:OnTick()
         if self.Step == 0 then
             if #self.Callbacks > 0 then
-                print("CastKey.OnTick | not good | step 0 | #cb > 0")
+                --print("CastKey.OnTick | not good | step 0 | #cb > 0")
             end
             return
         end
@@ -3841,7 +3844,7 @@ do
         end
         if self.Step == 2 then
             self:Step_2_NewCallback()
-            print("CastKey.OnTick | not good | step 2")
+            --print("CastKey.OnTick | not good | step 2")
             return
         end
     end
@@ -3931,7 +3934,7 @@ do
     -- on tick
     function Cursor:OnTick()
         if self.Step == 0 then
-            --[[if #self.Callbacks > 0 then print("Cursor.OnTick | not good | step 0 | #cb > 0") end]]
+            if #self.Callbacks > 0 then print("Cursor.OnTick | not good | step 0 | #cb > 0") end
             return
         end
         if self.Step == 1 then
@@ -4040,6 +4043,9 @@ do
         self.TestStartTime = 0
         self.IsGraves = myHero.charName == 'Graves'
         self.SpecialWindup = Data.SpecialWindup[myHero.charName:lower()]
+        self.IsJhin = myHero.charName == 'Jhin'
+        self.BaseAttackSpeed = Data.HEROES[Data.HeroName][3]
+        self.BaseWindupTime = nil
         self.Reset = false
         self.ServerStart = 0
         self.CastEndTime = 1
@@ -4078,6 +4084,9 @@ do
     end
     -- get windup
     function Attack:GetWindup()
+        if self.IsJhin then
+            return self.AttackWindup
+        end
         if self.IsGraves then
             return myHero.attackData.windUpTime * 0.2
         end
@@ -4087,14 +4096,24 @@ do
                 return windup
             end
         end
-        return self.AttackWindup
+        if self.BaseWindupTime then
+            return math_max(self.AttackWindup, 1 / (myHero.attackSpeed * self.BaseAttackSpeed) / self.BaseWindupTime)
+        end
+        local data = myHero.attackData
+        if data.animationTime > 0 and data.windUpTime > 0 then
+            self.BaseWindupTime = data.animationTime / data.windUpTime
+        end
+        return math_max(self.AttackWindup, myHero.attackData.windUpTime)
     end
     -- get animation
     function Attack:GetAnimation()
+        if self.IsJhin then
+            return self.AttackAnimation
+        end
         if self.IsGraves then
             return myHero.attackData.animationTime * 0.9
         end
-        return self.AttackAnimation
+        return 1 / (myHero.attackSpeed * self.BaseAttackSpeed)
     end
     -- get projectileSpeed
     function Attack:GetProjectileSpeed()
