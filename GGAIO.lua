@@ -189,48 +189,25 @@ if Champion == nil and myHero.charName == 'Twitch' then
     Champion =
     {
         CanAttackCb = function()
-            local preInvisibleDuration = 1.35 - (Game.Timer() - GG_Spell.QkTimer)
-            if preInvisibleDuration > -1 and GetTickCount() > LastPreInvisible + 2000 and preInvisibleDuration < GG_Attack:GetAttackCastTime(0.1) and Game.CanUseSpell(_Q) ~= 0 then
-                local buffduration = GG_Buff:GetBuffDuration(myHero, "globalcamouflage")
-                if buffduration and buffduration > 3 then
-                    LastPreInvisible = GetTickCount()
-                    return true
-                end
-                return false
-            end
             return GG_Spell:CanTakeAction({q = 0, w = 0.33, e = 0.33, r = 0})
         end,
         CanMoveCb = function()
             return GG_Spell:CanTakeAction({q = 0, w = 0.2, e = 0.2, r = 0})
         end,
-        OnPostAttack = function()
-            local preInvisibleDuration = 1.35 - (Game.Timer() - GG_Spell.QkTimer)
-            if preInvisibleDuration > -0.5 and Game.CanUseSpell(_Q) ~= 0 then
-                local isAttack = false
-                for i = 1, Game.MissileCount() do
-                    local missile = Game.Missile(i)
-                    if missile then
-                        local data = missile.missileData
-                        if data then
-                            if data.owner == myHero.handle and data.name:lower():find("attack") then
-                                isAttack = true
-                                break
-                            end
-                        end
-                    end
-                end
-                if not isAttack then
-                    GG_Attack.Reset = true
-                    --print("RESET")
-                end
-            end
+        OnPostAttackTick = function()
+            Champion:PreTick()
+            Champion:ELogic()
+            Champion:WLogic()
         end,
     }
     -- tick
     function Champion:OnTick()
+        if not self.IsAttacking then
+            self:EKS()
+        end
         self:RLogic()
         self:QLogic()
-        if self.IsAttacking or self.CanAttackTarget then
+        if self.IsAttacking or self.CanAttackTarget or self.AttackTarget then
             return
         end
         self:ELogic()
@@ -258,12 +235,9 @@ if Champion == nil and myHero.charName == 'Twitch' then
     end
     -- e logic
     function Champion:ELogic()
-        self.ETargets = Utils:GetEnemyHeroes(1200 - 35)
-        self:EBuffManager()
         if not GG_Spell:IsReady(_E, {q = 0, w = 0.25, e = 0.5, r = 0}) then
             return
         end
-        self:EKS()
         self:ECombo()
     end
     -- r logic
@@ -325,7 +299,12 @@ if Champion == nil and myHero.charName == 'Twitch' then
     end
     -- e ks
     function Champion:EKS()
+        self.ETargets = Utils:GetEnemyHeroes(1200 - 35)
+        self:EBuffManager()
         if not Menu.e_ks_enabled:Value() then
+            return
+        end
+        if not GG_Spell:IsReady(_E, {q = 0, w = 0.25, e = 0.5, r = 0}) then
             return
         end
         for _, hero in ipairs(self.ETargets) do
