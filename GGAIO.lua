@@ -192,7 +192,7 @@ if Champion == nil and myHero.charName == 'Twitch' then
             return GG_Spell:CanTakeAction({q = 0, w = 0.33, e = 0.33, r = 0})
         end,
         CanMoveCb = function()
-            return GG_Spell:CanTakeAction({q = 0, w = 0.2, e = 0.2, r = 0})
+            return GG_Spell:CanTakeAction({q = 0, w = 0.23, e = 0.23, r = 0})
         end,
         OnPostAttackTick = function()
             Champion:PreTick()
@@ -220,7 +220,7 @@ if Champion == nil and myHero.charName == 'Twitch' then
     end
     -- q logic
     function Champion:QLogic()
-        if not GG_Spell:IsReady(_Q, {q = 0.5, w = 0.33, e = 0.33, r = 0.1}) then
+        if not GG_Spell:IsReady(_Q, {q = 1, w = 0, e = 0, r = 0}) then
             return
         end
         self:QRecall()
@@ -228,21 +228,21 @@ if Champion == nil and myHero.charName == 'Twitch' then
     end
     -- w logic
     function Champion:WLogic()
-        if not GG_Spell:IsReady(_W, {q = 0, w = 1, e = 0.75, r = 0}) then
+        if not GG_Spell:IsReady(_W, {q = 0, w = 1, e = 0.33, r = 0}) then
             return
         end
         self:WCombo()
     end
     -- e logic
     function Champion:ELogic()
-        if not GG_Spell:IsReady(_E, {q = 0, w = 0.25, e = 0.5, r = 0}) then
+        if not GG_Spell:IsReady(_E, {q = 0, w = 0.33, e = 1, r = 0}) then
             return
         end
         self:ECombo()
     end
     -- r logic
     function Champion:RLogic()
-        if not GG_Spell:IsReady(_R, {q = 1, w = 0.33, e = 0.33, r = 0.5}) then
+        if not GG_Spell:IsReady(_R, {q = 0, w = 0, e = 0, r = 1}) then
             return
         end
         self:RCombo()
