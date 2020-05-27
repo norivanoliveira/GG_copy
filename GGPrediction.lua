@@ -713,7 +713,7 @@ function Prediction:SpellPrediction(args)
         if not self.IsOnScreen then
             self.CastPosition = Math:Extended(self.MyHeroPos, Math:Normalized(self.CastPosition, self.MyHeroPos), 800)
         end
-        self.CastPosition.y = self.Target.pos.y
+        self.CastPosition.y = 0
         return true
     end
     function c:GetPrediction(target, source)
