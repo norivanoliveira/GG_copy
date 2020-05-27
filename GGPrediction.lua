@@ -659,9 +659,10 @@ function Prediction:SpellPrediction(args)
         return false
     end
     function c:IsInRange()
-        local pos = Math:Get2D(myHero.pos)
-        if Math:IsInRange(self.Type == SPELLTYPE_CIRCLE and self.CastPosition or self.UnitPosition, pos, self.Range) then
-            if not Math:Get3D(self.CastPosition):To2D().onScreen then
+        self.MyHeroPos = Math:Get2D(myHero.pos)
+        if Math:IsInRange(self.Type == SPELLTYPE_CIRCLE and self.CastPosition or self.UnitPosition, self.MyHeroPos, self.Range) then
+            self.IsOnScreen = Math:Get3D(self.CastPosition):To2D().onScreen
+            if not self.IsOnScreen and self.Type == SPELLTYPE_CIRCLE then
                 return false
             end
             return true
@@ -708,6 +709,9 @@ function Prediction:SpellPrediction(args)
         if os.clock() - self.StartTime > 0.005 then
             --print("PREDICTION TIMER")
             return false
+        end
+        if not self.IsOnScreen then
+            self.CastPosition = Math:Extended(self.MyHeroPos, Math:Normalized(self.CastPosition, self.MyHeroPos), 800)
         end
         return true
     end
