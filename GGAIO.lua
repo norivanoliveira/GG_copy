@@ -7,7 +7,7 @@ require('GGPrediction')
 
 local Menu, Utils, Champion
 
-local GG_Target, GG_Orbwalker, GG_Buff, GG_Damage, GG_Spell, GG_Object, GG_Attack
+local GG_Target, GG_Orbwalker, GG_Buff, GG_Damage, GG_Spell, GG_Object, GG_Attack, GG_Data
 
 local HITCHANCE_NORMAL = 2
 local HITCHANCE_HIGH = 3
@@ -133,10 +133,21 @@ do
         if target == nil then
             return false
         end
-        spellprediction:GetPrediction(target, myHero)
+        spellprediction:GetPrediction(target:GetObject(), myHero)
         if spellprediction:CanHit(hitchance or HITCHANCE_HIGH) then
             Control.CastSpell(spell, spellprediction.CastPosition)
             self.CanUseSpell = false
+            return true
+        end
+        return false
+    end
+    -- check wall
+    function Utils:CheckWall(from, to, distance)
+        local pos1 = to + (to - from):Normalized() * 50
+        local pos2 = pos1 + (to - from):Normalized() * (distance - 50)
+        local point1 = {x = pos1.x, z = pos1.z}
+        local point2 = {x = pos2.x, z = pos2.z}
+        if MapPosition:intersectsWall(point1, point2) or (MapPosition:inWall(point1) and MapPosition:inWall(point2)) then
             return true
         end
         return false
@@ -194,7 +205,7 @@ if Champion == nil and myHero.charName == 'Twitch' then
         CanMoveCb = function()
             return GG_Spell:CanTakeAction({q = 0, w = 0.23, e = 0.23, r = 0})
         end,
-        OnPostAttackTick = function()
+        OnPostAttackTick = function(PostAttackTimer)
             Champion:PreTick()
             Champion:ELogic()
             Champion:WLogic()
@@ -542,7 +553,7 @@ if Champion == nil and myHero.charName == 'Morgana' then
         for i, unit in ipairs(self.QTargets) do
             local spell = unit.activeSpell
             if spell and spell.valid and Utils.InterruptableSpells[spell.name] and spell.castEndTime - self.Timer > 0.33 then
-                Utils:Cast(HK_Q, enemy, QPrediction, HITCHANCE_NORMAL)
+                Utils:Cast(HK_Q, unit, QPrediction, HITCHANCE_NORMAL)
             end
         end
     end
@@ -763,7 +774,7 @@ if Champion == nil and myHero.charName == 'Ezreal' then
         CanMoveCb = function()
             return GG_Spell:CanTakeAction({q = 0.23, w = 0.23, e = 0.23, r = 1})
         end,
-        OnPostAttackTick = function()
+        OnPostAttackTick = function(PostAttackTimer)
             Champion:PreTick()
             Champion.QWTargets = Utils:GetEnemyHeroes(QPrediction.Range)
             Champion:WLogic()
@@ -775,19 +786,15 @@ if Champion == nil and myHero.charName == 'Ezreal' then
         local getDamage = function()
             return ((25 * myHero:GetSpellData(_Q).level) - 10) + (1.1 * myHero.totalDamage) + (0.4 * myHero.ap)
         end
-        
         local canLastHit = function()
             return Menu.q_lh_enabled:Value() and self.ManaPercent >= Menu.q_lh_mana:Value()
         end
-        
         local canLaneClear = function()
             return Menu.q_lc_enabled:Value() and self.ManaPercent >= Menu.q_lc_mana:Value()
         end
-        
         local isQReady = function()
             return GG_Spell:IsReady(_Q, {q = 0.33, w = 0.33, e = 0.2, r = 0.77})
         end
-        
         GG_Spell:SpellClear(_Q, QPrediction, isQReady, canLastHit, canLaneClear, getDamage)
     end
     -- wnd msg
@@ -799,10 +806,7 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     -- tick
     function Champion:OnTick()
         self:ELogic()
-        if self.IsAttacking or self.CanAttackTarget then
-            return
-        end
-        if self.AttackTarget and not GG_Attack:IsBefore(0.55) then
+        if self.IsAttacking or self.CanAttackTarget or self.AttackTarget then
             return
         end
         self.QWTargets = Utils:GetEnemyHeroes(QPrediction.Range)
@@ -812,18 +816,15 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     end
     -- q logic
     function Champion:QLogic()
-        if not GG_Spell:IsReady(_Q, {q = 0.5, w = 0.33, e = 0.33, r = 1.13}) then
+        if not GG_Spell:IsReady(_Q, {q = 1, w = 0.33, e = 0.33, r = 1.13}) then
             return
         end
-        --[[if (self.IsCombo or self.IsHarass) and GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 1.13}) and self.ManaPercent >= Menu.w_mana:Value() then
-            return
-        end]]
         self:QAuto()
         self:QCombo()
     end
     -- w logic
     function Champion:WLogic()
-        if not GG_Spell:IsReady(_W, {q = 0.33, w = 0.5, e = 0.33, r = 1.13}) then
+        if not GG_Spell:IsReady(_W, {q = 0.33, w = 1, e = 0.33, r = 1.13}) then
             return
         end
         self:WCombo()
@@ -949,13 +950,13 @@ if Champion == nil and myHero.charName == 'KogMaw' then
             if not((Champion.IsCombo and Menu.w_combo:Value()) or (Champion.IsHarass and Menu.w_harass:Value())) then
                 return
             end
-            local enemies = GG_Object:GetEnemyHeroes(610 + (20 * myHero:GetSpellData(_W).level) + myHero.boundingRadius - 35, true, true, true, true)
+            local enemies = GG_Object:GetEnemyHeroes(610 + (20 * myHero:GetSpellData(_W).level) + myHero.boundingRadius - 35, true, true, true)
             if #enemies > 0 then
                 Utils:Cast(HK_W)
                 LastW = GetTickCount()
             end
         end,
-        OnPostAttackTick = function()
+        OnPostAttackTick = function(PostAttackTimer)
             Champion:PreTick()
             Champion:QLogic()
             Champion:ELogic()
@@ -1044,7 +1045,7 @@ if Champion == nil and myHero.charName == 'KogMaw' then
         if self.AttackTarget then
             return
         end
-        local enemies = GG_Object:GetEnemyHeroes(610 + (20 * myHero:GetSpellData(_W).level) + myHero.boundingRadius - 35, true, true, true, true)
+        local enemies = GG_Object:GetEnemyHeroes(610 + (20 * myHero:GetSpellData(_W).level) + myHero.boundingRadius - 35, true, true, true)
         if #enemies > 0 then
             Utils:Cast(HK_W)
             LastW = GetTickCount()
@@ -1199,9 +1200,9 @@ if Champion == nil and myHero.charName == 'Varus' then
     Menu.r:MenuElement({id = "hitchance", name = "Hitchance", value = MENU_R_HITCHANCE, drop = {"normal", "high", "immobile"}, callback = function(x) MENU_R_HITCHANCE = x end})
     
     -- locals
-    local QPrediction = GGPrediction:SpellPrediction({Delay = 0.1, Radius = 70, Range = 1650, Speed = 1900, Collision = false, Type = _G.SPELLTYPE_LINE})
-    local EPrediction = GGPrediction:SpellPrediction({Delay = 0.5, Radius = 235, Range = 925, Speed = 1500, Collision = false, Type = _G.SPELLTYPE_CIRCLE})
-    local RPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 120, Range = 1075, Speed = 1950, Collision = false, Type = _G.SPELLTYPE_LINE})
+    local QPrediction = GGPrediction:SpellPrediction({Delay = 0.1, Radius = 70, Range = 1650, Speed = 1900, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
+    local EPrediction = GGPrediction:SpellPrediction({Delay = 0.5, Radius = 235, Range = 925, Speed = 1500, Collision = false, Type = GGPrediction.SPELLTYPE_CIRCLE})
+    local RPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 120, Range = 1075, Speed = 1950, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
     
     -- champion
     Champion =
@@ -1239,8 +1240,14 @@ if Champion == nil and myHero.charName == 'Varus' then
         if target == nil then
             return false
         end
-        QPrediction:GetPrediction(target, myHero)
-        return QPrediction:CanHit(MENU_Q_HITCHANCE + 1)
+        QPrediction:GetPrediction(target:GetObject(), myHero)
+        if QPrediction:CanHit(MENU_Q_HITCHANCE + 1) then
+            --local pos = myHero.pos
+            --if GGPrediction:GetDistance(pos, QPrediction.UnitPosition) > GGPrediction:GetDistance(pos, target.pos) + 75 then
+            return true
+            --end
+        end
+        return false
     end
     -- q buff logic
     function Champion:QBuffLogic()
@@ -1352,6 +1359,238 @@ if Champion == nil and myHero.charName == 'Varus' then
                 end
             end
         end
+    end
+end
+
+if Champion == nil and myHero.charName == 'Vayne' then
+    -- requires
+    require "MapPositionGOS"
+    
+    -- menu
+    Menu.q_combo = Menu.q:MenuElement({id = "combo", name = "Combo", value = true})
+    Menu.q_harass = Menu.q:MenuElement({id = "harass", name = "Harass", value = false})
+    Menu.q_xdistance = Menu.q:MenuElement({id = "xdistance", name = "hold distance", value = 400, min = 200, max = 700, step = 50})
+    Menu.e_combo = Menu.e:MenuElement({id = "combo", name = "Combo (Stun)", value = true})
+    Menu.e_harass = Menu.e:MenuElement({id = "harass", name = "Harass (Stun)", value = false})
+    Menu.e_hitchance = Menu.e:MenuElement({id = "hitchance", name = "Hitchance", value = 1, drop = {"normal", "high", "immobile"}})
+    Menu.e_useon = Menu.e:MenuElement({name = "Use on", id = "useon", type = _G.MENU})
+    Menu.e:MenuElement({name = "Anti melee", id = "antimelee", type = _G.MENU})
+    Menu.e_antimelee_enabled = Menu.e.antimelee:MenuElement({id = "enabled", name = "Enabled", value = true})
+    Menu.e_antimelee_xdistance = Menu.e.antimelee:MenuElement({id = "xdistance", name = "enemy distance from vayne", value = 250, min = 200, max = 600, step = 50})
+    Menu.e_antimelee_useon = Menu.e.antimelee:MenuElement({name = "Use on", id = "useon", type = _G.MENU})
+    Menu.e:MenuElement({name = "Extra Logic", id = "extra", type = _G.MENU})
+    Menu.e_extra_antidash = Menu.e.extra:MenuElement({id = "antidash", name = "AntiDash - kha e, rangar r", value = true})
+    Menu.e_extra_interrupter = Menu.e.extra:MenuElement({id = "interrupter", name = "Interrupt dangerous spells", value = true})
+    Menu.r_combo = Menu.r:MenuElement({id = "combo", name = "Combo", value = true})
+    Menu.r_harass = Menu.r:MenuElement({id = "harass", name = "Harass", value = false})
+    Menu.r_xenemies = Menu.r:MenuElement({id = "xenemies", name = "minimum number of enemies near vayne", value = 3, min = 1, max = 5, step = 1})
+    Menu.r_xdistance = Menu.r:MenuElement({id = "xdistance", name = "enemy distance from vayne", value = 500, min = 250, max = 750, step = 50})
+    
+    -- locals
+    local EPrediction = GGPrediction:SpellPrediction({Delay = 0.5, Radius = 0, Range = 550, Speed = 2000, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
+    
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return GG_Spell:CanTakeAction({q = 0.3, w = 0, e = 0.5, r = 0})
+        end,
+        CanMoveCb = function()
+            return GG_Spell:CanTakeAction({q = 0.2, w = 0, e = 0.4, r = 0})
+        end,
+        OnPostAttackTick = function(PostAttackTimer)
+            Champion:PreTick()
+            Champion:RLogic()
+            Champion:ELogic()
+            if Champion.Timer < PostAttackTimer + 0.3 then
+                Champion:QLogic()
+            end
+        end,
+    }
+    
+    -- on tick
+    function Champion:OnTick()
+        self:RLogic()
+        if self.IsAttacking or self.CanAttackTarget or self.AttackTarget then
+            return
+        end
+        self:ELogic()
+        self:QLogic()
+    end
+    
+    -- q logic
+    function Champion:QLogic()
+        if not GG_Spell:IsReady(_Q, {q = 1, w = 0, e = 0.5, r = 0}) then
+            return
+        end
+        self:QCombo()
+    end
+    
+    -- q combo
+    function Champion:QCombo()
+        if not ((self.IsCombo and Menu.q_combo:Value()) or (self.IsHarass and Menu.q_harass:Value())) then
+            return
+        end
+        local enemies = Utils:GetEnemyHeroes(self.Range + 30)
+        if #enemies == 0 then
+            local enemies2 = Utils:GetEnemyHeroes(self.Range + 300)
+            local pos = Vector(_G.mousePos)
+            if self.Pos:DistanceTo(pos) >= 300 then
+                local extended = self.Pos:Extended(pos, 300)
+                for i = 1, #enemies2 do
+                    local enemy = enemies2[i]
+                    if extended:DistanceTo(enemy.pos) < self.Range + enemy.boundingRadius - 35 then
+                        Utils:Cast(HK_Q)
+                        break
+                    end
+                end
+            end
+            return
+        end
+        if self.AttackTarget then
+            local holdDistance = Menu.q_xdistance:Value()
+            local pos = GGPrediction:CircleCircleIntersection(self.Pos, self.AttackTarget:GetPos(), 300, holdDistance)
+            if #pos > 0 and (GG_Object:IsFacing(self.AttackTarget:GetObject(), myHero, 60) or self.AttackTarget:GetDistance() < holdDistance) then
+                if GGPrediction:GetDistance(pos[1], _G.mousePos) < GGPrediction:GetDistance(pos[2], _G.mousePos) then
+                    Utils:Cast(HK_Q, {x = pos[1].x, y = 0, z = pos[1].z})
+                else
+                    Utils:Cast(HK_Q, {x = pos[2].x, y = 0, z = pos[2].z})
+                end
+            else
+                Utils:Cast(HK_Q)
+            end
+        end
+    end
+    
+    -- e logic
+    function Champion:ELogic()
+        if not GG_Spell:IsReady(_E, {q = 0.5, w = 0, e = 1, r = 0}) then
+            return
+        end
+        self:ECombo()
+        self:EInterrupter()
+        self:EAntimelee()
+        self:EAntiDash()
+    end
+    
+    -- e combo
+    function Champion:ECombo()
+        if not ((self.IsCombo and Menu.e_combo:Value()) or (self.IsHarass and Menu.e_harass:Value())) then
+            return
+        end
+        local enemies = Utils:GetEnemyHeroes(EPrediction.Range + 200)
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            if enemy.distance < EPrediction.Range + self.BoundingRadius + enemy.boundingRadius - 35 then
+                local useon = Menu.e_useon[enemy.charName]
+                if useon and useon:Value() then
+                    EPrediction:GetPrediction(enemy:GetObject(), myHero)
+                    if EPrediction:CanHit(Menu.e_hitchance:Value() + 1) and Utils:CheckWall(self.Pos, Vector(EPrediction.UnitPosition.x, 0, EPrediction.UnitPosition.z), 475) and Utils:CheckWall(self.Pos, enemy.pos, 475) then
+                        Utils:Cast(HK_E, enemy)
+                        break
+                    end
+                end
+            end
+        end
+    end
+    
+    -- e anti melee
+    function Champion:EAntimelee()
+        if not Menu.e_antimelee_enabled:Value() then
+            return
+        end
+        local melees = {}
+        local enemies = Utils:GetEnemyHeroes(Menu.e_antimelee_xdistance:Value())
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            local useon = Menu.e_antimelee_useon[enemy.charName]
+            if enemy.range < 400 and useon and useon:Value() then
+                table_insert(melees, enemy)
+            end
+        end
+        if #melees > 0 then
+            table.sort(melees, function(a, b)
+                return a.health + (a.totalDamage * 2) + (a.attackSpeed * 100) > b.health + (b.totalDamage * 2) + (b.attackSpeed * 100)
+            end)
+            for i = 1, #melees do
+                local target = melees[i]
+                if GG_Object:IsFacing(target, myHero, 75) then
+                    Utils:Cast(HK_E, target)
+                    break
+                end
+            end
+        end
+    end
+    
+    -- e anti dash
+    function Champion:EAntiDash()
+        if not Menu.e_extra_antidash:Value() then
+            return
+        end
+        local enemies = Utils:GetEnemyHeroes(EPrediction.Range + self.BoundingRadius + 100)
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            local path = enemy.pathing
+            if path and path.isDashing and enemy.posTo then
+                if self.Pos:DistanceTo(enemy.posTo) < 400 and self.Pos:DistanceTo(enemy.pos) < EPrediction.Range + self.BoundingRadius + enemy.boundingRadius - 35 and GG_Object:IsFacing(enemy, myHero, 75) then
+                    Utils:Cast(HK_E, enemy)
+                    break
+                end
+            end
+        end
+    end
+    
+    -- e interrupter
+    function Champion:EInterrupter()
+        if not Menu.e_extra_interrupter:Value() then
+            return
+        end
+        local enemies = Utils:GetEnemyHeroes(EPrediction.Range + self.BoundingRadius + 100)
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            if enemy.distance < EPrediction.Range + self.BoundingRadius + enemy.boundingRadius - 35 then
+                local spell = enemy.activeSpell
+                if spell and spell.valid and Utils.InterruptableSpells[spell.name] and spell.castEndTime - self.Timer > 0.33 then
+                    Utils:Cast(HK_E, enemy)
+                    break
+                end
+            end
+        end
+    end
+    
+    -- r logic
+    function Champion:RLogic()
+        if not GG_Spell:IsReady(_R, {q = 0.5, w = 0, e = 0.5, r = 1}) then
+            return
+        end
+        self:RCombo()
+    end
+    
+    -- r combo
+    function Champion:RCombo()
+        if not ((self.IsCombo and Menu.r_combo:Value()) or (self.IsHarass and Menu.r_harass:Value())) then
+            return
+        end
+        local enemies = Utils:GetEnemyHeroes(Menu.r_xdistance:Value())
+        if #enemies >= Menu.r_xenemies:Value() then
+            Utils:Cast(HK_R)
+        end
+    end
+    
+    -- on load
+    function Champion:OnLoad()
+        GG_Object:OnEnemyHeroLoad(function(args)
+            Menu.e_useon:MenuElement({id = args.charName, name = args.charName, value = true})
+            local notMelee = {
+                ["Thresh"] = true,
+                ["Azir"] = true,
+                ["Velkoz"] = true
+            }
+            local x = GG_Data.HEROES[args.charName:lower()]
+            if x and x[2] and not notMelee[args.charName] then
+                Menu.e_antimelee_useon:MenuElement({id = args.charName, name = args.charName, value = true})
+            end
+        end)
     end
 end
 
@@ -1551,201 +1790,6 @@ if Champion == nil and myHero.charName == 'Karthus' then
         local lvlDmg = 150 * rLvl
         local apDmg = myHero.ap * 0.75
         return baseDmg + lvlDmg + apDmg
-    end
-end
- 
-if Champion == nil and myHero.charName == 'Vayne' then
-    class "Vayne"
- 
-    function Vayne:__init()
-        require "MapPositionGOS"
-        self.LastReset = 0
-        self.EData = {Delay = 0.5, Radius = 0, Range = 550 - 35, Speed = 2000, Collision = false, Type = _G.SPELLTYPE_LINE}
-    end
- 
-    function Vayne:CreateMenu()
-        Menu = MenuElement({name = "Gamsteron Vayne", id = "Gamsteron_Vayne", type = _G.MENU})
-        -- Q
-        Menu:MenuElement({name = "Q settings", id = "qset", type = _G.MENU})
-        Menu.qset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.qset:MenuElement({id = "harass", name = "Harass", value = false})
-        -- E
-        Menu:MenuElement({name = "E settings", id = "eset", type = _G.MENU})
-        Menu.eset:MenuElement({id = "melee", name = "AntiMelee", value = true})
-        Menu.eset:MenuElement({name = "Use on (AntiMelee):", id = "useonmelee", type = _G.MENU})
-        GG_Object:OnEnemyHeroLoad(function(args)
-            local notMelee = {
-                ["Thresh"] = true,
-                ["Azir"] = true,
-                ["Velkoz"] = true
-            }
-            local x = SDKData.HEROES[args.charName:lower()]
-            if x and x[2] and not notMelee[args.charName] then
-                Menu.eset.useonmelee:MenuElement({id = args.charName, name = args.charName, value = true})
-            end
-        end)
-        Menu.eset:MenuElement({id = "dash", name = "AntiDash - kha e, rangar r", value = true})
-        Menu.eset:MenuElement({id = "interrupt", name = "Interrupt dangerous spells", value = true})
-        Menu.eset:MenuElement({id = "combo", name = "Combo (Stun)", value = true})
-        Menu.eset:MenuElement({id = "harass", name = "Harass (Stun)", value = false})
-        Menu.eset:MenuElement({name = "Use on (Stun):", id = "useonstun", type = _G.MENU})
-        GG_Object:OnEnemyHeroLoad(function(args) Menu.eset.useonstun:MenuElement({id = args.charName, name = args.charName, value = true}) end)
-        --R
-        Menu:MenuElement({name = "R settings", id = "rset", type = _G.MENU})
-        Menu.rset:MenuElement({id = "qready", name = "Only if Q ready or almost ready", value = true})
-        Menu.rset:MenuElement({id = "combo", name = "Combo - if X enemies near vayne", value = true})
-        Menu.rset:MenuElement({id = "xcount", name = "  ^^^ X enemies ^^^", value = 3, min = 1, max = 5, step = 1})
-        Menu.rset:MenuElement({id = "xdistance", name = "^^^ max. distance ^^^", value = 500, min = 250, max = 750, step = 50})
-    end
- 
-    function Vayne:Tick()
-        
-        -- reset attack after Q
-        if Game.CanUseSpell(_Q) ~= 0 and Game.Timer() > self.LastReset + 1 and GG_Buff:HasBuff(myHero, "vaynetumblebonus") then
-            GG_Orbwalker:__OnAutoAttackReset()
-            self.LastReset = Game.Timer()
-        end
-        -- reset attack after Q
-        
-        local result = false
-        
-        -- r
-        if GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.rset.combo:Value() and GG_Spell:IsReady(_R, {q = 0.5, w = 0, e = 0.5, r = 0.5}) then
-            local canR = true
-            if Menu.rset.qready:Value() then
-                canR = false
-                if Game.CanUseSpell(_Q) == 0 then canR = true end
-                if Game.CanUseSpell(_Q) == 32 and myHero.mana > myHero:GetSpellData(_Q).mana and myHero:GetSpellData(_Q).currentCd < 0.75 then canR = true end
-            end
-            if canR then
-                local countEnemies = 0
-                for i = 1, Game.HeroCount() do
-                    local hero = Game.Hero(i)
-                    if AIO:IsValidHero(hero, Menu.rset.xdistance:Value()) and hero.team == TEAM_ENEMY then
-                        countEnemies = countEnemies + 1
-                    end
-                end
-                if countEnemies >= Menu.rset.xcount:Value() then
-                    result = AIO:Cast(HK_R)
-                end
-            end
-        end
-        -- r
- 
-        -- e
-        if not result and GG_Spell:IsReady(_E, {q = 0.75, w = 0, e = 0.75, r = 0}) then
-            
-            -- e antiMelee
-            if Menu.eset.melee:Value() then
-                local meleeHeroes = {}
-                for i = 1, Game.HeroCount() do
-                    local hero = Game.Hero(i)
-                    if AIO:IsValidHero(hero) and hero.team == TEAM_ENEMY and hero.range < 400 and Menu.eset.useonmelee[hero.charName] and Menu.eset.useonmelee[hero.charName]:Value() and hero.distance < hero.range + myHero.boundingRadius + hero.boundingRadius then
-                        _G.table.insert(meleeHeroes, hero)
-                    end
-                end
-                if #meleeHeroes > 0 then
-                    _G.table.sort(meleeHeroes, function(a, b) return a.health + (a.totalDamage * 2) + (a.attackSpeed * 100) > b.health + (b.totalDamage * 2) + (b.attackSpeed * 100) end)
-                    local meleeTarget = meleeHeroes[1]
-                    if SDKMath:IsFacing(meleeTarget, myHero, 60) then
-                        AIO:Cast(HK_E, meleeTarget)
-                        result = true
-                    end
-                end
-            end
-            -- e antiMelee
-            
-            -- e antiDash
-            if not result and Menu.eset.dash:Value() then
-                for i = 1, Game.HeroCount() do
-                    local hero = Game.Hero(i)
-                    if AIO:IsValidHero(hero) and hero.team == TEAM_ENEMY then
-                        local path = hero.pathing
-                        if path and path.isDashing and hero.posTo and myHero.pos:DistanceTo(hero.posTo) < 500 and SDKMath:IsFacing(hero, myHero, 75) then
-                            local extpos = hero.pos:Extended(hero.posTo, path.dashSpeed * (0.07 + _G.LATENCY))
-                            if myHero.pos:DistanceTo(extpos) < 550 + myHero.boundingRadius + hero.boundingRadius then
-                                AIO:Cast(HK_E, hero)
-                                result = true
-                                break
-                            end
-                        end
-                    end
-                end
-            end
-            -- e antiDash
- 
-            -- e stun
-            if not result and ((GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.eset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.eset.harass:Value())) then
-                local eRange = self.EData.Range + myHero.boundingRadius
-                for i = 1, Game.HeroCount() do
-                    local hero = Game.Hero(i)
-                    if AIO:IsValidHero(hero, eRange + hero.boundingRadius, true) and hero.team == TEAM_ENEMY then
-                        if Menu.eset.useonstun[hero.charName] and Menu.eset.useonstun[hero.charName]:Value() and AIO:CheckWall(myHero.pos, __Path:GetPrediction(hero, myHero, self.EData.Delay + _G.LATENCY, self.EData.Speed), 475) and AIO:CheckWall(myHero.pos, hero.pos, 475) then
- 
-                            result = AIO:Cast(HK_E, hero)
-                            break
-                        end
-                    end
-                end
-            end
-            -- e stun
-        end
-        -- e
-        
-        -- q
-        if not result and GG_Spell:IsReady(_Q, {q = 0.5, w = 0, e = 0.5, r = 0}) then
-            
-            -- Is Attacking
-            local isAttacking = false
-            if GG_Orbwalker:IsAutoAttacking() then
-                isAttacking = true
-            end
-            -- Can Attack
-            local AATarget = GG_Target:GetComboTarget()
-            if AATarget and not GG_Orbwalker.IsNone and GG_Orbwalker:CanAttack() then
-                isAttacking = true
-            end
-            --Q
-            if not isAttacking and ((GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Menu.qset.combo:Value()) or (GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] and Menu.qset.harass:Value())) then
-                local mePos = myHero.pos
-                local extended = myHero.pos:Extended(_G.mousePos, 300)
-                local meRange = myHero.range + myHero.boundingRadius
-                for i = 1, Game.HeroCount() do
-                    local hero = Game.Hero(i)
-                    if AIO:IsValidHeroAA(hero) and hero.team == TEAM_ENEMY and extended:DistanceTo(hero.pos) < meRange + hero.boundingRadius - 35 then
-                        result = AIO:Cast(HK_Q)
-                        break
-                    end
-                end
-            end
-            
-        end
-        -- q
-        
-        return result
-    end
- 
-    function Vayne:Interrupter()
-        SDKInterrupter = AIO:Interrupter()
-        SDKInterrupter:OnInterrupt(function(enemy)
-            if Menu.eset.interrupt:Value() and GG_Spell:IsReady(_E, {q = 0.75, w = 0, e = 0.5, r = 0}) and enemy.pos:ToScreen().onScreen and enemy.distance < 550 + myHero.boundingRadius + enemy.boundingRadius - 35 then
-                AIO:Cast(HK_E, enemy)
-            end
-        end)
-    end
- 
-    function Vayne:CanAttack()
-        if not GG_Spell:CanTakeAction({q = 0.3, w = 0, e = 0.5, r = 0}) then
-            return false
-        end
-        return true
-    end
- 
-    function Vayne:CanMove()
-        if not GG_Spell:CanTakeAction({q = 0.2, w = 0, e = 0.4, r = 0}) then
-            return false
-        end
-        return true
     end
 end
  
@@ -2310,8 +2354,11 @@ if Champion ~= nil then
             end
         end
         self.Timer = Game.Timer()
+        self.Pos = myHero.pos
+        self.BoundingRadius = myHero.boundingRadius
+        self.Range = myHero.range + self.BoundingRadius
         self.ManaPercent = 100 * myHero.mana / myHero.maxMana
-        self.EnemyHeroes = GG_Object:GetEnemyHeroes(false, false, true, true)
+        self.EnemyHeroes = GG_Object:GetEnemyHeroes(false, false, true)
         Utils.CachedDistance = {}
     end
     Callback.Add('Load', function()
@@ -2322,6 +2369,7 @@ if Champion ~= nil then
         GG_Spell = _G.SDK.Spell
         GG_Object = _G.SDK.ObjectManager
         GG_Attack = _G.SDK.Attack
+        GG_Data = _G.SDK.Data
         GG_Orbwalker:CanAttackEvent(Champion.CanAttackCb)
         GG_Orbwalker:CanMoveEvent(Champion.CanMoveCb)
         if Champion.OnLoad then
