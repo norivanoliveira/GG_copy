@@ -138,12 +138,12 @@ end
 
 local function GetControlPos(a, b, c)
     local pos
-    if (a and b and c) then
-        pos = Vector(a, b, c)
-    elseif (a and b) then
+    if a and b and c then
+        pos = {x = a, y = b, z = c}
+    elseif a and b then
         pos = {x = a, y = b}
-    elseif (a) then
-        pos = (a.pos ~= nil) and a.pos or Vector(a)
+    elseif a then
+        pos = a.pos or a
     end
     return pos
 end
@@ -3695,11 +3695,16 @@ end
 do
     local AttackKey = Menu.Main.AttackTKey
     local FastKiting = Menu.Orbwalker.General.FastKiting
-    _G.Control.Flash = function(key, pos)
-        Cursor:Add(key, pos)
-        return true
+    _G.Control.Flash = function(key, a)
+        local pos = GetControlPos(a)
+        if pos then
+            Cursor:Add(key, pos)
+            return true
+        end
+        return false
     end
-    _G.Control.Evade = function(pos)
+    _G.Control.Evade = function(a)
+        local pos = GetControlPos(a)
         if pos then
             Cursor:Add(MOUSEEVENTF_RIGHTDOWN, pos)
             return true
@@ -3707,21 +3712,29 @@ do
         return false
     end
     _G.Control.Attack = function(target)
-        if target then
-            Cursor:Add(AttackKey:Key(), target.pos or target, true)
+        if target and target.pos then
+            Cursor:Add(AttackKey:Key(), target, true)
             if FastKiting:Value() then
                 Movement.MoveTimer = 0
             end
             return true
         end
+        print('control.attack -> target nil')
         return false
     end
     _G.Control.CastSpell = function(key, a, b, c)
         local pos = GetControlPos(a, b, c)
         if pos then
-            Cursor:Add(key, pos)
-        else
+            if a.pos then
+                Cursor:Add(key, a, true)
+            else
+                Cursor:Add(key, pos, false)
+            end
+        elseif a == nil then
             CastKey:Add(key)
+        end
+        if a and not pos then
+            print('controll.castspell -> pos nil')
         end
         return true
     end
@@ -3737,9 +3750,12 @@ do
         end
         local pos = GetControlPos(a, b, c)
         if pos then
-            Cursor:Add(MOUSEEVENTF_RIGHTDOWN, pos)
-        else
+            Cursor:Add(MOUSEEVENTF_RIGHTDOWN, pos, false)
+        elseif a == nil then
             CastKey:Add(MOUSEEVENTF_RIGHTDOWN)
+        end
+        if a and not pos then
+            --print('move pos nil')
         end
         Movement.MoveTimer = GetTickCount() + Movement:GetHumanizer()
         Orbwalker.CanHoldPosition = true
@@ -3838,13 +3854,14 @@ do
         self.Step = 0
         self.Key = nil
         self.MouseKey = false
+        self.WndPassed = false
         self.CastPos = nil
         self.CursorPos = nil
         self.Callbacks = {}
         self.Timer = 0
     end
     -- add
-    function Cursor:Add(key, castpos, isattack)
+    function Cursor:Add(key, castpos, isTarget)
         local ok = true
         for i = 1, #self.Callbacks do
             if key == self.Callbacks[i][1] then
@@ -3854,58 +3871,68 @@ do
         if not ok then
             return
         end
-        if castpos.x and castpos.y then
+        local pos = isTarget and castpos.pos or castpos
+        local z = pos.z
+        if pos.x and z and z > 0 then
+            pos = Vector(pos.x, pos.y or 0, pos.z):To2D()
+        end
+        if not pos.onScreen then
+            print('cursor -> pos not on screen')
+            return
+        end
+        if pos.x and pos.y then
             local mouseKey = key == MOUSEEVENTF_RIGHTDOWN and WM_RBUTTONUP or false
-            if isattack then
-                table_insert(self.Callbacks, {key, mouseKey, Vector(castpos.x, castpos.y, castpos.z + 50):To2D(), true})
-            elseif castpos.z then
-                table_insert(self.Callbacks, {key, mouseKey, castpos:To2D(), true})
-            else
-                table_insert(self.Callbacks, {key, mouseKey, castpos, true})
-            end
+            table_insert(self.Callbacks, {key, mouseKey, isTarget and castpos or pos, isTarget})
             if self.Step == 0 then
                 --if #self.Callbacks > 1 then print("Cursor.Add | not good | step 0 | #cb > 1") end
                 self.CursorPos = _G.cursorPos
+                self.WndPassed = false
                 self.Key = self.Callbacks[1][1]
                 self.MouseKey = self.Callbacks[1][2]
                 self.CastPos = self.Callbacks[1][3]
-                self.IsAttack = self.Callbacks[1][4]
+                self.IsTarget = self.Callbacks[1][4]
                 self:Step_1_SetToCastPos()
             end
+            return
         end
+        print('cursor -> !x or !y')
     end
     -- on tick
     function Cursor:OnTick()
+        if self.Step > 0 then
+            if GetTickCount() > self.Timer + 100 then
+                print("cursor crash prevented")
+                self.Callbacks = {}
+                self:Step_3_SetToCursorPos()
+                return
+            end
+        end
         if self.Step == 0 then
-            --if #self.Callbacks > 0 then print("Cursor.OnTick | not good | step 0 | #cb > 0") end
+            if #self.Callbacks > 0 then print("Cursor.OnTick | not good | step 0 | #cb > 0") end
             return
         end
         if self.Step == 1 then
             self:Step_1_SetToCastPos()
-            --print("Cursor.OnTick | step 1")
+            print("Cursor.OnTick | step 1")
             return
         end
         if self.Step == 2 then
-            self:Step_2_ReleaseKey()
+            self:Step_2_NewCallback()
             --print("Cursor.OnTick | step 2")
             return
         end
         if self.Step == 3 then
-            self:Step_3_NewCallback()
+            self:Step_3_SetToCursorPos()
             --print("Cursor.OnTick | step 3")
-            return
-        end
-        if self.Step == 4 then
-            self:Step_4_SetToCursorPos()
-            --print("Cursor.OnTick | step 4")
             return
         end
     end
     -- on wnd msg
     function Cursor:WndMsg(msg, wParam)
-        if (self.IsAttack and self.Step == 1) or self.Step == 2 then
+        if not self.WndPassed and self.Step == 1 then
             if (self.MouseKey and msg == self.MouseKey) or (not self.MouseKey and wParam == self.Key) then
-                self:Step_3_NewCallback()
+                self.WndPassed = true
+                self:Step_2_NewCallback()
             end
         end
     end
@@ -3919,29 +3946,12 @@ do
     function Cursor:Step_1_SetToCastPos()
         self.Step = 1
         self.Timer = GetTickCount()
-        local castPos = self.CastPos
-        local currentCursorPos = _G.cursorPos
-        local dx = currentCursorPos.x - castPos.x
-        local dy = currentCursorPos.y - castPos.y
-        Control.SetCursorPos(castPos.x, castPos.y)
-        if self.IsAttack then
-            if self.MouseKey then
-                Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
-                Control.mouse_event(MOUSEEVENTF_RIGHTUP)
-            else
-                Control.KeyDown(self.Key)
-                Control.KeyUp(self.Key)
-            end
-            return
+        if self.IsTarget then
+            local pos = self.CastPos.pos:To2D()
+            Control.SetCursorPos(pos.x, pos.y)
+        else
+            Control.SetCursorPos(self.CastPos.x, self.CastPos.y)
         end
-        if dx * dx + dy * dy < 2500 then
-            self:Step_2_ReleaseKey()
-            return
-        end
-    end
-    -- step 2 | release key
-    function Cursor:Step_2_ReleaseKey()
-        self.Step = 2
         if self.MouseKey then
             Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
             Control.mouse_event(MOUSEEVENTF_RIGHTUP)
@@ -3950,26 +3960,27 @@ do
             Control.KeyUp(self.Key)
         end
     end
-    -- step 3 | new callback
-    function Cursor:Step_3_NewCallback()
-        self.Step = 3
+    -- step 2 | new callback
+    function Cursor:Step_2_NewCallback()
+        self.Step = 2
         if GetTickCount() < self.Timer + 30 then
             return
         end
         table_remove(self.Callbacks, 1)
         if #self.Callbacks > 0 then
+            self.WndPassed = false
             self.Key = self.Callbacks[1][1]
             self.MouseKey = self.Callbacks[1][2]
             self.CastPos = self.Callbacks[1][3]
-            self.IsAttack = self.Callbacks[1][4]
+            self.IsTarget = self.Callbacks[1][4]
             self:Step_1_SetToCastPos()
             return
         end
-        self:Step_4_SetToCursorPos()
+        self:Step_3_SetToCursorPos()
     end
-    -- step 4 | set to cursor
-    function Cursor:Step_4_SetToCursorPos()
-        self.Step = 4
+    -- step 3 | set to cursor
+    function Cursor:Step_3_SetToCursorPos()
+        self.Step = 3
         local cursorPos = self.CursorPos
         local currentCursorPos = _G.cursorPos
         local dx = currentCursorPos.x - cursorPos.x
@@ -3977,10 +3988,11 @@ do
         Control.SetCursorPos(cursorPos.x, cursorPos.y)
         if dx * dx + dy * dy < 2500 then
             if #self.Callbacks > 0 then
+                self.WndPassed = false
                 self.Key = self.Callbacks[1][1]
                 self.MouseKey = self.Callbacks[1][2]
                 self.CastPos = self.Callbacks[1][3]
-                self.IsAttack = self.Callbacks[1][4]
+                self.IsTarget = self.Callbacks[1][4]
                 self:Step_1_SetToCastPos()
                 return
             end
