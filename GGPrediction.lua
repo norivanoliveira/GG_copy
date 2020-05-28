@@ -290,6 +290,21 @@ Immobile =
         end
         return angle
     end
+    function Math:CircleCircleIntersection(center1, center2, radius1, radius2)
+        local result = {}
+        local D = self:GetDistance(center1, center2)
+        if D > radius1 + radius2 or D <= math_abs(radius1 - radius2) then
+            return result
+        end
+        local A = (radius1 * radius1 - radius2 * radius2 + D * D) / (2 * D)
+        local H = math_sqrt(radius1 * radius1 - A * A)
+        local Direction = self:Normalized(center2, center1)
+        local PA = self:Extended(center1, Direction, A)
+        local DirectionPerpendicular = self:Perpendicular(Direction)
+        table_insert(result, self:Extended(PA, DirectionPerpendicular, H))
+        table_insert(result, self:Extended(PA, DirectionPerpendicular, -H))
+        return result
+    end
     
     Path = {}
     function Path:GetLenght(path)
@@ -714,6 +729,7 @@ function Prediction:SpellPrediction(args)
             self.CastPosition = Math:Extended(self.MyHeroPos, Math:Normalized(self.CastPosition, self.MyHeroPos), 800)
         end
         self.CastPosition.y = 0
+        self.UnitPosition.y = 0
         return true
     end
     function c:GetPrediction(target, source)
@@ -762,4 +778,13 @@ function GGPrediction:GetImmobileDuration(unit)
 end
 function GGPrediction:FindAngle(p1, center, p2)
     return Math:FindAngle(p1, center, p2)
+end
+function GGPrediction:GetDistance(p1, p2)
+    return Math:GetDistance(p1, p2)
+end
+function GGPrediction:IsInRange(p1, p2, range)
+    return Math:IsInRange(p1, p2, range)
+end
+function GGPrediction:CircleCircleIntersection(center1, center2, radius1, radius2)
+    return Math:CircleCircleIntersection(center1, center2, radius1, radius2)
 end
