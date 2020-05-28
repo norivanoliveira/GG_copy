@@ -7,7 +7,7 @@ require('GGPrediction')
 
 local Menu, Utils, Champion
 
-local GG_Target, GG_Orbwalker, GG_Buff, GG_Damage, GG_Spell, GG_Object, GG_Attack, GG_Data
+local GG_Target, GG_Orbwalker, GG_Buff, GG_Damage, GG_Spell, GG_Object, GG_Attack, GG_Data, GG_Cursor
 
 local HITCHANCE_NORMAL = 2
 local HITCHANCE_HIGH = 3
@@ -1420,6 +1420,9 @@ if Champion == nil and myHero.charName == 'Vayne' then
     
     -- q logic
     function Champion:QLogic()
+        if GG_Cursor.Step > 0 then
+            return
+        end
         if not GG_Spell:IsReady(_Q, {q = 1, w = 0, e = 0.5, r = 0}) then
             return
         end
@@ -1428,11 +1431,21 @@ if Champion == nil and myHero.charName == 'Vayne' then
     
     -- q combo
     function Champion:QCombo()
+        if GG_Cursor.Step > 0 then
+            return
+        end
         if not ((self.IsCombo and Menu.q_combo:Value()) or (self.IsHarass and Menu.q_harass:Value())) then
             return
         end
-        local enemies = Utils:GetEnemyHeroes(self.Range + 30)
-        if #enemies == 0 then
+        local enemies = GG_Object:GetEnemyHeroes(false, false, true, true)
+        local enemiesaa = {}
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            if enemy:GetDistance() < self.Range + enemy.boundingRadius - 35 then
+                table_insert(enemiesaa, enemy)
+            end
+        end
+        if #enemiesaa == 0 then
             local enemies2 = Utils:GetEnemyHeroes(self.Range + 300)
             local pos = Vector(_G.mousePos)
             if self.Pos:DistanceTo(pos) >= 300 then
@@ -1447,23 +1460,33 @@ if Champion == nil and myHero.charName == 'Vayne' then
             end
             return
         end
-        if self.AttackTarget then
-            local holdDistance = Menu.q_xdistance:Value()
-            local pos = GGPrediction:CircleCircleIntersection(self.Pos, self.AttackTarget:GetPos(), 300, holdDistance)
-            if #pos > 0 and (GG_Object:IsFacing(self.AttackTarget:GetObject(), myHero, 60) or self.AttackTarget:GetDistance() < holdDistance) then
-                if GGPrediction:GetDistance(pos[1], _G.mousePos) < GGPrediction:GetDistance(pos[2], _G.mousePos) then
-                    Utils:Cast(HK_Q, {x = pos[1].x, y = 0, z = pos[1].z})
-                else
-                    Utils:Cast(HK_Q, {x = pos[2].x, y = 0, z = pos[2].z})
-                end
-            else
-                Utils:Cast(HK_Q)
+        local distance = 1000
+        local closestEnemy = nil
+        for i = 1, #enemiesaa do
+            local enemy = enemiesaa[i]
+            if enemy:GetDistance() < distance then
+                distance = enemy:GetDistance()
+                closestEnemy = enemy
             end
+        end
+        local holdDistance = Menu.q_xdistance:Value()
+        local pos = GGPrediction:CircleCircleIntersection(self.Pos, closestEnemy:GetPos(), 300, holdDistance)
+        if #pos > 0 and (GG_Object:IsFacing(closestEnemy:GetObject(), myHero, 60) or closestEnemy:GetDistance() < holdDistance) then
+            if GGPrediction:GetDistance(pos[1], _G.mousePos) < GGPrediction:GetDistance(pos[2], _G.mousePos) then
+                Utils:Cast(HK_Q, {x = pos[1].x, y = 0, z = pos[1].z})
+            else
+                Utils:Cast(HK_Q, {x = pos[2].x, y = 0, z = pos[2].z})
+            end
+        else
+            Utils:Cast(HK_Q)
         end
     end
     
     -- e logic
     function Champion:ELogic()
+        if GG_Cursor.Step > 0 then
+            return
+        end
         if not GG_Spell:IsReady(_E, {q = 0.5, w = 0, e = 1, r = 0}) then
             return
         end
@@ -1475,6 +1498,9 @@ if Champion == nil and myHero.charName == 'Vayne' then
     
     -- e combo
     function Champion:ECombo()
+        if GG_Cursor.Step > 0 then
+            return
+        end
         if not ((self.IsCombo and Menu.e_combo:Value()) or (self.IsHarass and Menu.e_harass:Value())) then
             return
         end
@@ -1496,6 +1522,9 @@ if Champion == nil and myHero.charName == 'Vayne' then
     
     -- e anti melee
     function Champion:EAntimelee()
+        if GG_Cursor.Step > 0 then
+            return
+        end
         if not Menu.e_antimelee_enabled:Value() then
             return
         end
@@ -1524,6 +1553,9 @@ if Champion == nil and myHero.charName == 'Vayne' then
     
     -- e anti dash
     function Champion:EAntiDash()
+        if GG_Cursor.Step > 0 then
+            return
+        end
         if not Menu.e_extra_antidash:Value() then
             return
         end
@@ -1542,6 +1574,9 @@ if Champion == nil and myHero.charName == 'Vayne' then
     
     -- e interrupter
     function Champion:EInterrupter()
+        if GG_Cursor.Step > 0 then
+            return
+        end
         if not Menu.e_extra_interrupter:Value() then
             return
         end
@@ -2370,6 +2405,7 @@ if Champion ~= nil then
         GG_Object = _G.SDK.ObjectManager
         GG_Attack = _G.SDK.Attack
         GG_Data = _G.SDK.Data
+        GG_Cursor = _G.SDK.Cursor
         GG_Orbwalker:CanAttackEvent(Champion.CanAttackCb)
         GG_Orbwalker:CanMoveEvent(Champion.CanMoveCb)
         if Champion.OnLoad then
