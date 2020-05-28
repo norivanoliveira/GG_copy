@@ -4,7 +4,7 @@ end
 
 local Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, CastKey, Cursor, Health, Attack
 
-local Version = '1.33'
+local Version = '1.34'
 local myHero = _G.myHero
 local os = _G.os
 local Game = _G.Game
@@ -224,6 +224,8 @@ do
                     members[k] = _o.attackData
                 elseif k == 'pathing' then
                     members[k] = _o.pathing
+                elseif k == 'posTo' then
+                    members[k] = _o.posTo
                 else
                     members[k] = _o[k]
                 end
@@ -239,14 +241,12 @@ do
                 if count and count >= 0 and count < 10000 then
                     local b, b2 = nil, nil
                     local buffs = {}
-                    local index = 0
                     for i = 0, count do
                         b = _o:GetBuff(i)
                         if b then
                             b2 = Cached:Buff(b)
                             if b2.count > 0 then
-                                index = index + 1
-                                buffs[index] = b2
+                                table_insert(buffs, b2)
                             end
                         end
                     end
@@ -272,6 +272,21 @@ do
         end
         function class:GetItemData(index)
             return _o:GetItemData(index)
+        end
+        function class:GetObject()
+            return _o
+        end
+        function class:GetPos()
+            return _o.pos
+        end
+        function class:GetMS()
+            return _o.ms
+        end
+        function class:GetPosTo()
+            return _o.posTo
+        end
+        function class:GetDistance()
+            return _o.distance
         end
         setmetatable(class, metatable)
         return class
@@ -302,6 +317,8 @@ do
                     members[k] = _o.attackData
                 elseif k == 'pathing' then
                     members[k] = _o.pathing
+                elseif k == 'posTo' then
+                    members[k] = _o.posTo
                 else
                     members[k] = _o[k]
                 end
@@ -317,14 +334,12 @@ do
                 if count and count >= 0 and count < 10000 then
                     local b, b2 = nil, nil
                     local buffs = {}
-                    local index = 0
                     for i = 0, count do
                         b = _o:GetBuff(i)
                         if b then
                             b2 = Cached:Buff(b)
                             if b2.count > 0 then
-                                index = index + 1
-                                buffs[index] = b2
+                                table_insert(buffs, b2)
                             end
                         end
                     end
@@ -419,12 +434,10 @@ do
             self.HeroesSaved = true
             local count = Game.HeroCount()
             if count and count > 0 and count < 1000 then
-                local index = 0
                 for i = 1, count do
                     local o = Game.Hero(i)
                     if o and o.valid and o.visible and o.isTargetable and not o.dead then
-                        index = index + 1
-                        self.Heroes[index] = self:Hero(o)
+                        table_insert(self.Heroes, self:Hero(o))
                     end
                 end
             end
@@ -437,12 +450,10 @@ do
             self.MinionsSaved = true
             local count = Game.MinionCount()
             if count and count > 0 and count < 1000 then
-                local index = 0
                 for i = 1, count do
                     local o = Game.Minion(i)
                     if o and o.valid and o.visible and o.isTargetable and not o.dead and not o.isImmortal then
-                        index = index + 1
-                        self.Minions[index] = self:Minion(o)
+                        table_insert(self.Minions, self:Minion(o))
                     end
                 end
             end
@@ -455,12 +466,10 @@ do
             self.TurretsSaved = true
             local count = Game.TurretCount()
             if count and count > 0 and count < 1000 then
-                local index = 0
                 for i = 1, count do
-                    local obj = Game.Turret(i)
-                    if obj and obj.valid and obj.visible and obj.isTargetable and not obj.dead and not obj.isImmortal then
-                        index = index + 1
-                        self.Turrets[index] = obj
+                    local o = Game.Turret(i)
+                    if o and o.valid and o.visible and o.isTargetable and not o.dead and not o.isImmortal then
+                        table_insert(self.Turrets, self:Turret(o))
                     end
                 end
             end
@@ -473,12 +482,10 @@ do
             self.WardsSaved = true
             local count = Game.WardCount()
             if count and count > 0 and count < 1000 then
-                local index = 0
                 for i = 1, count do
-                    local obj = Game.Ward(i)
-                    if obj and obj.valid and obj.visible and obj.isTargetable and not obj.dead and not obj.isImmortal then
-                        index = index + 1
-                        self.Wards[index] = obj
+                    local o = Game.Ward(i)
+                    if o and o.valid and o.visible and o.isTargetable and not o.dead and not o.isImmortal then
+                        table_insert(self.Wards, self:Ward(o))
                     end
                 end
             end
@@ -493,14 +500,12 @@ do
             if count and count >= 0 and count < 10000 then
                 local b, b2 = nil, nil
                 local buffs = {}
-                local index = 0
                 for i = 0, count do
                     b = o:GetBuff(i)
                     if b then
                         b2 = self:Buff(b)
                         if b2.count > 0 then
-                            index = index + 1
-                            buffs[index] = b2
+                            table_insert(buffs, b2)
                         end
                     end
                 end
@@ -1896,7 +1901,7 @@ do
     end
     -- on spell cast
     function Spell:OnSpellCast(cb)
-        self.OnSpellCastCb[#self.OnSpellCastCb + 1] = cb
+        table_insert(self.OnSpellCastCb, cb)
     end
     -- wnd msg
     function Spell:WndMsg(msg, wParam)
@@ -2059,7 +2064,7 @@ do
             if Game.CanUseSpell(spell) ~= 0 and myHero:GetSpellData(spell).currentCd > 0.5 then
                 return
             end
-            local targets = Object:GetEnemyMinions(self.Range, false, true, true)
+            local targets = Object:GetEnemyMinions(self.Range, false, true)
             for i = 1, #targets do
                 local target = targets[i]
                 table_insert(self.FarmMinions, self:SetLastHitable(target, self.Delay + target.distance / self.Speed + Data:GetLatency(), getDamage()))
@@ -2216,25 +2221,31 @@ do
             [30] = self.MenuCleanseBuffs.Knockback:Value(),
             [25] = self.MenuCleanseBuffs.Blind:Value(),
             [31] = self.MenuCleanseBuffs.Disarm:Value(),
-            [10] = self.MenuCleanseBuffs.Slow:Value(),
         }
+        local casted = false
         local buffs = Buff:GetBuffs(myHero)
-        for name, buff in pairs(buffs) do
-            local buffType = buff.Type
-            local buffDuration = buff.Duration
-            if buffType == 10 then
-                if menuBuffs[buffType] and buffDuration >= 1 and myHero.ms <= 200 then
-                    Control.CastSpell(hk)
-                    self.CleanseStartTime = GetTickCount()
-                    return true
-                end
-            elseif menuBuffs[buffType] and buffDuration >= menuDuration then
+        for i = 1, #buffs do
+            local buff = buffs[i]
+            if buff.duration >= menuDuration and menuBuffs[buff.type] then
+                casted = true
                 Control.CastSpell(hk)
                 self.CleanseStartTime = GetTickCount()
-                return true
+                break
             end
         end
-        return false
+        if not casted and self.MenuCleanseBuffs.Slow:Value() then
+            local ms = myHero.ms
+            for i = 1, #buffs do
+                local buff = buffs[i]
+                if buff.type == 10 and buff.duration >= 1 and ms <= 200 then
+                    casted = true
+                    Control.CastSpell(hk)
+                    self.CleanseStartTime = GetTickCount()
+                    break
+                end
+            end
+        end
+        return casted
     end
     -- init call
     SummonerSpell:__init()
@@ -2440,24 +2451,31 @@ do
             [30] = self.MenuQssBuffs.Knockback:Value(),
             [25] = self.MenuQssBuffs.Blind:Value(),
             [31] = self.MenuQssBuffs.Disarm:Value(),
-            [10] = self.MenuQssBuffs.Slow:Value(),
         }
-        for name, buff in pairs(Buff:GetBuffs(myHero)) do
-            local buffType = buff.Type
-            local buffDuration = buff.Duration
-            if buffType == 10 then
-                if menuBuffs[buffType] and buffDuration >= 1 and myHero.ms <= 200 then
-                    Control.CastSpell(self.Hotkey)
-                    self.CleanseStartTime = GetTickCount()
-                    return true
-                end
-            elseif menuBuffs[buffType] and buffDuration >= menuDuration then
+        local casted = false
+        local buffs = Buff:GetBuffs(myHero)
+        for i = 1, #buffs do
+            local buff = buffs[i]
+            if buff.duration >= menuDuration and menuBuffs[buff.type] then
+                casted = true
                 Control.CastSpell(self.Hotkey)
                 self.CleanseStartTime = GetTickCount()
-                return true
+                break
             end
         end
-        return false
+        if not casted and self.MenuQssBuffs.Slow:Value() then
+            local ms = myHero.ms
+            for i = 1, #buffs do
+                local buff = buffs[i]
+                if buff.type == 10 and buff.duration >= 1 and ms <= 200 then
+                    casted = true
+                    Control.CastSpell(self.Hotkey)
+                    self.CleanseStartTime = GetTickCount()
+                    break
+                end
+            end
+        end
+        return casted
     end
     -- has item
     function Item:HasItem
@@ -2584,75 +2602,36 @@ do
     function Object:OnEnemyHeroLoad(cb)
         table_insert(self.EnemyHeroCb, cb)
     end
+    -- is facing
+    function Object:IsFacing(source, target, angle)
+        return IsFacing(source, target, angle)
+    end
+    -- is valid
+    function Object:IsValid(unit)
+        return unit and unit.valid and unit.visible and unit.isTargetable and not unit.dead
+    end
     -- is hero immortal
-    function Object:IsHeroImmortal(unit, jaxE)
+    function Object:IsHeroImmortal(unit, isAttack)
         local hp
         hp = 100 * (unit.health / unit.maxHealth)
         self.UndyingBuffs['kindredrnodeathbuff'] = hp < 10
         self.UndyingBuffs['ChronoShift'] = hp < 15
         self.UndyingBuffs['chronorevive'] = hp < 15
         self.UndyingBuffs['UndyingRage'] = hp < 15
-        self.UndyingBuffs['JaxCounterStrike'] = jaxE
+        self.UndyingBuffs['JaxCounterStrike'] = isAttack
         for buffName, isActive in pairs(self.UndyingBuffs) do
             if isActive and Buff:HasBuff(unit, buffName) then
                 return true
             end
         end
-        --[[ anivia passive, olaf R, ... if unit.isImmortal and not Buff:HasBuff(unit, 'willrevive') and not Buff:HasBuff(unit, 'zacrebirthready') then return true end--]]
+        -- anivia passive, olaf R, ... if unit.isImmortal and not Buff:HasBuff(unit, 'willrevive') and not Buff:HasBuff(unit, 'zacrebirthready') then return true end
         return false
     end
-    -- is valid
-    function Object:IsValid(obj, type, visible, immortal, jaxE)
-        if obj == nil then
-            return false
-        end
-        local objType
-        objType = obj.type
-        if objType == nil or (type and type ~= objType) then
-            return false
-        end
-        if (objType == Obj_AI_Hero or objType == Obj_AI_Minion or objType == Obj_AI_Turret or objType == Obj_AI_Barracks or objType == Obj_AI_Nexus) and not obj.valid then
-            return false
-        end
-        if not obj.visible then
-            return false
-        end
-        if obj.dead or not obj.isTargetable then
-            return false
-        end
-        if immortal then
-            if objType == Obj_AI_Hero then
-                if self:IsHeroImmortal(obj, jaxE) then
-                    return false
-                end
-            elseif obj.isImmortal then
-                return false
-            end
-        end
-        return true
-    end
-    -- is hero valid
-    function Object:IsHeroValid(obj, immortal, jaxE)
-        if immortal and self:IsHeroImmortal(obj, jaxE) then
-            return false
-        end
-        return true
-    end
-    -- get objects from table
-    function Object:GetObjectsFromTable(t, func)
-        local result = {}
-        for i, obj in pairs(t) do
-            if func(obj) then
-                table_insert(result, obj)
-            end
-        end
-        return result
-    end
     -- get heroes
-    function Object:GetHeroes(range, bbox, visible, immortal, jaxE, func)
+    function Object:GetHeroes(range, bbox, immortal, isAttack)
         local result = {}
-        local a = self:GetEnemyHeroes(range, bbox, visible, immortal, jaxE, func)
-        local b = self:GetAllyHeroes(range, bbox, visible, immortal, jaxE, func)
+        local a = self:GetEnemyHeroes(range, bbox, immortal, isAttack)
+        local b = self:GetAllyHeroes(range, bbox, immortal, isAttack)
         for i = 1, #a do
             table_insert(result, a[i])
         end
@@ -2662,13 +2641,13 @@ do
         return result
     end
     -- get enemy heroes
-    function Object:GetEnemyHeroes(range, bbox, visible, immortal, jaxE, func)
+    function Object:GetEnemyHeroes(range, bbox, immortal, isAttack)
         local result = {}
         local cachedHeroes = Cached:GetHeroes()
         for i = 1, #cachedHeroes do
             local hero = cachedHeroes[i]
-            if self:IsHeroValid(hero, immortal, jaxE) and hero.isEnemy then
-                if (not range or hero.distance < range + (bbox and hero.boundingRadius or 0)) and (not func or func(hero)) then
+            if hero.isEnemy and (not immortal or not self:IsHeroImmortal(hero, isAttack)) then
+                if not range or hero.distance < range + (bbox and hero.boundingRadius or 0) then
                     table_insert(result, hero)
                 end
             end
@@ -2676,43 +2655,40 @@ do
         return result
     end
     -- get ally heroes
-    function Object:GetAllyHeroes(range, bbox, visible, immortal, jaxE, func)
+    function Object:GetAllyHeroes(range, bbox, immortal, isAttack)
         local result = {}
-        local cachedheroes = Cached:GetHeroes()
-        for i = 1, #cachedheroes do
-            local obj = cachedheroes[i]
-            if self:IsHeroValid(obj, immortal, jaxE) and obj.isAlly then
-                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
-                    table_insert(result, obj)
+        local cachedHeroes = Cached:GetHeroes()
+        for i = 1, #cachedHeroes do
+            local hero = cachedHeroes[i]
+            if hero.isAlly and (not immortal or not self:IsHeroImmortal(hero, isAttack)) then
+                if not range or hero.distance < range + (bbox and hero.boundingRadius or 0) then
+                    table_insert(result, hero)
                 end
             end
         end
         return result
     end
     -- get minions
-    function Object:GetMinions(range, bbox, visible, immortal, func)
+    function Object:GetMinions(range, bbox, immortal)
         local result = {}
-        local a = self:GetEnemyMinions(range, bbox, visible, immortal, func)
-        local b = self:GetAllyMinions(range, bbox, visible, immortal, func)
-        local index = 0
+        local a = self:GetEnemyMinions(range, bbox, immortal)
+        local b = self:GetAllyMinions(range, bbox, immortal)
         for i = 1, #a do
-            index = index + 1
-            result[index] = a[i]
+            table_insert(result, a[i])
         end
         for i = 1, #b do
-            index = index + 1
-            result[index] = b[i]
+            table_insert(result, b[i])
         end
         return result
     end
     -- get enemy minions
-    function Object:GetEnemyMinions(range, bbox, visible, immortal, func)
+    function Object:GetEnemyMinions(range, bbox, immortal)
         local result = {}
         local cachedminions = Cached:GetMinions()
         for i = 1, #cachedminions do
             local obj = cachedminions[i]
-            if obj.isEnemy and obj.team < 300 then
-                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
+            if obj.isEnemy and obj.team < 300 and (not immortal or not obj.isImmortal) then
+                if not range or obj.distance < range + (bbox and obj.boundingRadius or 0) then
                     table_insert(result, obj)
                 end
             end
@@ -2720,13 +2696,13 @@ do
         return result
     end
     -- get monsters
-    function Object:GetMonsters(range, bbox, visible, immortal, func)
+    function Object:GetMonsters(range, bbox, immortal)
         local result = {}
         local cachedminions = Cached:GetMinions()
         for i = 1, #cachedminions do
             local obj = cachedminions[i]
-            if obj.isEnemy and obj.team == 300 then
-                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
+            if obj.isEnemy and obj.team == 300 and (not immortal or not obj.isImmortal) then
+                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) then
                     table_insert(result, obj)
                 end
             end
@@ -2734,13 +2710,13 @@ do
         return result
     end
     -- get ally minions
-    function Object:GetAllyMinions(range, bbox, visible, immortal, func)
+    function Object:GetAllyMinions(range, bbox, immortal)
         local result = {}
         local cachedminions = Cached:GetMinions()
         for i = 1, #cachedminions do
             local obj = cachedminions[i]
-            if obj.isAlly and obj.team < 300 then
-                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
+            if obj.isAlly and obj.team < 300 and (not immortal or not obj.isImmortal) then
+                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) then
                     table_insert(result, obj)
                 end
             end
@@ -2748,10 +2724,10 @@ do
         return result
     end
     -- get other minions
-    function Object:GetOtherMinions(range, bbox, visible, immortal, func)
+    function Object:GetOtherMinions(range, bbox, immortal)
         local result = {}
-        local a = self:GetOtherAllyMinions(range, bbox, visible, immortal, func)
-        local b = self:GetOtherEnemyMinions(range, bbox, visible, immortal, func)
+        local a = self:GetOtherAllyMinions(range, bbox, immortal)
+        local b = self:GetOtherEnemyMinions(range, bbox, immortal)
         for i = 1, #a do
             table_insert(result, a[i])
         end
@@ -2761,139 +2737,120 @@ do
         return result
     end
     -- get other ally minions
-    function Object:GetOtherAllyMinions(range, bbox, visible, immortal, func)
+    function Object:GetOtherAllyMinions(range)
         local result = {}
         local cachedwards = Cached:GetWards()
         for i = 1, #cachedwards do
             local obj = cachedwards[i]
-            if obj.isAlly then
-                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
-                    table_insert(result, obj)
-                end
+            if obj.isAlly and (not range or obj.distance < range) then
+                table_insert(result, obj)
             end
         end
         return result
     end
     -- get other enemy minions
-    function Object:GetOtherEnemyMinions(range, bbox, visible, immortal, func)
+    function Object:GetOtherEnemyMinions(range)
         local result = {}
         local cachedwards = Cached:GetWards()
         for i = 1, #cachedwards do
             local obj = cachedwards[i]
-            if obj.isEnemy then
-                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
-                    table_insert(result, obj)
-                end
+            if obj.isEnemy and (not range or obj.distance < range) then
+                table_insert(result, obj)
             end
         end
         return result
     end
     -- get turrets
-    function Object:GetTurrets(range, bbox, visible, immortal, func)
+    function Object:GetTurrets(range, bbox, immortal)
         local result = {}
-        local index = 0
-        local a = self:GetEnemyTurrets(range, bbox, visible, immortal, func)
-        local b = self:GetAllyTurrets(range, bbox, visible, immortal, func)
+        local a = self:GetEnemyTurrets(range, bbox, immortal)
+        local b = self:GetAllyTurrets(range, bbox, immortal)
         for i = 1, #a do
-            index = index + 1
-            result[index] = a[i]
+            table_insert(result, a[i])
         end
         for i = 1, #b do
-            index = index + 1
-            result[index] = b[i]
+            table_insert(result, b[i])
         end
         return result
     end
     -- get enemy turrets
-    function Object:GetEnemyTurrets(range, bbox, visible, immortal, func)
+    function Object:GetEnemyTurrets(range, bbox, immortal)
         local result = {}
-        local index = 0
         local cachedturrets = Cached:GetTurrets()
         for i = 1, #cachedturrets do
             local obj = cachedturrets[i]
-            if obj.isEnemy then
-                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
-                    index = index + 1
-                    result[index] = obj
+            if obj.isEnemy and (not immortal or not obj.isImmortal) then
+                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) then
+                    table_insert(result, obj)
                 end
             end
         end
         return result
     end
     -- get ally turrets
-    function Object:GetAllyTurrets(range, bbox, visible, immortal, func)
+    function Object:GetAllyTurrets(range, bbox, immortal)
         local result = {}
-        local index = 0
         local cachedturrets = Cached:GetTurrets()
         for i = 1, #cachedturrets do
             local obj = cachedturrets[i]
             if obj.isAlly then
-                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
-                    index = index + 1
-                    result[index] = obj
+                if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) then
+                    table_insert(result, obj)
                 end
             end
         end
         return result
     end
     -- get enemy buildings
-    function Object:GetEnemyBuildings(range, bbox, visible, immortal, func)
+    function Object:GetEnemyBuildings(range, bbox)
         local result = {}
-        local index = 0
         for i = 1, #self.EnemyBuildings do
             local obj = self.EnemyBuildings[i]
             if obj and obj.valid and obj.visible and obj.isTargetable and not obj.dead and not obj.isImmortal then
-                if (not range or obj.distance < range + (bbox and Data:GetBuildingBBox(obj) or 0)) and (not func or func(obj)) then
-                    index = index + 1
-                    result[index] = obj
+                if (not range or obj.distance < range + (bbox and Data:GetBuildingBBox(obj) or 0)) then
+                    table_insert(result, obj)
                 end
             end
         end
         return result
     end
     -- get ally buildings
-    function Object:GetAllyBuildings(range, bbox, visible, immortal, func)
+    function Object:GetAllyBuildings(range, bbox)
         local result = {}
-        local index = 0
         for i = 1, #self.AllyBuildings do
             local obj = self.AllyBuildings[i]
             if obj and obj.valid and obj.visible and obj.isTargetable and not obj.dead and not obj.isImmortal then
-                if (not range or obj.distance < range + (bbox and Data:GetBuildingBBox(obj) or 0)) and (not func or func(obj)) then
-                    index = index + 1
-                    result[index] = obj
+                if (not range or obj.distance < range + (bbox and Data:GetBuildingBBox(obj) or 0)) then
+                    table_insert(result, obj)
                 end
             end
         end
         return result
     end
     -- get all structures
-    function Object:GetAllStructures(range, bbox, visible, immortal, func)
+    function Object:GetAllStructures(range, bbox)
         local result = {}
-        local index = 0
         for i = 1, #self.AllyBuildings do
             local obj = self.AllyBuildings[i]
             if obj and obj.valid and obj.visible and obj.isTargetable and not obj.dead and not obj.isImmortal then
-                if (not range or obj.distance < range + (bbox and Data:GetBuildingBBox(obj) or 0)) and (not func or func(obj)) then
-                    index = index + 1
-                    result[index] = obj
+                if (not range or obj.distance < range + (bbox and Data:GetBuildingBBox(obj) or 0)) then
+                    table_insert(result, obj)
                 end
             end
         end
         for i = 1, #self.EnemyBuildings do
             local obj = self.EnemyBuildings[i]
             if obj and obj.valid and obj.visible and obj.isTargetable and not obj.dead and not obj.isImmortal then
-                if (not range or obj.distance < range + (bbox and Data:GetBuildingBBox(obj) or 0)) and (not func or func(obj)) then
-                    index = index + 1
-                    result[index] = obj
+                if (not range or obj.distance < range + (bbox and Data:GetBuildingBBox(obj) or 0)) then
+                    table_insert(result, obj)
                 end
             end
         end
         local cachedturrets = Cached:GetTurrets()
         for i = 1, #cachedturrets do
             local obj = cachedturrets[i]
-            if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) and (not func or func(obj)) then
-                index = index + 1
-                result[index] = obj
+            if (not range or obj.distance < range + (bbox and obj.boundingRadius or 0)) then
+                table_insert(result, obj)
             end
         end
         return result
@@ -3026,11 +2983,13 @@ do
             self.Selected = nil
             local num = 10000000
             local pos = Vector(mousePos)
-            for i, unit in pairs(Object:GetEnemyHeroes(20000, false, true)) do
-                if unit.pos:ToScreen().onScreen then
-                    local distance = pos:DistanceTo(unit.pos)
+            local enemies = Object:GetEnemyHeroes()
+            for i = 1, #enemies do
+                local enemy = enemies[i]
+                if enemy.pos:ToScreen().onScreen then
+                    local distance = pos:DistanceTo(enemy.pos)
                     if distance < 150 and distance < num then
-                        self.Selected = unit
+                        self.Selected = enemy:GetObject()
                         num = distance
                     end
                 end
@@ -3040,7 +2999,7 @@ do
     end
     -- on draw
     function Target:OnDraw()
-        if self.MenuDrawSelected:Value() and Object:IsValid(self.Selected, Obj_AI_Hero, true) then
+        if self.MenuDrawSelected:Value() and Object:IsValid(self.Selected) and not Object:IsHeroImmortal(self.Selected) then
             Draw.Circle(self.Selected.pos, 150, 1, Color.DarkRed)
         end
     end
@@ -3053,43 +3012,44 @@ do
         end
     end
     -- ge target
-    function Target:GetTarget(a, dmgType, bbox, visible, immortal, jaxE, func)
+    function Target:GetTarget(a, dmgType, isAttack)
         a = a or 20000
         dmgType = dmgType or 1
         self.CurrentDamage = dmgType
-        visible = visible == nil and true or visible
-        immortal = immortal == nil and true or immortal
-        
-        local only = self.MenuCheckSelectedOnly:Value()
-        if self.MenuCheckSelected:Value() and Object:IsValid(self.Selected, Obj_AI_Hero, not only and visible, immortal, not only and jaxE) then
+        if self.MenuCheckSelected:Value() and Object:IsValid(self.Selected) and not Object:IsHeroImmortal(self.Selected, isAttack) then
             if type(a) == 'number' then
-                if self.Selected.distance < a + (bbox and self.Selected.boundingRadius or 0) then
+                if self.Selected.distance < a then
                     return self.Selected
                 end
             else
-                table_sort(a, function(i, j) return i.distance > j.distance end)
-                if #a > 0 and self.Selected.distance <= a[1].distance then
+                local ok
+                for i = 1, #a do
+                    if a[i].networkID == self.Selected.networkID then
+                        ok = true
+                        break
+                    end
+                end
+                if ok then
                     return self.Selected
                 end
             end
-            if only then
+            if self.MenuCheckSelectedOnly:Value() then
                 return nil
             end
         end
-        
         if type(a) == 'number' then
-            a = Object:GetEnemyHeroes(a, bbox, visible, immortal, jaxE, func)
+            a = Object:GetEnemyHeroes(a, false, true, isAttack)
         end
-        
         if self.CurrentSortMode == SORT_MOST_STACK then
-            local stackA = Object:GetObjectsFromTable(a, function(unit)
-                for i, buffName in pairs(self.ActiveStackBuffs) do
-                    if Buff:HasBuff(unit, buffName) then
-                        return true
+            local stackA = {}
+            for i = 1, #a do
+                local obj = a[i]
+                for j = 1, #self.ActiveStackBuffs do
+                    if Buff:HasBuff(obj, self.ActiveStackBuffs[j]) then
+                        table_insert(stackA, obj)
                     end
                 end
-                return false
-            end)
+            end
             local sortMode = (#stackA == 0 and SORT_AUTO or SORT_MOST_STACK)
             if sortMode == SORT_MOST_STACK then
                 a = stackA
@@ -3098,7 +3058,6 @@ do
         else
             table_sort(a, self.CurrentSort)
         end
-        
         return (#a == 0 and nil or a[1])
     end
     -- get priority
@@ -3114,19 +3073,21 @@ do
     end
     -- get combo target
     function Target:GetComboTarget(dmgType)
-        local t, range
-        
         dmgType = dmgType or DAMAGE_TYPE_PHYSICAL
-        range = myHero.range + myHero.boundingRadius
-        
-        t = self:GetTarget(Object:GetEnemyHeroes(false, false, true, true, true, function(hero)
-            if hero.distance <= range + ((Object.IsCaitlyn and Buff:HasBuff(hero, 'caitlynyordletrapinternal')) and 600 or hero.boundingRadius) then
-                return true
+        local attackRange = myHero.range + myHero.boundingRadius
+        local enemies = Object:GetEnemyHeroes(false, false, true, true)
+        local enemiesaa = {}
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            local extraRange = enemy.boundingRadius - 35
+            if Object.IsCaitlyn and Buff:HasBuff(enemy, 'caitlynyordletrapinternal') then
+                extraRange = extraRange + 600
             end
-            return false
-        end), dmgType)
-        
-        return t
+            if enemy:GetDistance() < attackRange + extraRange then
+                table_insert(enemiesaa, enemy)
+            end
+        end
+        return self:GetTarget(enemiesaa, dmgType, true)
     end
     -- init call
     Target:__init()
@@ -3228,26 +3189,19 @@ do
         -- SET OBJECTS
         attackRange = myHero.range + myHero.boundingRadius
         local cachedminions = Cached:GetMinions()
-        local index1, index2
-        index1 = 0
         for i = 1, #cachedminions do
             local obj = cachedminions[i]
             if IsInRange(myHero, obj, 2000) then
-                index1 = index1 + 1
-                self.CachedMinions[index1] = obj
+                table_insert(self.CachedMinions, obj)
             end
         end
-        index1 = 0
         local cachedwards = Cached:GetWards()
         for i = 1, #cachedwards do
             local obj = cachedwards[i]
             if obj.isEnemy and IsInRange(myHero, obj, 2000) then
-                index1 = index1 + 1
-                self.CachedWards[index1] = obj
+                table_insert(self.CachedWards, obj)
             end
         end
-        index1 = 0
-        index2 = 0
         for i = 1, #self.CachedMinions do
             local obj = self.CachedMinions[i]
             local handle = obj.handle
@@ -3257,26 +3211,21 @@ do
                 self.AllyMinionsHandles[handle] = obj
             elseif team == Data.EnemyTeam then
                 if IsInRange(myHero, obj, attackRange + obj.boundingRadius) then
-                    index1 = index1 + 1
-                    self.EnemyMinionsInAttackRange[index1] = obj
+                    table_insert(self.EnemyMinionsInAttackRange, obj)
                 end
             elseif team == Data.JungleTeam then
                 if IsInRange(myHero, obj, attackRange + obj.boundingRadius) then
-                    index2 = index2 + 1
-                    self.JungleMinionsInAttackRange[index2] = obj
+                    table_insert(self.JungleMinionsInAttackRange, obj)
                 end
             end
         end
-        index1 = 0
         for i = 1, #self.CachedWards do
             local obj = self.CachedWards[i]
             if IsInRange(myHero, obj, attackRange + 35) then
-                index1 = index1 + 1
-                self.EnemyWardsInAttackRange[index1] = obj
+                table_insert(self.EnemyWardsInAttackRange, obj)
             end
         end
-        index1 = 0
-        structures = Object:GetAllStructures(2000, false, true)
+        structures = Object:GetAllStructures(2000)
         for i = 1, #structures do
             local obj = structures[i]
             local objType = obj.type
@@ -3297,8 +3246,7 @@ do
                     objRadius = obj.boundingRadius
                 end
                 if IsInRange(myHero, obj, attackRange + objRadius) then
-                    index1 = index1 + 1
-                    self.EnemyStructuresInAttackRange[index1] = obj
+                    table_insert(self.EnemyStructuresInAttackRange, obj)
                 end
             end
         end
@@ -3326,7 +3274,6 @@ do
             end
         end
         -- SET FARM MINIONS
-        index1 = 0
         pos = myHero.pos
         speed = Attack:GetProjectileSpeed()
         windup = Attack:GetWindup()
@@ -3334,8 +3281,7 @@ do
         anim = Attack:GetAnimation()
         for i = 1, #self.EnemyMinionsInAttackRange do
             local target = self.EnemyMinionsInAttackRange[i]
-            index1 = index1 + 1
-            self.FarmMinions[index1] = self:SetLastHitable(target, anim, time + target.distance / speed, Damage:GetAutoAttackDamage(myHero, target, self.StaticAutoAttackDamage))
+            table_insert(self.FarmMinions, self:SetLastHitable(target, anim, time + target.distance / speed, Damage:GetAutoAttackDamage(myHero, target, self.StaticAutoAttackDamage)))
         end
         -- SPELLS
         for i = 1, #self.Spells do
@@ -3348,7 +3294,7 @@ do
             for i = 1, #self.FarmMinions do
                 local args = self.FarmMinions[i]
                 local minion = args.Minion
-                if Object:IsValid(minion, Obj_AI_Minion, true, true) then
+                if Object:IsValid(minion) then
                     if args.LastHitable then
                         Draw.Circle(minion.pos, math_max(65, minion.boundingRadius), 1, Color.LastHitable)
                     elseif args.AlmostLastHitable then
@@ -3617,7 +3563,7 @@ do
         local result = nil
         for i = 1, #self.FarmMinions do
             local minion = self.FarmMinions[i]
-            if Object:IsValid(minion.Minion, Obj_AI_Minion, true, true) and minion.LastHitable and minion.PredictedHP < min and Data:IsInAutoAttackRange(myHero, minion.Minion) then
+            if Object:IsValid(minion.Minion) and minion.LastHitable and minion.PredictedHP < min and Data:IsInAutoAttackRange(myHero, minion.Minion) then
                 min = minion.PredictedHP
                 result = minion.Minion
                 self.LastHitHandle = result.handle
@@ -3913,9 +3859,9 @@ do
             if isattack then
                 table_insert(self.Callbacks, {key, mouseKey, Vector(castpos.x, castpos.y, castpos.z + 50):To2D(), true})
             elseif castpos.z then
-                table_insert(self.Callbacks, {key, mouseKey, castpos:To2D(), false})
+                table_insert(self.Callbacks, {key, mouseKey, castpos:To2D(), true})
             else
-                table_insert(self.Callbacks, {key, mouseKey, castpos, false})
+                table_insert(self.Callbacks, {key, mouseKey, castpos, true})
             end
             if self.Step == 0 then
                 --if #self.Callbacks > 1 then print("Cursor.Add | not good | step 0 | #cb > 1") end
@@ -3931,7 +3877,7 @@ do
     -- on tick
     function Cursor:OnTick()
         if self.Step == 0 then
-            if #self.Callbacks > 0 then print("Cursor.OnTick | not good | step 0 | #cb > 0") end
+            --if #self.Callbacks > 0 then print("Cursor.OnTick | not good | step 0 | #cb > 0") end
             return
         end
         if self.Step == 1 then
@@ -3946,7 +3892,7 @@ do
         end
         if self.Step == 3 then
             self:Step_3_NewCallback()
-            --print("Cursor.OnTick | not good | step 3")
+            --print("Cursor.OnTick | step 3")
             return
         end
         if self.Step == 4 then
@@ -4264,7 +4210,7 @@ do
             Draw.Circle(myHero.pos, self.Menu.General.HoldRadius:Value(), 1, Color.LightGreen)
         end
         if self.MenuDrawings.EnemyRange:Value() then
-            local t = Object:GetEnemyHeroes(false, false, true, false, false)
+            local t = Object:GetEnemyHeroes()
             for i = 1, #t do
                 local enemy = t[i]
                 local range = Data:GetAutoAttackRange(enemy, myHero)
@@ -4394,7 +4340,7 @@ do
     end
     -- get target
     function Orbwalker:GetTarget()
-        if Object:IsValid(self.ForceTarget, Obj_AI_Hero, true, true, true) then
+        if Object:IsValid(self.ForceTarget) and not Object:IsHeroImmortal(self.ForceTarget, true) then
             return self.ForceTarget
         end
         if self.Modes[ORBWALKER_MODE_COMBO] then
@@ -4460,7 +4406,7 @@ do
             end
             if not Attack:IsActive(0.025) and Game.Timer() < self.PostAttackTimer + 1 then
                 for i = 1, #self.OnPostAttackTickCb do
-                    self.OnPostAttackTickCb[i]()
+                    self.OnPostAttackTickCb[i](self.PostAttackTimer)
                 end
             end
             local mePos = myHero.pos
