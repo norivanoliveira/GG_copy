@@ -1441,7 +1441,7 @@ if Champion == nil and myHero.charName == 'Vayne' then
         local enemiesaa = {}
         for i = 1, #enemies do
             local enemy = enemies[i]
-            if enemy:GetDistance() < self.Range + enemy.boundingRadius - 35 then
+            if enemy.distance < self.Range + enemy.boundingRadius - 35 then
                 table_insert(enemiesaa, enemy)
             end
         end
@@ -1464,14 +1464,15 @@ if Champion == nil and myHero.charName == 'Vayne' then
         local closestEnemy = nil
         for i = 1, #enemiesaa do
             local enemy = enemiesaa[i]
-            if enemy:GetDistance() < distance then
-                distance = enemy:GetDistance()
+            local d = enemy.distance
+            if d < distance then
+                distance = d
                 closestEnemy = enemy
             end
         end
         local holdDistance = Menu.q_xdistance:Value()
-        local pos = GGPrediction:CircleCircleIntersection(self.Pos, closestEnemy:GetPos(), 300, holdDistance)
-        if #pos > 0 and (GG_Object:IsFacing(closestEnemy:GetObject(), myHero, 60) or closestEnemy:GetDistance() < holdDistance) then
+        local pos = GGPrediction:CircleCircleIntersection(self.Pos, closestEnemy.pos, 300, holdDistance)
+        if #pos > 0 and (GG_Object:IsFacing(closestEnemy:GetObject(), myHero, 60) or closestEnemy.distance < holdDistance) then
             if GGPrediction:GetDistance(pos[1], _G.mousePos) < GGPrediction:GetDistance(pos[2], _G.mousePos) then
                 Utils:Cast(HK_Q, {x = pos[1].x, y = 0, z = pos[1].z})
             else
