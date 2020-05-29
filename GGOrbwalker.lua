@@ -2,9 +2,9 @@ if _G.SDK then
     return
 end
 
-local Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, CastKey, Cursor, Health, Attack
+local FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, CastKey, Cursor, Health, Attack
 
-local Version = '1.34'
+local Version = '1.35'
 local myHero = _G.myHero
 local os = _G.os
 local Game = _G.Game
@@ -146,6 +146,63 @@ local function GetControlPos(a, b, c)
         pos = a.pos or a
     end
     return pos
+end
+
+-- flash helper
+FlashHelper = {}
+do
+    -- init
+    function FlashHelper:__init()
+        self.Timer = 0
+        self.FlashSpell = 0
+    end
+    
+    -- create menu
+    function FlashHelper:CreateMenu(main)
+        self.Menu = main:MenuElement({type = MENU, id = "PMenuFH", name = "Flash Helper", leftIcon = "/Gamsteron_Spell_SummonerFlash.png"})
+        self.Menu:MenuElement({id = "Enabled", name = "Enabled", value = true})
+        self.Menu:MenuElement({id = "Flashlol", name = "Flash LOL HotKey", key = string.byte("P")})
+        self.Menu:MenuElement({id = "Flashgos", name = "Flash GOS HotKey", key = string.byte("F")})
+    end
+    
+    -- on tick
+    function FlashHelper:OnTick()
+        if not self.Menu.Enabled:Value() or not self.Menu.Flashgos:Value() or myHero.dead then return end
+        if self:IsReady() then
+            print("Flash Helper | Flashing!")
+            self.Timer = GetTickCount()
+            Control.Flash(self.Menu.Flashlol:Key(), myHero.pos:Extended(Vector(_G.mousePos), 600))
+        end
+    end
+    
+    -- is ready
+    function FlashHelper:IsReady()
+        local has_flash = false
+        if myHero:GetSpellData(SUMMONER_1).name == "SummonerFlash" then
+            self.FlashSpell = SUMMONER_1
+            has_flash = true
+        end
+        if myHero:GetSpellData(SUMMONER_2).name == "SummonerFlash" then
+            self.FlashSpell = SUMMONER_2
+            has_flash = true
+        end
+        if (not has_flash) then
+            return false
+        end
+        if (myHero:GetSpellData(self.FlashSpell).currentCd > 0) then
+            return false
+        end
+        if (Game.CanUseSpell(self.FlashSpell) ~= 0) then
+            return false
+        end
+        if GetTickCount() < self.Timer + 1000 then
+            return false
+        end
+        return true
+    end
+    
+    -- init call
+    FlashHelper:__init()
 end
 
 -- cached
@@ -578,7 +635,7 @@ do
         self.Orbwalker.Farming:MenuElement({id = 'ExtraFarmDelay', name = 'ExtraFarmDelay', value = 0, min = -80, max = 80, step = 10})
         if self.Main.Loader.SummonerSpells:Value() then
             self.SummonerSpellsLoaded = true
-            self.SummonerSpells = self.Main:MenuElement({id = 'SummonerSpells', name = 'Summoner Spells', type = MENU, leftIcon = "/Gamsteron_Spell_SummonerFlash.png"})
+            self.SummonerSpells = self.Main:MenuElement({id = 'SummonerSpells', name = 'Summoner Spells', type = MENU, leftIcon = "/Gamsteron_Spell_SummonerDot.png"})
             self.SummonerSpells:MenuElement({id = 'Cleanse', name = 'Cleanse', type = MENU, leftIcon = '/Gamsteron_Spell_SummonerBoost.png'})
             self.SummonerSpells.Cleanse:MenuElement({id = 'BuffTypes', name = 'Buff Types', type = MENU})
             self.SummonerSpells.Cleanse.BuffTypes:MenuElement({id = 'Slow', name = 'Slow: nasus w', value = true})--SLOW = 10 -> nasus W, zilean E
@@ -640,6 +697,7 @@ do
         self.Main.Drawings:MenuElement({id = 'HoldRadius', name = 'Hold Radius', value = false})
         self.Main.Drawings:MenuElement({id = 'LastHittableMinions', name = 'Last Hittable Minions', value = true})
         self.Main.Drawings:MenuElement({id = 'SelectedTarget', name = 'Selected Target', value = true})
+        FlashHelper:CreateMenu(self.Main)
         self.Main:MenuElement({name = '', type = _G.SPACE, id = 'GeneralSpace'})
         self.Main:MenuElement({id = 'AttackTKey', name = 'Attack Target Key', key = string.byte('U'), tooltip = 'You should bind this one in ingame settings'})
         self.Main:MenuElement({id = 'Latency', name = 'Ping [ms]', value = 50, min = 0, max = 120, step = 1, callback = function(value) _G.LATENCY = value end})
@@ -3917,7 +3975,7 @@ do
         end
         if self.Step == 1 then
             self:Step_1_SetToCastPos()
-            print("Cursor.OnTick | step 1")
+            --print("Cursor.OnTick | step 1")
             return
         end
         if self.Step == 2 then
@@ -4506,6 +4564,7 @@ Callback.Add('Load', function()
     local draws = SDK.OnDraw
     local wndmsgs = SDK.OnWndMsg
     Callback.Add("Draw", function()
+        FlashHelper:OnTick()
         Cached:Reset()
         CastKey:OnTick()
         Cursor:OnTick()
