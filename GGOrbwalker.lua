@@ -4,7 +4,7 @@ end
 
 local FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, Cursor, Health, Attack, EvadeSupport
 
-local Version = '1.38'
+local Version = '1.39'
 local myHero = _G.myHero
 local os = _G.os
 local Game = _G.Game
@@ -718,7 +718,7 @@ do
         self.Main:MenuElement({name = '', type = _G.SPACE, id = 'GeneralSpace'})
         self.Main:MenuElement({id = 'AttackTKey', name = 'Attack Target Key', key = string.byte('U'), tooltip = 'You should bind this one in ingame settings'})
         self.Main:MenuElement({id = 'Latency', name = 'Ping [ms]', value = 50, min = 0, max = 120, step = 1, callback = function(value) _G.LATENCY = value end})
-        self.Main:MenuElement({id = 'CursorDelay', name = 'Cursor Delay', value = 40, min = 30, max = 60, step = 1})
+        self.Main:MenuElement({id = 'CursorDelay', name = 'Cursor Delay', value = 30, min = 30, max = 50, step = 1})
         self.Main:MenuElement({name = '', type = _G.SPACE, id = 'VersionSpaceA'})
         self.Main:MenuElement({name = 'Version  ' .. Version, type = _G.SPACE, id = 'VersionSpaceB'})
         _G.LATENCY = self.Main.Latency:Value()
@@ -3746,7 +3746,7 @@ do
     local FastKiting = Menu.Orbwalker.General.FastKiting
     _G.Control.Evade = function(a)
         local pos = GetControlPos(a)
-        if pos and EvadeSupport == nil and pos:To2D().onScreen then
+        if pos and EvadeSupport == nil then
             if Cursor.Step == 0 then
                 Cursor:Add(MOUSEEVENTF_RIGHTDOWN, pos)
                 return true
@@ -3757,7 +3757,8 @@ do
         return false
     end
     _G.Control.Attack = function(target)
-        if Cursor.Step == 0 and target and target.pos then
+        if Cursor.Step == 0 then
+            local pos = target.pos
             Cursor:Add(AttackKey:Key(), target)
             if FastKiting:Value() then
                 Movement.MoveTimer = 0
@@ -3769,15 +3770,21 @@ do
     _G.Control.CastSpell = function(key, a, b, c)
         local pos = GetControlPos(a, b, c)
         if pos then
+            if Cursor.Step > 0 then
+                return false
+            end
             if a.pos then
                 Cursor:Add(key, a)
             else
                 Cursor:Add(key, pos)
             end
-        elseif a == nil then
-            CastKey(key)
+            return true
         end
-        return true
+        if a == nil then
+            CastKey(key)
+            return true
+        end
+        return false
     end
     _G.Control.Hold = function(key)
         CastKey(key)
@@ -3804,39 +3811,64 @@ end
 -- cursor
 Cursor = {}
 do
-    local MenuDrawCursor = Menu.Main.Drawings.Cursor
-    -- init
     function Cursor:__init()
+        self.MenuDelay = Menu.Main.CursorDelay
+        self.MenuDrawCursor = Menu.Main.Drawings.Cursor
+        self.Hold = nil
         self.Step = 0
-        self.Timer = 0
-        self.Key = nil
+        self.Flash = nil
+        self.WndChecked = false
+        self.EndTime = 0
+        self.Pos = nil
         self.CastPos = nil
-        self.CursorPos = nil
-        self.IsTarget = false
-        self.CursorDelay = Menu.Main.CursorDelay
+        self.IsHero = false
+        self.WParam = nil
+        self.Msg = nil
     end
-    -- add
-    function Cursor:Add(key, castpos)
-        if self.Step > 0 or castpos == nil then
-            return
-        end
-        self.IsTarget = castpos.pos ~= nil
-        local pos = self.IsTarget and castpos.pos or castpos
-        local pos2d = Vector(pos.x, pos.y or 0, pos.z):To2D()
-        if not pos2d.onScreen then
-            return
-        end
+    
+    function Cursor:Add(key, castPos, cPos)
         self.Step = 1
-        self.Key = key
-        self.Timer = GetTickCount()
-        self.CastPos = self.IsTarget and castpos or pos2d
-        self.CursorPos = cursorPos
-        self:Step_1_SetToCastPos()
-        CastKey(key)
+        if key == MOUSEEVENTF_RIGHTDOWN then
+            self.WParam = nil
+            self.Msg = WM_RBUTTONUP
+        else
+            self.WParam = key
+            self.Msg = nil
+        end
+        self.Pos = cPos or cursorPos
+        self.WndChecked = false
+        self.EndTime = GetTickCount() + 70 + self.MenuDelay:Value()
+        self.IsHero = false
+        self.CastPos = castPos
+        if self.CastPos ~= nil then
+            self:SetToCastPos()
+            if self.CastPos.type and self.CastPos.type == Obj_AI_Hero then
+                self.IsHero = true
+            end
+        end
+        
+        -- PRESS KEY
+        if self.IsHero then
+            Control.KeyDown(_G.HK_TCO)
+        end
+        
+        if (self.Msg) then
+            Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
+            Control.mouse_event(MOUSEEVENTF_RIGHTUP)
+        else
+            Control.KeyDown(self.WParam)
+            Control.KeyUp(self.WParam)
+        end
+        
+        if self.IsHero then
+            Control.KeyUp(_G.HK_TCO)
+        end
     end
-    -- on tick
+    
     function Cursor:OnTick()
-        if self.Step == 0 then
+        local step = self.Step
+        
+        if (step == 0) then
             if FlashHelper.Flash then
                 --print('flash ' .. GetTickCount())
                 self:Add(FlashHelper.Flash, myHero.pos:Extended(Vector(mousePos), 600))
@@ -3849,40 +3881,67 @@ do
                 EvadeSupport = nil
                 return
             end
+        end
+        
+        if (step == 1) then
+            self.Step = 2
+            if self.CastPos == nil then
+                self.Step = 0
+            else
+                self:SetToCastPos()
+            end
             return
         end
-        if self.Step == 1 then
-            --print("Cursor.OnTick | step 1 " .. GetTickCount())
-            self:Step_1_SetToCastPos()
+        
+        if (step == 2) then
+            if (GetTickCount() > self.EndTime) then
+                self.Step = 3
+                self:SetToCursor()
+            elseif self.CastPos ~= nil then
+                self:SetToCastPos()
+            end
             return
         end
-        if self.Step == 2 then
-            --print("Cursor.OnTick | step 2 " .. GetTickCount())
-            self:Step_2_SetToCursorPos()
+        
+        if (step == 3) then
+            self:SetToCursor()
             return
         end
     end
-    -- on draw
+    
     function Cursor:OnDraw()
-        if MenuDrawCursor:Value() then
+        if self.MenuDrawCursor:Value() then
             Draw.Circle(mousePos, 150, 1, Color.Cursor)
         end
     end
-    -- step 1 | set to cast pos
-    function Cursor:Step_1_SetToCastPos()
-        local pos = self.IsTarget and self.CastPos.pos:To2D() or self.CastPos
-        if pos.onScreen then
-            Control.SetCursorPos(pos.x, pos.y)
+    
+    function Cursor:WndMsg(msg, wParam)
+        if self.Step == 0 or self.WndChecked then
+            return
         end
-        if GetTickCount() > self.Timer + self.CursorDelay:Value() then
-            self.Step = 2
-            self:Step_2_SetToCursorPos()
+        if (self.Msg and msg == self.Msg) or (self.WParam and wParam == self.WParam) then
+            self.EndTime = GetTickCount() + self.MenuDelay:Value()
+            self.WndChecked = true
         end
     end
-    -- step 2 | set to cursor
-    function Cursor:Step_2_SetToCursorPos()
-        Control.SetCursorPos(self.CursorPos.x, self.CursorPos.y)
-        self.Step = 0
+    
+    function Cursor:SetToCastPos()
+        local pos = self.CastPos.pos
+        if pos then
+            pos = pos:To2D()
+        else
+            pos = (self.CastPos.z ~= nil) and Vector(self.CastPos.x, self.CastPos.y or 0, self.CastPos.z):To2D() or self.CastPos
+        end
+        Control.SetCursorPos(pos.x, pos.y)
+    end
+    
+    function Cursor:SetToCursor()
+        Control.SetCursorPos(self.Pos.x, self.Pos.y)
+        local dx = cursorPos.x - self.Pos.x
+        local dy = cursorPos.y - self.Pos.y
+        if (dx * dx + dy * dy < 15000) then
+            self.Step = 0
+        end
     end
     -- init call
     Cursor:__init()
@@ -4417,7 +4476,7 @@ Callback.Add('Load', function()
         Data:WndMsg(msg, wParam)
         Spell:WndMsg(msg, wParam)
         Target:WndMsg(msg, wParam)
-        --Cursor:WndMsg(msg, wParam)
+        Cursor:WndMsg(msg, wParam)
         for i = 1, #wndmsgs do
             wndmsgs[i](msg, wParam)
         end
