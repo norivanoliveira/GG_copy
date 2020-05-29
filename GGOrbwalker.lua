@@ -2,9 +2,9 @@ if _G.SDK then
     return
 end
 
-local FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, CastKey, Cursor, Health, Attack
+local FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, Cursor, Health, Attack, EvadeSupport
 
-local Version = '1.34'
+local Version = '1.36'
 local myHero = _G.myHero
 local os = _G.os
 local Game = _G.Game
@@ -148,25 +148,30 @@ local function GetControlPos(a, b, c)
     return pos
 end
 
+local function CastKey(key)
+    if key == MOUSEEVENTF_RIGHTDOWN then
+        Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
+        Control.mouse_event(MOUSEEVENTF_RIGHTUP)
+    else
+        Control.KeyDown(key)
+        Control.KeyUp(key)
+    end
+end
+
 -- flash helper
 FlashHelper = {}
 do
     -- init
     function FlashHelper:__init()
-        self.CastTimer = 0
-        self.FlashSpell = 0
-        self.FlashCount = 0
-        -- cursor
-        self.Step = 0
         self.Timer = 0
-        self.Key = nil
-        self.CastPos = nil
-        self.CursorPos = nil
-        self.WndPassed = false
-        self.FlashCasted = false
-        -- control flash
+        self.FlashSpell = 0
+        self.Flash = nil
         _G.Control.Flash = function()
-            self:Add()
+            if Cursor.Step == 0 then
+                Cursor:Add(self.Menu.Flashlol:Key(), myHero.pos:Extended(Vector(mousePos), 600))
+                return
+            end
+            self.Flash = self.Menu.Flashlol:Key()
         end
     end
     
@@ -180,29 +185,10 @@ do
     
     -- on tick
     function FlashHelper:OnTick()
-        if self.Step == 0 then
-            if self.Menu.Flashgos:Value() and self.Menu.Enabled:Value() and not Control.IsKeyDown(HK_LUS) and self:IsReady() and not myHero.dead and not Game.IsChatOpen() and Game.IsOnTop() then
-                self.FlashCount = self.FlashCount + 1
-                print("Flash Helper | Flashing! " .. self.FlashCount)
-                self.CastTimer = GetTickCount()
-                Control.Flash()
-            end
-        elseif self.Step == 1 then
-            if Cursor.Step == 0 then
-                if not self.FlashCasted then
-                    self.CastPos = myHero.pos:Extended(Vector(_G.mousePos), 600):To2D()
-                    self.CursorPos = _G.cursorPos
-                    self.FlashCasted = true
-                end
-                self:Step_1_SetToCastPos()
-            end
-            --print("FlashHelper.OnTick | step 1")
-        elseif self.Step == 2 then
-            self:Step_2_ReleaseKey()
-            --print("FlashHelper.OnTick | step 2")
-        elseif self.Step == 3 then
-            self:Step_3_SetToCursorPos()
-            --print("FlashHelper.OnTick | step 3")
+        if self.Menu.Flashgos:Value() and self.Menu.Enabled:Value() and not Control.IsKeyDown(HK_LUS) and self:IsReady() and not myHero.dead and not Game.IsChatOpen() and Game.IsOnTop() then
+            print("Flash Helper | Flashing!")
+            self.Timer = GetTickCount()
+            Control.Flash()
         end
     end
     
@@ -226,72 +212,10 @@ do
         if (Game.CanUseSpell(self.FlashSpell) ~= 0) then
             return false
         end
-        if GetTickCount() < self.CastTimer + 1000 then
+        if GetTickCount() < self.Timer + 1000 then
             return false
         end
         return true
-    end
-    
-    -- add
-    function FlashHelper:Add()
-        if self.Step > 0 then
-            return
-        end
-        self.Step = 1
-        self.WndPassed = false
-        self.FlashCasted = false
-        self.Key = self.Menu.Flashlol:Key()
-        if Cursor.Step == 0 then
-            self.CastPos = myHero.pos:Extended(Vector(_G.mousePos), 600):To2D()
-            self.CursorPos = _G.cursorPos
-            self.FlashCasted = true
-            self:Step_1_SetToCastPos()
-            return
-        end
-    end
-    -- on wnd msg
-    function FlashHelper:WndMsg(msg, wParam)
-        if not self.WndPassed and self.Step == 2 and wParam == self.Key then
-            self:Step_3_SetToCursorPos()
-            self.WndPassed = true
-            self.Timer = GetTickCount()
-        end
-    end
-    -- step 1 | set to cast pos
-    function FlashHelper:Step_1_SetToCastPos()
-        self.Step = 1
-        self.Timer = GetTickCount()
-        local castPos = self.CastPos
-        local currentCursorPos = _G.cursorPos
-        local dx = currentCursorPos.x - castPos.x
-        local dy = currentCursorPos.y - castPos.y
-        Control.SetCursorPos(castPos.x, castPos.y)
-        if dx * dx + dy * dy < 2500 then
-            self:Step_2_ReleaseKey()
-            return
-        end
-    end
-    -- step 2 | release key
-    function FlashHelper:Step_2_ReleaseKey()
-        self.Step = 2
-        Control.KeyDown(self.Key)
-        Control.KeyUp(self.Key)
-    end
-    -- step 3 | set to cursor
-    function FlashHelper:Step_3_SetToCursorPos()
-        self.Step = 3
-        if GetTickCount() < self.Timer + 30 then
-            return
-        end
-        local cursorPos = self.CursorPos
-        local currentCursorPos = _G.cursorPos
-        local dx = currentCursorPos.x - cursorPos.x
-        local dy = currentCursorPos.y - cursorPos.y
-        Control.SetCursorPos(cursorPos.x, cursorPos.y)
-        if dx * dx + dy * dy < 2500 then
-            self.Step = 0
-            return
-        end
     end
     
     -- init call
@@ -3288,45 +3212,18 @@ do
             self.AllyTurret = nil
             self.AllyTurretHandle = nil
             self.StaticAutoAttackDamage = nil
-            for i = #self.FarmMinions, 1, -1 do
-                self.FarmMinions[i] = nil
-            end
-            for i = #self.EnemyWardsInAttackRange, 1, -1 do
-                self.EnemyWardsInAttackRange[i] = nil
-            end
-            for i = #self.EnemyMinionsInAttackRange, 1, -1 do
-                self.EnemyMinionsInAttackRange[i] = nil
-            end
-            for i = #self.JungleMinionsInAttackRange, 1, -1 do
-                self.JungleMinionsInAttackRange[i] = nil
-            end
-            for i = #self.EnemyStructuresInAttackRange, 1, -1 do
-                self.EnemyStructuresInAttackRange[i] = nil
-            end
-            for k, v in pairs(self.AttackersDamage) do
-                for k2 in pairs(v) do
-                    self.AttackersDamage[k][k2] = nil
-                end
-                self.AttackersDamage[k] = nil
-            end
-            for k in pairs(self.ActiveAttacks) do
-                self.ActiveAttacks[k] = nil
-            end
-            for k in pairs(self.AllyMinionsHandles) do
-                self.AllyMinionsHandles[k] = nil
-            end
-            for k in pairs(self.TargetsHealth) do
-                self.TargetsHealth[k] = nil
-            end
-            for k in pairs(self.Handles) do
-                self.Handles[k] = nil
-            end
-            for i = #self.CachedMinions, 1, -1 do
-                self.CachedMinions[i] = nil
-            end
-            for i = #self.CachedWards, 1, -1 do
-                self.CachedWards[i] = nil
-            end
+            self.FarmMinions = {}
+            self.EnemyWardsInAttackRange = {}
+            self.EnemyMinionsInAttackRange = {}
+            self.JungleMinionsInAttackRange = {}
+            self.EnemyStructuresInAttackRange = {}
+            self.AttackersDamage = {}
+            self.ActiveAttacks = {}
+            self.AllyMinionsHandles = {}
+            self.TargetsHealth = {}
+            self.Handles = {}
+            self.CachedMinions = {}
+            self.CachedWards = {}
         end
         -- SPELLS
         for i = 1, #self.Spells do
@@ -3849,144 +3746,59 @@ do
     local FastKiting = Menu.Orbwalker.General.FastKiting
     _G.Control.Evade = function(a)
         local pos = GetControlPos(a)
-        if pos then
-            Cursor:Add(MOUSEEVENTF_RIGHTDOWN, pos)
+        if pos and EvadeSupport == nil and pos:To2D().onScreen then
+            if Cursor.Step == 0 then
+                Cursor:Add(MOUSEEVENTF_RIGHTDOWN, pos)
+                return true
+            end
+            EvadeSupport = pos
             return true
         end
         return false
     end
     _G.Control.Attack = function(target)
-        if target and target.pos then
-            Cursor:Add(AttackKey:Key(), target, true)
+        if Cursor.Step == 0 and target and target.pos then
+            Cursor:Add(AttackKey:Key(), target)
             if FastKiting:Value() then
                 Movement.MoveTimer = 0
             end
             return true
         end
-        print('control.attack -> target nil')
         return false
     end
     _G.Control.CastSpell = function(key, a, b, c)
         local pos = GetControlPos(a, b, c)
         if pos then
             if a.pos then
-                Cursor:Add(key, a, true)
+                Cursor:Add(key, a)
             else
-                Cursor:Add(key, pos, false)
+                Cursor:Add(key, pos)
             end
         elseif a == nil then
-            CastKey:Add(key)
-        end
-        if a and not pos then
-            print('controll.castspell -> pos nil')
+            CastKey(key)
         end
         return true
     end
     _G.Control.Hold = function(key)
-        CastKey:Add(key)
+        CastKey(key)
         Movement.MoveTimer = 0
         Orbwalker.CanHoldPosition = false
         return true
     end
     _G.Control.Move = function(a, b, c)
-        if CastKey.Step > 0 or Cursor.Step > 0 or GetTickCount() < Movement.MoveTimer then
+        if Cursor.Step > 0 or GetTickCount() < Movement.MoveTimer then
             return false
         end
         local pos = GetControlPos(a, b, c)
         if pos then
-            Cursor:Add(MOUSEEVENTF_RIGHTDOWN, pos, false)
+            Cursor:Add(MOUSEEVENTF_RIGHTDOWN, pos)
         elseif a == nil then
-            CastKey:Add(MOUSEEVENTF_RIGHTDOWN)
-        end
-        if a and not pos then
-            --print('move pos nil')
+            CastKey(MOUSEEVENTF_RIGHTDOWN)
         end
         Movement.MoveTimer = GetTickCount() + Movement:GetHumanizer()
         Orbwalker.CanHoldPosition = true
         return true
     end
-end
-
--- cast key
-CastKey = {}
-do
-    -- init
-    function CastKey:__init()
-        self.Step = 0
-        self.Key = nil
-        self.MouseKey = false
-        self.Callbacks = {}
-    end
-    -- add
-    function CastKey:Add(key)
-        local ok = true
-        for i = 1, #self.Callbacks do
-            if key == self.Callbacks[i][1] then
-                ok = false
-            end
-        end
-        if not ok then
-            return
-        end
-        local mouseKey = key == MOUSEEVENTF_RIGHTDOWN and WM_RBUTTONUP or false
-        table_insert(self.Callbacks, {key, mouseKey})
-        if self.Step == 0 then
-            self.Key = self.Callbacks[1][1]
-            self.MouseKey = self.Callbacks[1][2]
-            self:Step_1_ReleaseKey()
-        end
-    end
-    -- on tick
-    function CastKey:OnTick()
-        if self.Step == 0 then
-            if #self.Callbacks > 0 then
-                --print("CastKey.OnTick | not good | step 0 | #cb > 0")
-            end
-            return
-        end
-        if self.Step == 1 then
-            self:Step_1_ReleaseKey()
-            return
-        end
-        if self.Step == 2 then
-            self:Step_2_NewCallback()
-            --print("CastKey.OnTick | not good | step 2")
-            return
-        end
-    end
-    -- on wnd msg
-    function CastKey:WndMsg(msg, wParam)
-        if self.Step == 1 then
-            if (self.MouseKey and msg == self.MouseKey) or (not self.MouseKey and wParam == self.Key) then
-                self:Step_2_NewCallback()
-            end
-        end
-    end
-    -- step 1 | release key
-    function CastKey:Step_1_ReleaseKey()
-        self.Step = 1
-        if self.MouseKey then
-            Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
-            Control.mouse_event(MOUSEEVENTF_RIGHTUP)
-        else
-            Control.KeyDown(self.Key)
-            Control.KeyUp(self.Key)
-        end
-    end
-    -- step 2 | new callback
-    function CastKey:Step_2_NewCallback()
-        self.Step = 2
-        table_remove(self.Callbacks, 1)
-        if #self.Callbacks > 0 then
-            self.Key = self.Callbacks[1][1]
-            self.MouseKey = self.Callbacks[1][2]
-            self:Step_1_ReleaseKey()
-            return
-        end
-        self.Step = 0
-    end
-    -- init call
-    CastKey:__init()
 end
 
 -- cursor
@@ -3996,91 +3808,76 @@ do
     -- init
     function Cursor:__init()
         self.Step = 0
+        self.Timer = 0
         self.Key = nil
-        self.MouseKey = false
-        self.WndPassed = false
+        self.MouseKey = nil
         self.CastPos = nil
         self.CursorPos = nil
-        self.Callbacks = {}
-        self.Timer = 0
+        self.IsTarget = false
+        self.WndPassed = false
+        self.CursorPositioned = false
     end
     -- add
-    function Cursor:Add(key, castpos, isTarget)
-        local ok = true
-        for i = 1, #self.Callbacks do
-            if key == self.Callbacks[i][1] then
-                ok = false
-            end
-        end
-        if not ok then
+    function Cursor:Add(key, castpos)
+        if self.Step > 0 or castpos == nil then
             return
         end
-        local pos = isTarget and castpos.pos or castpos
-        local z = pos.z
-        if pos.x and z and z > 0 then
-            pos = Vector(pos.x, pos.y or 0, pos.z):To2D()
+        self.IsTarget = castpos.pos ~= nil
+        local pos = self.IsTarget and castpos.pos or castpos
+        local pos2d = Vector(pos.x, pos.y or 0, pos.z):To2D()
+        if not pos2d.onScreen then
+            return
+        end
+        self.Step = 1
+        self.Timer = GetTickCount()
+        self.Key = key
+        self.MouseKey = (key == MOUSEEVENTF_RIGHTDOWN) and WM_RBUTTONUP or nil
+        self.CastPos = self.IsTarget and castpos or pos2d
+        self.CursorPos = cursorPos
+        self.WndPassed = false
+        self.CursorPositioned = false
+        self:Step_1_SetToCastPos()
+        if self.MouseKey then
+            Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
+            Control.mouse_event(MOUSEEVENTF_RIGHTUP)
         else
-            print('cursor - bad vector')
-            return
+            Control.KeyDown(self.Key)
+            Control.KeyUp(self.Key)
         end
-        if not pos.onScreen then
-            print('cursor -> pos not on screen')
-            return
-        end
-        if pos.x and pos.y then
-            local mouseKey = key == MOUSEEVENTF_RIGHTDOWN and WM_RBUTTONUP or false
-            table_insert(self.Callbacks, {key, mouseKey, isTarget and castpos or pos, isTarget})
-            if self.Step == 0 then
-                --if #self.Callbacks > 1 then print("Cursor.Add | not good | step 0 | #cb > 1") end
-                self.CursorPos = _G.cursorPos
-                self.WndPassed = false
-                self.Key = self.Callbacks[1][1]
-                self.MouseKey = self.Callbacks[1][2]
-                self.CastPos = self.Callbacks[1][3]
-                self.IsTarget = self.Callbacks[1][4]
-                self:Step_1_SetToCastPos()
-            end
-            return
-        end
-        print('cursor -> !x or !y')
     end
     -- on tick
     function Cursor:OnTick()
-        if self.Step > 0 then
-            if GetTickCount() > self.Timer + 100 then
-                --print("cursor crash prevented " .. tostring(self.Step) .. " " .. tostring(GetTickCount()-self.Timer))
-                self.Callbacks = {}
-                self:Step_3_SetToCursorPos()
+        if self.Step == 0 then
+            if FlashHelper.Flash then
+                --print('flash ' .. GetTickCount())
+                self:Add(FlashHelper.Flash, myHero.pos:Extended(Vector(mousePos), 600))
+                FlashHelper.Flash = nil
                 return
             end
-        end
-        if self.Step == 0 then
-            if #self.Callbacks > 0 then print("Cursor.OnTick | not good | step 0 | #cb > 0") end
+            if EvadeSupport then
+                --print('evade ' .. GetTickCount())
+                self:Add(MOUSEEVENTF_RIGHTDOWN, EvadeSupport)
+                EvadeSupport = nil
+                return
+            end
             return
         end
         if self.Step == 1 then
+            --print("Cursor.OnTick | step 1 " .. GetTickCount())
             self:Step_1_SetToCastPos()
-            --print("Cursor.OnTick | step 1")
             return
         end
         if self.Step == 2 then
-            self:Step_2_NewCallback()
-            --print("Cursor.OnTick | step 2")
-            return
-        end
-        if self.Step == 3 then
-            self:Step_3_SetToCursorPos()
-            --print("Cursor.OnTick | step 3")
+            --print("Cursor.OnTick | step 2 " .. GetTickCount())
+            self:Step_2_SetToCursorPos()
             return
         end
     end
     -- on wnd msg
     function Cursor:WndMsg(msg, wParam)
-        if not self.WndPassed and self.Step == 1 then
-            if (self.MouseKey and msg == self.MouseKey) or (not self.MouseKey and wParam == self.Key) then
-                self.WndPassed = true
-                self:Step_2_NewCallback()
-            end
+        if not self.WndPassed and self.Step == 1 and (self.MouseKey and msg == self.MouseKey or wParam == self.Key) then
+            self.Timer = GetTickCount()
+            self.WndPassed = true
         end
     end
     -- on draw
@@ -4091,60 +3888,36 @@ do
     end
     -- step 1 | set to cast pos
     function Cursor:Step_1_SetToCastPos()
-        self.Step = 1
-        self.Timer = GetTickCount()
-        if self.IsTarget then
-            local pos = self.CastPos.pos:To2D()
+        local pos = self.IsTarget and self.CastPos.pos:To2D() or self.CastPos
+        if pos.onScreen then
             Control.SetCursorPos(pos.x, pos.y)
-        else
-            Control.SetCursorPos(self.CastPos.x, self.CastPos.y)
         end
-        if self.MouseKey then
-            Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
-            Control.mouse_event(MOUSEEVENTF_RIGHTUP)
-        else
-            Control.KeyDown(self.Key)
-            Control.KeyUp(self.Key)
-        end
-    end
-    -- step 2 | new callback
-    function Cursor:Step_2_NewCallback()
-        self.Step = 2
-        if GetTickCount() < self.Timer + 30 then
-            return
-        end
-        table_remove(self.Callbacks, 1)
-        if #self.Callbacks > 0 then
-            self.WndPassed = false
-            self.Key = self.Callbacks[1][1]
-            self.MouseKey = self.Callbacks[1][2]
-            self.CastPos = self.Callbacks[1][3]
-            self.IsTarget = self.Callbacks[1][4]
-            self:Step_1_SetToCastPos()
-            return
-        end
-        self:Step_3_SetToCursorPos()
-    end
-    -- step 3 | set to cursor
-    function Cursor:Step_3_SetToCursorPos()
-        self.Step = 3
-        local cursorPos = self.CursorPos
-        local currentCursorPos = _G.cursorPos
-        local dx = currentCursorPos.x - cursorPos.x
-        local dy = currentCursorPos.y - cursorPos.y
-        Control.SetCursorPos(cursorPos.x, cursorPos.y)
-        if dx * dx + dy * dy < 2500 then
-            if #self.Callbacks > 0 then
-                self.WndPassed = false
-                self.Key = self.Callbacks[1][1]
-                self.MouseKey = self.Callbacks[1][2]
-                self.CastPos = self.Callbacks[1][3]
-                self.IsTarget = self.Callbacks[1][4]
-                self:Step_1_SetToCastPos()
-                return
+        if not self.WndPassed then
+            if self.MouseKey then
+                Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
+                Control.mouse_event(MOUSEEVENTF_RIGHTUP)
+            else
+                Control.KeyDown(self.Key)
+                Control.KeyUp(self.Key)
             end
-            self.Step = 0
+            self.Timer = GetTickCount()
             return
+        end
+        if self.WndPassed and GetTickCount() > self.Timer + 30 then
+            self.Step = 2
+            self.Timer = GetTickCount()
+            self:Step_2_SetToCursorPos()
+        end
+    end
+    -- step 2 | set to cursor
+    function Cursor:Step_2_SetToCursorPos()
+        if not self.CursorPositioned then
+            self.CursorPositioned = true
+            Control.SetCursorPos(self.CursorPos.x, self.CursorPos.y)
+            return
+        end
+        if GetTickCount() > self.Timer + 30 then
+            self.Step = 0
         end
     end
     -- init call
@@ -4569,7 +4342,7 @@ do
                 end
             end
             local mePos = myHero.pos
-            if IsInRange(mePos, _G.mousePos, self.Menu.General.HoldRadius:Value()) then
+            if IsInRange(mePos, mousePos, self.Menu.General.HoldRadius:Value()) then
                 if self.CanHoldPosition then
                     Control.Hold(self.HoldPositionButton:Key())
                 end
@@ -4651,7 +4424,6 @@ Callback.Add('Load', function()
     Callback.Add("Draw", function()
         FlashHelper:OnTick()
         Cached:Reset()
-        CastKey:OnTick()
         Cursor:OnTick()
         Action:OnTick()
         Attack:OnTick()
@@ -4682,8 +4454,6 @@ Callback.Add('Load', function()
         Spell:WndMsg(msg, wParam)
         Target:WndMsg(msg, wParam)
         Cursor:WndMsg(msg, wParam)
-        CastKey:WndMsg(msg, wParam)
-        FlashHelper:WndMsg(msg, wParam)
         for i = 1, #wndmsgs do
             wndmsgs[i](msg, wParam)
         end
