@@ -4,7 +4,7 @@ end
 
 local FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, CastKey, Cursor, Health, Attack
 
-local Version = '1.35'
+local Version = '1.34'
 local myHero = _G.myHero
 local os = _G.os
 local Game = _G.Game
@@ -153,8 +153,21 @@ FlashHelper = {}
 do
     -- init
     function FlashHelper:__init()
-        self.Timer = 0
+        self.CastTimer = 0
         self.FlashSpell = 0
+        self.FlashCount = 0
+        -- cursor
+        self.Step = 0
+        self.Timer = 0
+        self.Key = nil
+        self.CastPos = nil
+        self.CursorPos = nil
+        self.WndPassed = false
+        self.FlashCasted = false
+        -- control flash
+        _G.Control.Flash = function()
+            self:Add()
+        end
     end
     
     -- create menu
@@ -167,11 +180,29 @@ do
     
     -- on tick
     function FlashHelper:OnTick()
-        if not self.Menu.Enabled:Value() or not self.Menu.Flashgos:Value() or myHero.dead then return end
-        if self:IsReady() then
-            print("Flash Helper | Flashing!")
-            self.Timer = GetTickCount()
-            Control.Flash(self.Menu.Flashlol:Key(), myHero.pos:Extended(Vector(_G.mousePos), 600))
+        if self.Step == 0 then
+            if self.Menu.Flashgos:Value() and self.Menu.Enabled:Value() and not Control.IsKeyDown(HK_LUS) and self:IsReady() and not myHero.dead and not Game.IsChatOpen() and Game.IsOnTop() then
+                self.FlashCount = self.FlashCount + 1
+                print("Flash Helper | Flashing! " .. self.FlashCount)
+                self.CastTimer = GetTickCount()
+                Control.Flash()
+            end
+        elseif self.Step == 1 then
+            if Cursor.Step == 0 then
+                if not self.FlashCasted then
+                    self.CastPos = myHero.pos:Extended(Vector(_G.mousePos), 600):To2D()
+                    self.CursorPos = _G.cursorPos
+                    self.FlashCasted = true
+                end
+                self:Step_1_SetToCastPos()
+            end
+            --print("FlashHelper.OnTick | step 1")
+        elseif self.Step == 2 then
+            self:Step_2_ReleaseKey()
+            --print("FlashHelper.OnTick | step 2")
+        elseif self.Step == 3 then
+            self:Step_3_SetToCursorPos()
+            --print("FlashHelper.OnTick | step 3")
         end
     end
     
@@ -195,10 +226,72 @@ do
         if (Game.CanUseSpell(self.FlashSpell) ~= 0) then
             return false
         end
-        if GetTickCount() < self.Timer + 1000 then
+        if GetTickCount() < self.CastTimer + 1000 then
             return false
         end
         return true
+    end
+    
+    -- add
+    function FlashHelper:Add()
+        if self.Step > 0 then
+            return
+        end
+        self.Step = 1
+        self.WndPassed = false
+        self.FlashCasted = false
+        self.Key = self.Menu.Flashlol:Key()
+        if Cursor.Step == 0 then
+            self.CastPos = myHero.pos:Extended(Vector(_G.mousePos), 600):To2D()
+            self.CursorPos = _G.cursorPos
+            self.FlashCasted = true
+            self:Step_1_SetToCastPos()
+            return
+        end
+    end
+    -- on wnd msg
+    function FlashHelper:WndMsg(msg, wParam)
+        if not self.WndPassed and self.Step == 2 and wParam == self.Key then
+            self:Step_3_SetToCursorPos()
+            self.WndPassed = true
+            self.Timer = GetTickCount()
+        end
+    end
+    -- step 1 | set to cast pos
+    function FlashHelper:Step_1_SetToCastPos()
+        self.Step = 1
+        self.Timer = GetTickCount()
+        local castPos = self.CastPos
+        local currentCursorPos = _G.cursorPos
+        local dx = currentCursorPos.x - castPos.x
+        local dy = currentCursorPos.y - castPos.y
+        Control.SetCursorPos(castPos.x, castPos.y)
+        if dx * dx + dy * dy < 2500 then
+            self:Step_2_ReleaseKey()
+            return
+        end
+    end
+    -- step 2 | release key
+    function FlashHelper:Step_2_ReleaseKey()
+        self.Step = 2
+        Control.KeyDown(self.Key)
+        Control.KeyUp(self.Key)
+    end
+    -- step 3 | set to cursor
+    function FlashHelper:Step_3_SetToCursorPos()
+        self.Step = 3
+        if GetTickCount() < self.Timer + 30 then
+            return
+        end
+        local cursorPos = self.CursorPos
+        local currentCursorPos = _G.cursorPos
+        local dx = currentCursorPos.x - cursorPos.x
+        local dy = currentCursorPos.y - cursorPos.y
+        Control.SetCursorPos(cursorPos.x, cursorPos.y)
+        if dx * dx + dy * dy < 2500 then
+            self.Step = 0
+            return
+        end
     end
     
     -- init call
@@ -3754,14 +3847,6 @@ end
 do
     local AttackKey = Menu.Main.AttackTKey
     local FastKiting = Menu.Orbwalker.General.FastKiting
-    _G.Control.Flash = function(key, a)
-        local pos = GetControlPos(a)
-        if pos then
-            Cursor:Add(key, pos)
-            return true
-        end
-        return false
-    end
     _G.Control.Evade = function(a)
         local pos = GetControlPos(a)
         if pos then
@@ -4598,6 +4683,7 @@ Callback.Add('Load', function()
         Target:WndMsg(msg, wParam)
         Cursor:WndMsg(msg, wParam)
         CastKey:WndMsg(msg, wParam)
+        FlashHelper:WndMsg(msg, wParam)
         for i = 1, #wndmsgs do
             wndmsgs[i](msg, wParam)
         end
