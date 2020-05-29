@@ -207,28 +207,38 @@ do
         local id = _o.networkID
         members['networkID'] = id
         function metatable.__index(s, k)
+            if k == 'pos' then
+                return _o.pos
+            end
+            if k == 'dead' then
+                return _o.dead
+            end
+            if k == 'health' then
+                return _o.health
+            end
+            if k == 'range' then
+                return _o.range
+            end
+            if k == 'ms' then
+                return _o.ms
+            end
+            if k == 'distance' then
+                return _o.distance
+            end
+            if k == 'activeSpell' then
+                return _o.activeSpell
+            end
+            if k == 'attackData' then
+                return _o.attackData
+            end
+            if k == 'pathing' then
+                return _o.pathing
+            end
+            if k == 'posTo' then
+                return _o.posTo
+            end
             if members[k] == nil then
-                if k == 'pos' then
-                    members[k] = _o.pos
-                elseif k == 'health' then
-                    members[k] = _o.health
-                elseif k == 'range' then
-                    members[k] = _o.range
-                elseif k == 'ms' then
-                    members[k] = _o.ms
-                elseif k == 'distance' then
-                    members[k] = _o.distance
-                elseif k == 'activeSpell' then
-                    members[k] = _o.activeSpell
-                elseif k == 'attackData' then
-                    members[k] = _o.attackData
-                elseif k == 'pathing' then
-                    members[k] = _o.pathing
-                elseif k == 'posTo' then
-                    members[k] = _o.posTo
-                else
-                    members[k] = _o[k]
-                end
+                members[k] = _o[k]
             end
             return members[k]
         end
@@ -276,17 +286,8 @@ do
         function class:GetObject()
             return _o
         end
-        function class:GetPos()
-            return _o.pos
-        end
-        function class:GetMS()
-            return _o.ms
-        end
-        function class:GetPosTo()
-            return _o.posTo
-        end
-        function class:GetDistance()
-            return _o.distance
+        function class:IsValid()
+            return _o and _o.valid and _o.visible and _o.type == Obj_AI_Hero and _o.isTargetable and not _o.dead
         end
         setmetatable(class, metatable)
         return class
@@ -2646,7 +2647,7 @@ do
         local cachedHeroes = Cached:GetHeroes()
         for i = 1, #cachedHeroes do
             local hero = cachedHeroes[i]
-            if hero.isEnemy and (not immortal or not self:IsHeroImmortal(hero, isAttack)) then
+            if hero.isEnemy and hero:IsValid() and (not immortal or not self:IsHeroImmortal(hero, isAttack)) then
                 if not range or hero.distance < range + (bbox and hero.boundingRadius or 0) then
                     table_insert(result, hero)
                 end
@@ -2660,7 +2661,7 @@ do
         local cachedHeroes = Cached:GetHeroes()
         for i = 1, #cachedHeroes do
             local hero = cachedHeroes[i]
-            if hero.isAlly and (not immortal or not self:IsHeroImmortal(hero, isAttack)) then
+            if hero.isAlly and hero:IsValid() and (not immortal or not self:IsHeroImmortal(hero, isAttack)) then
                 if not range or hero.distance < range + (bbox and hero.boundingRadius or 0) then
                     table_insert(result, hero)
                 end
@@ -3083,7 +3084,7 @@ do
             if Object.IsCaitlyn and Buff:HasBuff(enemy, 'caitlynyordletrapinternal') then
                 extraRange = extraRange + 600
             end
-            if enemy:GetDistance() < attackRange + extraRange then
+            if enemy.distance < attackRange + extraRange then
                 table_insert(enemiesaa, enemy)
             end
         end
@@ -3875,6 +3876,9 @@ do
         local z = pos.z
         if pos.x and z and z > 0 then
             pos = Vector(pos.x, pos.y or 0, pos.z):To2D()
+        else
+            print('cursor - bad vector')
+            return
         end
         if not pos.onScreen then
             print('cursor -> pos not on screen')
@@ -3901,7 +3905,7 @@ do
     function Cursor:OnTick()
         if self.Step > 0 then
             if GetTickCount() > self.Timer + 100 then
-                print("cursor crash prevented")
+                --print("cursor crash prevented " .. tostring(self.Step) .. " " .. tostring(GetTickCount()-self.Timer))
                 self.Callbacks = {}
                 self:Step_3_SetToCursorPos()
                 return
