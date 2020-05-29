@@ -4,7 +4,7 @@ end
 
 local FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, Cursor, Health, Attack, EvadeSupport
 
-local Version = '1.36'
+local Version = '1.38'
 local myHero = _G.myHero
 local os = _G.os
 local Game = _G.Game
@@ -718,7 +718,7 @@ do
         self.Main:MenuElement({name = '', type = _G.SPACE, id = 'GeneralSpace'})
         self.Main:MenuElement({id = 'AttackTKey', name = 'Attack Target Key', key = string.byte('U'), tooltip = 'You should bind this one in ingame settings'})
         self.Main:MenuElement({id = 'Latency', name = 'Ping [ms]', value = 50, min = 0, max = 120, step = 1, callback = function(value) _G.LATENCY = value end})
-        self.Main:MenuElement({id = 'CursorDelay', name = 'Cursor Delay', value = 30, min = 30, max = 50, step = 5})
+        self.Main:MenuElement({id = 'CursorDelay', name = 'Cursor Delay', value = 40, min = 30, max = 60, step = 1})
         self.Main:MenuElement({name = '', type = _G.SPACE, id = 'VersionSpaceA'})
         self.Main:MenuElement({name = 'Version  ' .. Version, type = _G.SPACE, id = 'VersionSpaceB'})
         _G.LATENCY = self.Main.Latency:Value()
@@ -3810,12 +3810,10 @@ do
         self.Step = 0
         self.Timer = 0
         self.Key = nil
-        self.MouseKey = nil
         self.CastPos = nil
         self.CursorPos = nil
         self.IsTarget = false
-        self.WndPassed = false
-        self.CursorPositioned = false
+        self.CursorDelay = Menu.Main.CursorDelay
     end
     -- add
     function Cursor:Add(key, castpos)
@@ -3829,21 +3827,12 @@ do
             return
         end
         self.Step = 1
-        self.Timer = GetTickCount()
         self.Key = key
-        self.MouseKey = (key == MOUSEEVENTF_RIGHTDOWN) and WM_RBUTTONUP or nil
+        self.Timer = GetTickCount()
         self.CastPos = self.IsTarget and castpos or pos2d
         self.CursorPos = cursorPos
-        self.WndPassed = false
-        self.CursorPositioned = false
         self:Step_1_SetToCastPos()
-        if self.MouseKey then
-            Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
-            Control.mouse_event(MOUSEEVENTF_RIGHTUP)
-        else
-            Control.KeyDown(self.Key)
-            Control.KeyUp(self.Key)
-        end
+        CastKey(key)
     end
     -- on tick
     function Cursor:OnTick()
@@ -3873,13 +3862,6 @@ do
             return
         end
     end
-    -- on wnd msg
-    function Cursor:WndMsg(msg, wParam)
-        if not self.WndPassed and self.Step == 1 and (self.MouseKey and msg == self.MouseKey or wParam == self.Key) then
-            self.Timer = GetTickCount()
-            self.WndPassed = true
-        end
-    end
     -- on draw
     function Cursor:OnDraw()
         if MenuDrawCursor:Value() then
@@ -3892,33 +3874,15 @@ do
         if pos.onScreen then
             Control.SetCursorPos(pos.x, pos.y)
         end
-        if not self.WndPassed then
-            if self.MouseKey then
-                Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
-                Control.mouse_event(MOUSEEVENTF_RIGHTUP)
-            else
-                Control.KeyDown(self.Key)
-                Control.KeyUp(self.Key)
-            end
-            self.Timer = GetTickCount()
-            return
-        end
-        if self.WndPassed and GetTickCount() > self.Timer + 30 then
+        if GetTickCount() > self.Timer + self.CursorDelay:Value() then
             self.Step = 2
-            self.Timer = GetTickCount()
             self:Step_2_SetToCursorPos()
         end
     end
     -- step 2 | set to cursor
     function Cursor:Step_2_SetToCursorPos()
-        if not self.CursorPositioned then
-            self.CursorPositioned = true
-            Control.SetCursorPos(self.CursorPos.x, self.CursorPos.y)
-            return
-        end
-        if GetTickCount() > self.Timer + 30 then
-            self.Step = 0
-        end
+        Control.SetCursorPos(self.CursorPos.x, self.CursorPos.y)
+        self.Step = 0
     end
     -- init call
     Cursor:__init()
@@ -4453,7 +4417,7 @@ Callback.Add('Load', function()
         Data:WndMsg(msg, wParam)
         Spell:WndMsg(msg, wParam)
         Target:WndMsg(msg, wParam)
-        Cursor:WndMsg(msg, wParam)
+        --Cursor:WndMsg(msg, wParam)
         for i = 1, #wndmsgs do
             wndmsgs[i](msg, wParam)
         end
