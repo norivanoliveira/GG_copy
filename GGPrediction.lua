@@ -2,7 +2,7 @@ if _G.GGPrediction ~= nil then
     return
 end
 
-local SCRIPT_VERSION = '0.158'
+local SCRIPT_VERSION = '0.159'
 local math_huge = math.huge
 local math_pi = math.pi
 local math_sqrt = assert(math.sqrt)
@@ -613,18 +613,13 @@ function Prediction:SpellPrediction(args)
         if (args.Collision ~= nil) then c.Collision = args.Collision end
         if (args.MaxCollision ~= nil) then c.MaxCollision = args.MaxCollision end
         if (args.CollisionTypes ~= nil) then c.CollisionTypes = args.CollisionTypes end
-        c.Type, c.Speed, c.Range, c.Delay, c.Radius, c.RealRadius = SPELLTYPE_LINE, math_huge, math_huge, 0, 1, 1
+        c.Type, c.Speed, c.Range, c.Delay, c.Radius, c.UseBoundingRadius = SPELLTYPE_LINE, math_huge, math_huge, 0, 1, false
         if (args.Type ~= nil) then c.Type = args.Type end
         if (args.Speed ~= nil) then c.Speed = args.Speed end
         if (args.Range ~= nil) then c.Range = args.Range end
         if (args.Delay ~= nil) then c.Delay = args.Delay end
-        if (args.Radius ~= nil) then
-            c.Radius = args.Radius
-            c.RealRadius = args.Radius
-            if (args.UseBoundingRadius or type == SPELLTYPE_LINE) then
-                c.RealRadius = c.RealRadius + unit.boundingRadius
-            end
-        end
+        if (args.Radius ~= nil) then c.Radius = args.Radius end
+        if (args.UseBoundingRadius or (args.UseBoundingRadius == nil and c.Type == SPELLTYPE_LINE)) then c.UseBoundingRadius = true end
     end
     function c:ResetOutput()
         self.HitChance = 0
@@ -635,6 +630,7 @@ function Prediction:SpellPrediction(args)
     end
     function c:GetOutput()
         self.TargetIsHero = self.Target.type == Obj_AI_Hero
+        self.RealRadius = self.UseBoundingRadius and self.Radius + self.Target.boundingRadius or self.Radius
         self.UnitPosition, self.CastPosition, self.TimeToHit = Prediction:GetPrediction(self.Target, self.Source, self.Speed, self.Delay, self.RealRadius, self.TargetIsHero)
     end
     function c:HighHitChance(spelltime, attacktime)
