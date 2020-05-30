@@ -1,4 +1,4 @@
-local Version = 1.4
+local Version = 1.5
 local Name = "GGOrbwalker"
 
 if _G.SDK then
@@ -79,7 +79,6 @@ do
             end
             if self.Step == 3 then
                 self.Step = 0
-                print(self.ScriptName .. ' - no updates found!')
                 return
             end
             if self.Step == 4 then
