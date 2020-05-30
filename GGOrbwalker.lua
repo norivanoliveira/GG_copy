@@ -1,9 +1,5 @@
-local Version = 1.5
+local Version = 1.6
 local Name = "GGOrbwalker"
-
-if _G.SDK then
-    return
-end
 
 _G.GGUpdate = {}
 do
@@ -101,6 +97,10 @@ GGUpdate:New({
     versionPath = SCRIPT_PATH .. Name .. ".version",
     versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version"
 })
+
+if _G.SDK then
+    return
+end
 
 local Updated, FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, Cursor, Health, Attack, EvadeSupport
 
@@ -3872,7 +3872,7 @@ do
             if Cursor.Step > 0 then
                 return false
             end
-            if a.pos then
+            if b == nil and a.pos then
                 Cursor:Add(key, a)
             else
                 Cursor:Add(key, pos)
