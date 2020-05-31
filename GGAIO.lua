@@ -1,4 +1,4 @@
-local Version = 1.1
+local Version = 1.2
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -865,12 +865,33 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     end
     -- e logic
     function Champion:ELogic()
-        if not(os.clock() < LastEFake + 0.5 and Game.CanUseSpell(_E) == 0) then
+        local timer = GetTickCount()
+        if self.EHelper then
+            if GG_Cursor.Step == 0 then
+                self.LastE = timer
+                GG_Cursor:Add(self.EHelper, myHero.pos:Extended(Vector(mousePos), 600))
+                self.EHelper = nil
+            end
             return
         end
-        local key = Menu.e_lol:Key()
-        Control.KeyDown(key)
-        Control.KeyUp(key)
+        if not(os.clock() < LastEFake + 0.5 and Game.CanUseSpell(_E) == 0 and not Control.IsKeyDown(HK_LUS) and not myHero.dead and not Game.IsChatOpen() and Game.IsOnTop()) then
+            return
+        end
+        if self.LastE and timer < self.LastE + 1000 then
+            return
+        end
+        if timer < LastChatOpenTimer + 1000 then
+            return
+        end
+        if timer < LevelUpKeyTimer + 1000 then
+            return
+        end
+        if GG_Cursor.Step == 0 then
+            self.LastE = timer
+            GG_Cursor:Add(Menu.e_lol:Key(), myHero.pos:Extended(Vector(mousePos), 600))
+            return
+        end
+        self.EHelper = Menu.e_lol:Key()
     end
     -- r logic
     function Champion:RLogic()
