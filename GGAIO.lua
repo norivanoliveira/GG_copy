@@ -1,8 +1,22 @@
+local Version = 1.1
+local Name = 'GGAIO'
+
+Callback.Add('Load', function()
+    GGUpdate:New({
+        version = Version,
+        scriptName = Name,
+        scriptPath = SCRIPT_PATH .. Name .. ".lua",
+        scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".lua",
+        versionPath = SCRIPT_PATH .. Name .. ".version",
+        versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version"
+    })
+end)
+
 if not FileExist(COMMON_PATH .. "GGPrediction.lua") then
-    print("GG Twitch - Please download GGPrediction.lua !")
+    DownloadFileAsync("https://raw.githubusercontent.com/gamsteron/GG/master/GGPrediction.lua", COMMON_PATH .. "GGPrediction.lua", function() end)
+    print('GGPrediction - downloaded! Please 2xf6!')
     return
 end
-
 require('GGPrediction')
 
 local Menu, Utils, Champion
@@ -57,12 +71,14 @@ local GetTickCount = GetTickCount
 
 Menu = {}
 do
-    local m = MenuElement({name = 'GG ' .. myHero.charName, id = 'GG' .. myHero.charName, type = _G.MENU})
+    local m = MenuElement({name = "GG " .. myHero.charName, id = 'GG' .. myHero.charName, type = _G.MENU})
     Menu.q = m:MenuElement({name = 'Q', id = 'q', type = _G.MENU})
     Menu.w = m:MenuElement({name = 'W', id = 'w', type = _G.MENU})
     Menu.e = m:MenuElement({name = 'E', id = 'e', type = _G.MENU})
     Menu.r = m:MenuElement({name = 'R', id = 'r', type = _G.MENU})
     Menu.d = m:MenuElement({name = 'Drawings', id = 'd', type = _G.MENU})
+    m:MenuElement({name = '', type = _G.SPACE, id = 'VersionSpaceA'})
+    m:MenuElement({name = 'Version  ' .. Version, type = _G.SPACE, id = 'VersionSpaceB'})
 end
 
 Utils = {}
@@ -753,6 +769,22 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     Menu.e_fake = Menu.e:MenuElement({id = "efake", name = "E Fake Key", value = false, key = string.byte("E")})
     Menu.e_lol = Menu.e:MenuElement({id = "elol", name = "E LoL Key", value = false, key = string.byte("L")})
     
+    Menu.r_combo = Menu.r:MenuElement({id = 'combo', name = 'Combo', value = true})
+    Menu.r_harass = Menu.r:MenuElement({id = 'harass', name = 'Harass', value = false})
+    Menu.r_auto = Menu.r:MenuElement({id = 'auto', name = 'Auto', value = false})
+    Menu.r_stopxrange = Menu.r:MenuElement({id = "stopxrange", name = "Don't when enemies in x range", value = 400, min = 0, max = 1000, step = 100})
+    Menu.r_xenemies = Menu.r:MenuElement({id = "xenemies", name = "When can hit x enemies", value = 2, min = 1, max = 5, step = 1})
+    Menu.r_xtime = Menu.r:MenuElement({id = "xtime", name = "When time to hit < x", value = 3.0, min = 1.0, max = 10.0, step = 0.5})
+    Menu.r_hitchance = Menu.r:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high", "immobile"}})
+    Menu.r:MenuElement({name = "Extras", id = "extras", type = _G.MENU})
+    Menu.r_extras_ks = Menu.r.extras:MenuElement({id = 'ks', name = 'KS', value = false})
+    Menu.r_extras_immobile = Menu.r.extras:MenuElement({id = 'immobile', name = 'Immobile', value = false})
+    Menu.r:MenuElement({name = "Semi Manual", id = "semi", type = _G.MENU})
+    Menu.r_semi_key = Menu.r.semi:MenuElement({name = "Semi-Manual Key", id = "key", key = string.byte("T")})
+    Menu.r_semi_xenemies = Menu.r.semi:MenuElement({id = "xenemies", name = "When can hit x enemies", value = 1, min = 1, max = 5, step = 1})
+    Menu.r_semi_xtime = Menu.r.semi:MenuElement({id = "xtime", name = "When time to hit < x", value = 6.0, min = 1.0, max = 10.0, step = 0.5})
+    Menu.r_semi_hitchance = Menu.r.semi:MenuElement({id = "hitchance", name = "Hitchance", value = 1, drop = {"normal", "high", "immobile"}})
+    
     Menu.d:MenuElement({name = "Auto Q", id = "autoq", type = _G.MENU})
     Menu.d_autoq_enabled = Menu.d.autoq:MenuElement({id = "enabled", name = "Enabled", value = true})
     Menu.d_autoq_size = Menu.d.autoq:MenuElement({id = "size", name = "Text Size", value = 25, min = 1, max = 64, step = 1})
@@ -764,6 +796,7 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     local LastEFake = 0
     local QPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 60, Range = 1150, Speed = 2000, Collision = true, Type = GGPrediction.SPELLTYPE_LINE})
     local WPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 60, Range = 1150, Speed = 1200, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
+    local RPrediction = GGPrediction:SpellPrediction({Delay = 1, Radius = 160, Range = 20000, Speed = 2000, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
     
     -- champion
     Champion =
@@ -779,6 +812,7 @@ if Champion == nil and myHero.charName == 'Ezreal' then
             Champion.QWTargets = Utils:GetEnemyHeroes(QPrediction.Range)
             Champion:WLogic()
             Champion:QLogic()
+            Champion:RLogic()
         end,
     }
     -- load
@@ -812,7 +846,7 @@ if Champion == nil and myHero.charName == 'Ezreal' then
         self.QWTargets = Utils:GetEnemyHeroes(QPrediction.Range)
         self:WLogic()
         self:QLogic()
-        --self:RLogic()
+        self:RLogic()
     end
     -- q logic
     function Champion:QLogic()
@@ -837,6 +871,154 @@ if Champion == nil and myHero.charName == 'Ezreal' then
         local key = Menu.e_lol:Key()
         Control.KeyDown(key)
         Control.KeyUp(key)
+    end
+    -- r logic
+    function Champion:RLogic()
+        if not GG_Spell:IsReady(_R, {q = 0.33, w = 0.33, e = 0.33, r = 1}) then
+            return
+        end
+        self.RCasted = false
+        self.IsRAuto = Menu.r_auto:Value()
+        self.IsRKS = Menu.r_extras_ks:Value()
+        self.IsRImmobile = Menu.r_extras_immobile:Value()
+        self.IsRSemiKey = Menu.r_semi_key:Value()
+        self.IsRCombo = self.IsCombo and Menu.r_combo:Value()
+        self.IsRHarass = self.IsHarass and Menu.r_harass:Value()
+        self.RHitChance = Menu.r_hitchance:Value() + 1
+        self.RAOE = {}
+        if self.IsRAuto or self.IsRCombo or self.IsRHarass or self.IsRSemiKey or self.IsRKS or self.IsRImmobile then
+            self.RAOE = RPrediction:GetAOEPrediction(myHero)
+        end
+        if #self.RAOE == 0 then
+            return
+        end
+        self:RCombo()
+        self:RSemiManual()
+        self:RImmobile()
+        self:RKS()
+    end
+    -- r combo/harass/auto
+    function Champion:RCombo()
+        if not(Menu.r_auto:Value() or (self.IsCombo and Menu.r_combo:Value()) or (self.IsHarass and Menu.r_harass:Value())) then
+            return
+        end
+        local enemies = Utils:GetEnemyHeroes(Menu.r_stopxrange:Value())
+        if #enemies > 0 then
+            return
+        end
+        local hitchance = Menu.r_hitchance:Value() + 1
+        local minenemies = Menu.r_xenemies:Value()
+        local timetohit = Menu.r_xtime:Value()
+        local bestaoe = nil
+        local bestcount = 0
+        local bestdistance = 1000
+        for i = 1, #self.RAOE do
+            local aoe = self.RAOE[i]
+            if aoe.HitChance >= hitchance and aoe.TimeToHit <= timetohit and aoe.Count >= minenemies then
+                if aoe.Count > bestcount or (aoe.Count == bestcount and aoe.Distance < bestdistance) then
+                    bestdistance = aoe.Distance
+                    bestcount = aoe.Count
+                    bestaoe = aoe
+                end
+            end
+        end
+        if bestaoe then
+            Control.CastSpell(HK_R, bestaoe.CastPosition)
+            self.RCasted = true
+        end
+    end
+    -- r semi manual
+    function Champion:RSemiManual()
+        if self.RCasted or not Menu.r_semi_key:Value() then
+            return
+        end
+        local hitchance = Menu.r_semi_hitchance:Value() + 1
+        local minenemies = Menu.r_semi_xenemies:Value()
+        local timetohit = Menu.r_semi_xtime:Value()
+        local bestaoe = nil
+        local bestcount = 0
+        local bestdistance = 1000
+        for i = 1, #self.RAOE do
+            local aoe = self.RAOE[i]
+            if aoe.HitChance >= hitchance and aoe.TimeToHit <= timetohit and aoe.Count >= minenemies then
+                if aoe.Count > bestcount or (aoe.Count == bestcount and aoe.Distance < bestdistance) then
+                    bestdistance = aoe.Distance
+                    bestcount = aoe.Count
+                    bestaoe = aoe
+                end
+            end
+        end
+        if bestaoe then
+            Control.CastSpell(HK_R, bestaoe.CastPosition)
+            self.RCasted = true
+        end
+    end
+    -- r immobile
+    function Champion:RImmobile()
+        if self.RCasted or not Menu.r_extras_immobile:Value() then
+            return
+        end
+        local hitchance = HITCHANCE_IMMOBILE
+        local minenemies = 1
+        local bestaoe = nil
+        local bestcount = 0
+        local bestdistance = 1000
+        for i = 1, #self.RAOE do
+            local aoe = self.RAOE[i]
+            if aoe.HitChance >= hitchance and aoe.Count >= minenemies then
+                if aoe.Count > bestcount or (aoe.Count == bestcount and aoe.Distance < bestdistance) then
+                    bestdistance = aoe.Distance
+                    bestcount = aoe.Count
+                    bestaoe = aoe
+                end
+            end
+        end
+        if bestaoe then
+            Control.CastSpell(HK_R, bestaoe.CastPosition)
+            self.RCasted = true
+        end
+    end
+    -- r ks
+    function Champion:RKS()
+        if self.RCasted or not Menu.r_extras_ks:Value() then
+            return
+        end
+        local rdata = myHero:GetSpellData(_R)
+        local rDamage = 200 + myHero.bonusDamage + (0.9 * myHero.ap) + (150 * rdata.level)
+        local hitchance = HITCHANCE_HIGH
+        local minenemies = 1
+        local bestaoe = nil
+        local bestcount = 0
+        local bestdistance = 1000
+        for i = 1, #self.RAOE do
+            local aoe = self.RAOE[i]
+            if aoe.HitChance >= hitchance and aoe.TimeToHit <= 3.0 and aoe.Count >= minenemies then
+                local health = aoe.Unit.health
+                if GG_Damage:CalculateDamage(myHero, aoe.Unit, DAMAGE_TYPE_MAGICAL, rDamage) > health and not aoe.Unit.dead and aoe.Unit.alive then
+                    local ok = true
+                    local allies = GG_Object:GetAllyHeroes(RPrediction.Range)
+                    for j = 1, #allies do
+                        local ally = allies[j]
+                        if not ally.isMe then
+                            if GGPrediction:GetDistance(ally.pos, aoe.Unit.pos) < 600 and ally.health > 600 then
+                                ok = false
+                            end
+                        end
+                    end
+                    if ok then
+                        if aoe.Count > bestcount or (aoe.Count == bestcount and aoe.Distance < bestdistance) then
+                            bestdistance = aoe.Distance
+                            bestcount = aoe.Count
+                            bestaoe = aoe
+                        end
+                    end
+                end
+            end
+        end
+        if bestaoe then
+            Control.CastSpell(HK_R, bestaoe.CastPosition)
+            self.RCasted = true
+        end
     end
     -- q auto
     function Champion:QAuto()
@@ -987,7 +1169,7 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     end
     -- q logic
     function Champion:QLogic()
-        if not GG_Spell:IsReady(_Q, {q = 1, w = 0, e = 0.33, r = 0.33}) then
+        if not GG_Spell:IsReady(_Q, {q = 0.33, w = 0, e = 0.33, r = 0.33}) then
             return
         end
         if self.WMana < myHero:GetSpellData(_Q).mana then
@@ -1004,7 +1186,7 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     end
     -- e logic
     function Champion:ELogic()
-        if not GG_Spell:IsReady(_E, {q = 0.33, w = 0, e = 1, r = 0.33}) then
+        if not GG_Spell:IsReady(_E, {q = 0.33, w = 0, e = 0.33, r = 0.33}) then
             return
         end
         if self.WMana < myHero:GetSpellData(_E).mana then
@@ -1198,6 +1380,9 @@ if Champion == nil and myHero.charName == 'Varus' then
     Menu.r:MenuElement({id = "xenemyhp", name = "enemy health above", value = MENU_R_XEnemyHP, min = 100, max = 1000, step = 50, callback = function(x) MENU_R_XEnemyHP = x end})
     Menu.r:MenuElement({id = "xrange", name = "enemy in range", value = MENU_R_XRANGE, min = 250, max = 1000, step = 50, callback = function(x) MENU_R_XRANGE = x end})
     Menu.r:MenuElement({id = "hitchance", name = "Hitchance", value = MENU_R_HITCHANCE, drop = {"normal", "high", "immobile"}, callback = function(x) MENU_R_HITCHANCE = x end})
+    Menu.r:MenuElement({name = "Semi Manual", id = "semi", type = _G.MENU})
+    Menu.r_semi_key = Menu.r.semi:MenuElement({name = "Semi-Manual Key", id = "key", key = string.byte("T")})
+    Menu.r_semi_hitchance = Menu.r.semi:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high", "immobile"}})
     
     -- locals
     local QPrediction = GGPrediction:SpellPrediction({Delay = 0.1, Radius = 70, Range = 1650, Speed = 1900, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
@@ -1360,6 +1545,19 @@ if Champion == nil and myHero.charName == 'Varus' then
             end
         end
     end
+    -- r semi manual
+    function Champion:RSemiManual()
+        if not Menu.r_semi_key:Value() then
+            return
+        end
+        local enemies = Utils:GetEnemyHeroes(RPrediction.Range)
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            if Utils:Cast(HK_R, enemy, RPrediction, Menu.r_semi_hitchance:Value() + 1) then
+                break
+            end
+        end
+    end
 end
 
 if Champion == nil and myHero.charName == 'Vayne' then
@@ -1387,7 +1585,7 @@ if Champion == nil and myHero.charName == 'Vayne' then
     Menu.r_xdistance = Menu.r:MenuElement({id = "xdistance", name = "enemy distance from vayne", value = 500, min = 250, max = 750, step = 50})
     
     -- locals
-    local EPrediction = GGPrediction:SpellPrediction({Delay = 0.5, Radius = 0, Range = 550, Speed = 2000, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
+    local EPrediction = GGPrediction:SpellPrediction({Delay = 0.5, Radius = 0, Range = 550, Speed = 2000, Collision = false, UseBoundingRadius = false, Type = GGPrediction.SPELLTYPE_LINE})
     
     -- champion
     Champion =
