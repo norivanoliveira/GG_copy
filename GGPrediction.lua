@@ -1,8 +1,21 @@
-if _G.GGPrediction ~= nil then
+local Version = 1.2
+local Name = "GGPrediction"
+
+Callback.Add('Load', function()
+    GGUpdate:New({
+        version = Version,
+        scriptName = Name,
+        scriptPath = COMMON_PATH .. Name .. ".lua",
+        scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".lua",
+        versionPath = COMMON_PATH .. Name .. ".version",
+        versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version"
+    })
+end)
+
+if _G.GGPrediction then
     return
 end
 
-local SCRIPT_VERSION = '0.159'
 local math_huge = math.huge
 local math_pi = math.pi
 local math_sqrt = assert(math.sqrt)
@@ -35,7 +48,8 @@ Menu =
     MaxRange = __menu:MenuElement({id = "PredMaxRange" .. myHero.charName, name = "Pred Max Range %", value = 100, min = 70, max = 100, step = 1}),
     Latency = __menu:MenuElement({id = "Latency", name = "Ping/Latency", value = 50, min = 0, max = 200, step = 5}),
     ExtraDelay = __menu:MenuElement({id = "ExtraDelay", name = "Extra Delay", value = 60, min = 0, max = 100, step = 5}),
-    Version = __menu:MenuElement({name = SCRIPT_VERSION, type = _G.SPACE, id = "Version"}),
+    VersionA = __menu:MenuElement({name = '', type = _G.SPACE, id = 'VersionSpaceA'}),
+    VersionB = __menu:MenuElement({name = 'Version  ' .. Version, type = _G.SPACE, id = 'VersionSpaceB'}),
 }
 function Menu:GetMaxRange()
     local result = self.MaxRange:Value() * 0.01
@@ -690,7 +704,7 @@ function Prediction:SpellPrediction(args)
             return false
         end]]
         self.HitChance = HITCHANCE_NORMAL
-        if hitChance > HITCHANCE_NORMAL and self.TargetIsHero then
+        if self.TargetIsHero then
             local duration, spelltime, attacktime, knockduration = Immobile:GetDuration(self.Target)
             if knockduration ~= 0 then
                 self.HitChance = 0
@@ -735,6 +749,43 @@ function Prediction:SpellPrediction(args)
         self.StartTime = os.clock()
         self:ResetOutput()
         self:GetOutput()
+    end
+    function c:GetAOEPrediction(source)
+        local aoetargets = {}
+        local enemies = ObjectManager:GetEnemyHeroes()
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            self:GetPrediction(enemy, source)
+            if self:CanHit(HITCHANCE_NORMAL) then
+                table_insert(aoetargets, {enemy, self.HitChance, self.TimeToHit, self.CastPosition, self.UnitPosition})
+            end
+        end
+        local result = {}
+        local isCircle = self.Type == SPELLTYPE_CIRCLE
+        for i = 1, #aoetargets do
+            local aoetarget = aoetargets[i]
+            local count = 1
+            local distance = 0
+            local castpos = aoetarget[4]
+            for j = 1, #aoetargets do
+                if i ~= j then
+                    local d
+                    local unitpos = aoetargets[j][5]
+                    if isCircle then
+                        d = Math:GetDistance(castpos, unitpos)
+                    else
+                        local pointLine, isOnSegment = Math:ClosestPointOnLineSegment(unitpos, self.Source, castpos)
+                        d = Math:GetDistance(pointLine, unitpos)
+                    end
+                    if d < self.RealRadius then
+                        count = count + 1
+                        distance = distance + d
+                    end
+                end
+            end
+            table_insert(result, {Count = count, Distance = distance, Unit = aoetarget[1], HitChance = aoetarget[2], TimeToHit = aoetarget[3], CastPosition = castpos})
+        end
+        return result
     end
     return c
 end
