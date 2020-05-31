@@ -1,4 +1,4 @@
-local Version = 1.2
+local Version = 1.3
 local Name = "GGPrediction"
 
 Callback.Add('Load', function()
@@ -755,9 +755,11 @@ function Prediction:SpellPrediction(args)
         local enemies = ObjectManager:GetEnemyHeroes()
         for i = 1, #enemies do
             local enemy = enemies[i]
-            self:GetPrediction(enemy, source)
-            if self:CanHit(HITCHANCE_NORMAL) then
-                table_insert(aoetargets, {enemy, self.HitChance, self.TimeToHit, self.CastPosition, self.UnitPosition})
+            if not SDK.ObjectManager:IsHeroImmortal(enemy) then
+                self:GetPrediction(enemy, source)
+                if self:CanHit(HITCHANCE_NORMAL) then
+                    table_insert(aoetargets, {enemy, self.HitChance, self.TimeToHit, self.CastPosition, self.UnitPosition})
+                end
             end
         end
         local result = {}
