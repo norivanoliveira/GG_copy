@@ -1,4 +1,4 @@
-local Version = 1.6
+local Version = 1.7
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -3841,6 +3841,23 @@ end
 
 -- Control
 do
+    _G.LevelUpKeyTimer = 0
+    Callback.Add("WndMsg", function(msg, wParam)
+        if msg == HK_LUS or wParam == HK_LUS then
+            _G.LevelUpKeyTimer = GetTickCount()
+        end
+    end)
+    _G.LastChatOpenTimer = 0
+    local ischatopen = _G.Game.IsChatOpen
+    _G.Game.IsChatOpen = function()
+        if ischatopen() then
+            _G.LastChatOpenTimer = GetTickCount()
+            return true
+        end
+        return false
+    end
+    --(HK_LUS) and not myHero.dead and not Game.IsChatOpen() and Game.IsOnTop()
+    
     local AttackKey = Menu.Main.AttackTKey
     local FastKiting = Menu.Orbwalker.General.FastKiting
     _G.Control.Evade = function(a)
