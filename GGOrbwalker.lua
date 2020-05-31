@@ -1,4 +1,4 @@
-local Version = 1.7
+local Version = 1.8
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -284,7 +284,7 @@ do
     
     -- on tick
     function FlashHelper:OnTick()
-        if self.Menu.Flashgos:Value() and self.Menu.Enabled:Value() and not Control.IsKeyDown(HK_LUS) and self:IsReady() and not myHero.dead and not Game.IsChatOpen() and Game.IsOnTop() then
+        if self.Menu.Flashgos:Value() and self.Menu.Enabled:Value() and self:IsReady() and not myHero.dead and not Game.IsChatOpen() and Game.IsOnTop() then
             print("Flash Helper | Flashing!")
             self.Timer = GetTickCount()
             Control.Flash()
@@ -304,6 +304,9 @@ do
         end
         if (not has_flash) then
             return false
+        end
+        if GetTickCount() < LastChatOpenTimer + 1000 then
+            return
         end
         if (myHero:GetSpellData(self.FlashSpell).currentCd > 0) then
             return false
@@ -3856,8 +3859,6 @@ do
         end
         return false
     end
-    --(HK_LUS) and not myHero.dead and not Game.IsChatOpen() and Game.IsOnTop()
-    
     local AttackKey = Menu.Main.AttackTKey
     local FastKiting = Menu.Orbwalker.General.FastKiting
     _G.Control.Evade = function(a)
