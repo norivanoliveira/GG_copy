@@ -1,4 +1,4 @@
-local Version = 1.2
+local Version = 1.4
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -149,7 +149,7 @@ do
         if target == nil then
             return false
         end
-        spellprediction:GetPrediction(target:GetObject(), myHero)
+        spellprediction:GetPrediction(target, myHero)
         if spellprediction:CanHit(hitchance or HITCHANCE_HIGH) then
             Control.CastSpell(spell, spellprediction.CastPosition)
             self.CanUseSpell = false
@@ -262,11 +262,11 @@ if Champion == nil and myHero.charName == 'Twitch' then
     end
     -- e logic
     function Champion:ELogic()
+        self:EBuffManager()
         if not GG_Spell:IsReady(_E, {q = 0, w = 0.33, e = 1, r = 0}) then
             return
         end
         self.ETargets = Utils:GetEnemyHeroes(1200 - 35)
-        self:EBuffManager()
         self:ECombo()
     end
     -- r logic
@@ -311,7 +311,8 @@ if Champion == nil and myHero.charName == 'Twitch' then
     end
     -- e buffmanager
     function Champion:EBuffManager()
-        for _, hero in ipairs(self.ETargets) do
+        local enemies = Utils:GetEnemyHeroes(2000)
+        for _, hero in ipairs(enemies) do
             local id = hero.networkID
             if EBuffs[id] == nil then EBuffs[id] = {count = 0, duration = 0} end
             local ebuff = GG_Buff:GetBuff(hero, 'twitchdeadlyvenom')
@@ -335,7 +336,6 @@ if Champion == nil and myHero.charName == 'Twitch' then
             return
         end
         self.ETargets = Utils:GetEnemyHeroes(1200 - 35)
-        self:EBuffManager()
         for _, hero in ipairs(self.ETargets) do
             local ecount = EBuffs[hero.networkID].count
             if ecount > 0 then
@@ -772,7 +772,8 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     Menu.r_combo = Menu.r:MenuElement({id = 'combo', name = 'Combo', value = true})
     Menu.r_harass = Menu.r:MenuElement({id = 'harass', name = 'Harass', value = false})
     Menu.r_auto = Menu.r:MenuElement({id = 'auto', name = 'Auto', value = false})
-    Menu.r_stopxrange = Menu.r:MenuElement({id = "stopxrange", name = "Don't when enemies in x range", value = 400, min = 0, max = 1000, step = 100})
+    Menu.r_stopaa = Menu.r:MenuElement({id = "stopaa", name = "Don't when enemy in attack range", value = true})
+    Menu.r_stopxrange = Menu.r:MenuElement({id = "stopxrange", name = "Don't when enemies in x range", value = 600, min = 0, max = 1000, step = 100})
     Menu.r_xenemies = Menu.r:MenuElement({id = "xenemies", name = "When can hit x enemies", value = 2, min = 1, max = 5, step = 1})
     Menu.r_xtime = Menu.r:MenuElement({id = "xtime", name = "When time to hit < x", value = 3.0, min = 1.0, max = 10.0, step = 0.5})
     Menu.r_hitchance = Menu.r:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high", "immobile"}})
@@ -898,6 +899,13 @@ if Champion == nil and myHero.charName == 'Ezreal' then
         if not GG_Spell:IsReady(_R, {q = 0.33, w = 0.33, e = 0.33, r = 1}) then
             return
         end
+        if Menu.r_stopaa:Value() and self.AttackTarget then
+            return
+        end
+        local enemies = Utils:GetEnemyHeroes(Menu.r_stopxrange:Value())
+        if #enemies > 0 then
+            return
+        end
         self.RCasted = false
         self.IsRAuto = Menu.r_auto:Value()
         self.IsRKS = Menu.r_extras_ks:Value()
@@ -921,10 +929,6 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     -- r combo/harass/auto
     function Champion:RCombo()
         if not(Menu.r_auto:Value() or (self.IsCombo and Menu.r_combo:Value()) or (self.IsHarass and Menu.r_harass:Value())) then
-            return
-        end
-        local enemies = Utils:GetEnemyHeroes(Menu.r_stopxrange:Value())
-        if #enemies > 0 then
             return
         end
         local hitchance = Menu.r_hitchance:Value() + 1
@@ -1446,7 +1450,7 @@ if Champion == nil and myHero.charName == 'Varus' then
         if target == nil then
             return false
         end
-        QPrediction:GetPrediction(target:GetObject(), myHero)
+        QPrediction:GetPrediction(target, myHero)
         if QPrediction:CanHit(MENU_Q_HITCHANCE + 1) then
             --local pos = myHero.pos
             --if GGPrediction:GetDistance(pos, QPrediction.UnitPosition) > GGPrediction:GetDistance(pos, target.pos) + 75 then
@@ -1691,7 +1695,7 @@ if Champion == nil and myHero.charName == 'Vayne' then
         end
         local holdDistance = Menu.q_xdistance:Value()
         local pos = GGPrediction:CircleCircleIntersection(self.Pos, closestEnemy.pos, 300, holdDistance)
-        if #pos > 0 and (GG_Object:IsFacing(closestEnemy:GetObject(), myHero, 60) or closestEnemy.distance < holdDistance) then
+        if #pos > 0 and (GG_Object:IsFacing(closestEnemy, myHero, 60) or closestEnemy.distance < holdDistance) then
             if GGPrediction:GetDistance(pos[1], _G.mousePos) < GGPrediction:GetDistance(pos[2], _G.mousePos) then
                 Utils:Cast(HK_Q, {x = pos[1].x, y = 0, z = pos[1].z})
             else
@@ -1730,7 +1734,7 @@ if Champion == nil and myHero.charName == 'Vayne' then
             if enemy.distance < EPrediction.Range + self.BoundingRadius + enemy.boundingRadius - 35 then
                 local useon = Menu.e_useon[enemy.charName]
                 if useon and useon:Value() then
-                    EPrediction:GetPrediction(enemy:GetObject(), myHero)
+                    EPrediction:GetPrediction(enemy, myHero)
                     if EPrediction:CanHit(Menu.e_hitchance:Value() + 1) and Utils:CheckWall(self.Pos, Vector(EPrediction.UnitPosition.x, 0, EPrediction.UnitPosition.z), 475) and Utils:CheckWall(self.Pos, enemy.pos, 475) then
                         Utils:Cast(HK_E, enemy)
                         break
