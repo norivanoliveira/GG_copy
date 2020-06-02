@@ -1,4 +1,4 @@
-local Version = 1.8
+local Version = 1.9
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -374,214 +374,6 @@ do
             self.Buffs[k] = nil
         end
     end
-    -- hero
-    function Cached:Hero(o)
-        local class = {}
-        local members = {}
-        local metatable = {}
-        local _o = o
-        local id = _o.networkID
-        members['networkID'] = id
-        function metatable.__index(s, k)
-            if k == 'pos' then
-                return _o.pos
-            end
-            if k == 'dead' then
-                return _o.dead
-            end
-            if k == 'health' then
-                return _o.health
-            end
-            if k == 'range' then
-                return _o.range
-            end
-            if k == 'ms' then
-                return _o.ms
-            end
-            if k == 'distance' then
-                return _o.distance
-            end
-            if k == 'activeSpell' then
-                return _o.activeSpell
-            end
-            if k == 'attackData' then
-                return _o.attackData
-            end
-            if k == 'pathing' then
-                return _o.pathing
-            end
-            if k == 'posTo' then
-                return _o.posTo
-            end
-            if members[k] == nil then
-                members[k] = _o[k]
-            end
-            return members[k]
-        end
-        function class:GetBuff(i)
-            return _o:GetBuff(i)
-        end
-        function class:GetBuffs()
-            if Cached.Buffs[id] == nil then
-                local count = o.buffCount
-                if count and count >= 0 and count < 10000 then
-                    local b, b2 = nil, nil
-                    local buffs = {}
-                    for i = 0, count do
-                        b = _o:GetBuff(i)
-                        if b then
-                            b2 = Cached:Buff(b)
-                            if b2.count > 0 then
-                                table_insert(buffs, b2)
-                            end
-                        end
-                    end
-                    Cached.Buffs[id] = buffs
-                end
-            end
-            return Cached.Buffs[id] or {}
-        end
-        function class:GetPath(i)
-            return _o:GetPath(i)
-        end
-        function class:GetPrediction(speed, delay)
-            return _o:GetPrediction(speed, delay)
-        end
-        function class:GetCollision(width, speed, delay)
-            return _o:GetCollision(width, speed, delay)
-        end
-        function class:IsValidTarget(range, teamcheck, source)
-            return _o:IsValidTarget(range, teamcheck, source)
-        end
-        function class:GetSpellData(iSlot)
-            return _o:GetSpellData(iSlot)
-        end
-        function class:GetItemData(index)
-            return _o:GetItemData(index)
-        end
-        function class:GetObject()
-            return _o
-        end
-        function class:IsValid()
-            return _o and _o.valid and _o.visible and _o.type == Obj_AI_Hero and _o.isTargetable and not _o.dead
-        end
-        setmetatable(class, metatable)
-        return class
-    end
-    -- minion
-    function Cached:Minion(o)
-        local class = {}
-        local members = {}
-        local metatable = {}
-        local _o = o
-        local id = _o.networkID
-        members['networkID'] = id
-        function metatable.__index(s, k)
-            if members[k] == nil then
-                if k == 'pos' then
-                    members[k] = _o.pos
-                elseif k == 'health' then
-                    members[k] = _o.health
-                elseif k == 'range' then
-                    members[k] = _o.range
-                elseif k == 'ms' then
-                    members[k] = _o.ms
-                elseif k == 'distance' then
-                    members[k] = _o.distance
-                elseif k == 'activeSpell' then
-                    members[k] = _o.activeSpell
-                elseif k == 'attackData' then
-                    members[k] = _o.attackData
-                elseif k == 'pathing' then
-                    members[k] = _o.pathing
-                elseif k == 'posTo' then
-                    members[k] = _o.posTo
-                else
-                    members[k] = _o[k]
-                end
-            end
-            return members[k]
-        end
-        function class:GetBuff(i)
-            return _o:GetBuff(i)
-        end
-        function class:GetBuffs()
-            if Cached.Buffs[id] == nil then
-                local count = o.buffCount
-                if count and count >= 0 and count < 10000 then
-                    local b, b2 = nil, nil
-                    local buffs = {}
-                    for i = 0, count do
-                        b = _o:GetBuff(i)
-                        if b then
-                            b2 = Cached:Buff(b)
-                            if b2.count > 0 then
-                                table_insert(buffs, b2)
-                            end
-                        end
-                    end
-                    Cached.Buffs[id] = buffs
-                end
-            end
-            return Cached.Buffs[id] or {}
-        end
-        function class:GetPath(i)
-            return _o:GetPath(i)
-        end
-        function class:GetPrediction(speed, delay)
-            return _o:GetPrediction(speed, delay)
-        end
-        function class:GetCollision(width, speed, delay)
-            return _o:GetCollision(width, speed, delay)
-        end
-        function class:IsValidTarget(range, teamcheck, source)
-            return _o:IsValidTarget(range, teamcheck, source)
-        end
-        setmetatable(class, metatable)
-        return class
-    end
-    -- turret
-    function Cached:Turret(o)
-        local class = {}
-        local members = {}
-        local metatable = {}
-        local _o = o
-        function metatable.__index(s, k)
-            if members[k] == nil then
-                if k == 'health' then
-                    members[k] = _o.health
-                elseif k == 'distance' then
-                    members[k] = _o.distance
-                else
-                    members[k] = _o[k]
-                end
-            end
-            return members[k]
-        end
-        setmetatable(class, metatable)
-        return class
-    end
-    -- ward
-    function Cached:Ward(o)
-        local class = {}
-        local members = {}
-        local metatable = {}
-        local _o = o
-        function metatable.__index(s, k)
-            if members[k] == nil then
-                if k == 'health' then
-                    members[k] = _o.health
-                elseif k == 'distance' then
-                    members[k] = _o.distance
-                else
-                    members[k] = _o[k]
-                end
-            end
-            return members[k]
-        end
-        setmetatable(class, metatable)
-        return class
-    end
     -- buff
     function Cached:Buff(b)
         local class = {}
@@ -614,7 +406,7 @@ do
                 for i = 1, count do
                     local o = Game.Hero(i)
                     if o and o.valid and o.visible and o.isTargetable and not o.dead then
-                        table_insert(self.Heroes, self:Hero(o))
+                        table_insert(self.Heroes, o)
                     end
                 end
             end
@@ -630,7 +422,7 @@ do
                 for i = 1, count do
                     local o = Game.Minion(i)
                     if o and o.valid and o.visible and o.isTargetable and not o.dead and not o.isImmortal then
-                        table_insert(self.Minions, self:Minion(o))
+                        table_insert(self.Minions, o)
                     end
                 end
             end
@@ -646,7 +438,7 @@ do
                 for i = 1, count do
                     local o = Game.Turret(i)
                     if o and o.valid and o.visible and o.isTargetable and not o.dead and not o.isImmortal then
-                        table_insert(self.Turrets, self:Turret(o))
+                        table_insert(self.Turrets, o)
                     end
                 end
             end
@@ -662,7 +454,7 @@ do
                 for i = 1, count do
                     local o = Game.Ward(i)
                     if o and o.valid and o.visible and o.isTargetable and not o.dead and not o.isImmortal then
-                        table_insert(self.Wards, self:Ward(o))
+                        table_insert(self.Wards, o)
                     end
                 end
             end
@@ -2150,6 +1942,7 @@ do
         -- init
         function c:__init()
             self.HK = 0
+            self.SpellPrediction = spelldata
             self.Radius = spelldata.Radius
             self.Delay = spelldata.Delay
             self.Speed = spelldata.Speed
@@ -2251,8 +2044,10 @@ do
                 local targets = self:GetLastHitTargets()
                 for i = 1, #targets do
                     local unit = targets[i]
-                    if unit.alive and unit:GetCollision(self.Radius + 35, self.Speed, self.Delay) == 1 then
-                        if Control.CastSpell(self.HK, unit:GetPrediction(self.Speed, self.Delay)) then
+                    if unit.alive then
+                        --self.SpellPrediction:GetPrediction(unit, myHero)
+                        if Control.CastSpell(self.HK, unit.pos) then
+                            --if self.SpellPrediction:CanHit() and Control.CastSpell(self.HK, self.SpellPrediction.CastPosition) then
                             self.LastHitHandle = unit.handle
                             Orbwalker:SetAttack(false)
                             Action:Add(function()
@@ -2267,8 +2062,10 @@ do
                 local targets = self:GetLaneClearTargets()
                 for i = 1, #targets do
                     local unit = targets[i]
-                    if unit.alive and unit:GetCollision(self.Radius + 35, self.Speed, self.Delay) == 1 then
-                        if Control.CastSpell(self.HK, unit:GetPrediction(self.Speed, self.Delay)) then
+                    if unit.alive then
+                        --self.SpellPrediction:GetPrediction(unit, myHero)
+                        if Control.CastSpell(self.HK, unit.pos) then
+                            --if self.SpellPrediction:CanHit() and Control.CastSpell(self.HK, self.SpellPrediction.CastPosition) then
                             self.LaneClearHandle = unit.handle
                         end
                     end
@@ -2824,7 +2621,7 @@ do
         local cachedHeroes = Cached:GetHeroes()
         for i = 1, #cachedHeroes do
             local hero = cachedHeroes[i]
-            if hero.isEnemy and hero:IsValid() and (not immortal or not self:IsHeroImmortal(hero, isAttack)) then
+            if hero.isEnemy and self:IsValid(hero) and (not immortal or not self:IsHeroImmortal(hero, isAttack)) then
                 if not range or hero.distance < range + (bbox and hero.boundingRadius or 0) then
                     table_insert(result, hero)
                 end
@@ -2838,7 +2635,7 @@ do
         local cachedHeroes = Cached:GetHeroes()
         for i = 1, #cachedHeroes do
             local hero = cachedHeroes[i]
-            if hero.isAlly and hero:IsValid() and (not immortal or not self:IsHeroImmortal(hero, isAttack)) then
+            if hero.isAlly and self:IsValid(hero) and (not immortal or not self:IsHeroImmortal(hero, isAttack)) then
                 if not range or hero.distance < range + (bbox and hero.boundingRadius or 0) then
                     table_insert(result, hero)
                 end
@@ -3928,22 +3725,22 @@ end
 -- cursor
 Cursor = {}
 do
+    -- init
     function Cursor:__init()
         self.MenuDelay = Menu.Main.CursorDelay
         self.MenuDrawCursor = Menu.Main.Drawings.Cursor
-        self.Hold = nil
         self.Step = 0
         self.Flash = nil
         self.WndChecked = false
-        self.EndTime = 0
-        self.Pos = nil
+        self.Timer = 0
+        self.CursorPos = nil
         self.CastPos = nil
         self.IsHero = false
         self.WParam = nil
         self.Msg = nil
     end
-    
-    function Cursor:Add(key, castPos, cPos)
+    -- add
+    function Cursor:Add(key, castPos)
         self.Step = 1
         if key == MOUSEEVENTF_RIGHTDOWN then
             self.WParam = nil
@@ -3952,23 +3749,16 @@ do
             self.WParam = key
             self.Msg = nil
         end
-        self.Pos = cPos or cursorPos
+        self.CursorPos = cursorPos
         self.WndChecked = false
-        self.EndTime = GetTickCount() + 70 + self.MenuDelay:Value()
-        self.IsHero = false
+        self.StartTimer = GetTickCount()
+        self.Timer = self.StartTimer + 70 + self.MenuDelay:Value()
+        self.IsTarget = false
         self.CastPos = castPos
         if self.CastPos ~= nil then
+            self.IsTarget = self.CastPos.pos ~= nil
             self:SetToCastPos()
-            if self.CastPos.type and self.CastPos.type == Obj_AI_Hero then
-                self.IsHero = true
-            end
         end
-        
-        -- PRESS KEY
-        if self.IsHero then
-            Control.KeyDown(_G.HK_TCO)
-        end
-        
         if (self.Msg) then
             Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
             Control.mouse_event(MOUSEEVENTF_RIGHTUP)
@@ -3976,15 +3766,10 @@ do
             Control.KeyDown(self.WParam)
             Control.KeyUp(self.WParam)
         end
-        
-        if self.IsHero then
-            Control.KeyUp(_G.HK_TCO)
-        end
     end
-    
+    -- on tick
     function Cursor:OnTick()
         local step = self.Step
-        
         if (step == 0) then
             if FlashHelper.Flash then
                 --print('flash ' .. GetTickCount())
@@ -3999,7 +3784,6 @@ do
                 return
             end
         end
-        
         if (step == 1) then
             self.Step = 2
             if self.CastPos == nil then
@@ -4009,9 +3793,8 @@ do
             end
             return
         end
-        
         if (step == 2) then
-            if (GetTickCount() > self.EndTime) then
+            if (GetTickCount() > self.Timer) then
                 self.Step = 3
                 self:SetToCursor()
             elseif self.CastPos ~= nil then
@@ -4019,43 +3802,45 @@ do
             end
             return
         end
-        
         if (step == 3) then
             self:SetToCursor()
             return
         end
     end
-    
+    -- on draw
     function Cursor:OnDraw()
         if self.MenuDrawCursor:Value() then
             Draw.Circle(mousePos, 150, 1, Color.Cursor)
         end
     end
-    
+    -- wnd msg
     function Cursor:WndMsg(msg, wParam)
         if self.Step == 0 or self.WndChecked then
             return
         end
         if (self.Msg and msg == self.Msg) or (self.WParam and wParam == self.WParam) then
-            self.EndTime = GetTickCount() + self.MenuDelay:Value()
+            self.Timer = GetTickCount() + self.MenuDelay:Value()
             self.WndChecked = true
+            if GetTickCount() - self.StartTimer > 70 then
+                print(GetTickCount() - self.StartTimer)
+            end
         end
     end
-    
+    -- set to cast pos
     function Cursor:SetToCastPos()
-        local pos = self.CastPos.pos
-        if pos then
-            pos = pos:To2D()
+        local pos
+        if self.IsTarget then
+            pos = self.CastPos.pos:To2D()
         else
             pos = (self.CastPos.z ~= nil) and Vector(self.CastPos.x, self.CastPos.y or 0, self.CastPos.z):To2D() or Vector({x = self.CastPos.x, y = self.CastPos.y})
         end
         Control.SetCursorPos(pos.x, pos.y)
     end
-    
+    -- set to cursor
     function Cursor:SetToCursor()
-        Control.SetCursorPos(self.Pos.x, self.Pos.y)
-        local dx = cursorPos.x - self.Pos.x
-        local dy = cursorPos.y - self.Pos.y
+        Control.SetCursorPos(self.CursorPos.x, self.CursorPos.y)
+        local dx = cursorPos.x - self.CursorPos.x
+        local dy = cursorPos.y - self.CursorPos.y
         if (dx * dx + dy * dy < 15000) then
             self.Step = 0
         end
