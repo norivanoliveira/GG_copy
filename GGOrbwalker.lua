@@ -1,4 +1,4 @@
-local Version = 1.9
+local Version = 2.0
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -2964,7 +2964,7 @@ do
                 if enemy.pos:ToScreen().onScreen then
                     local distance = pos:DistanceTo(enemy.pos)
                     if distance < 150 and distance < num then
-                        self.Selected = enemy:GetObject()
+                        self.Selected = enemy
                         num = distance
                     end
                 end
