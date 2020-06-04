@@ -1,4 +1,4 @@
-local Version = 1.4
+local Version = 1.5
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -1431,6 +1431,9 @@ if Champion == nil and myHero.charName == 'Varus' then
     -- on tick
     function Champion:OnTick()
         if self:HasQBuff() then
+            if not self.IsCombo and not self.IsHarass then
+                return
+            end
             self:QBuffLogic()
             return
         end
@@ -1464,7 +1467,7 @@ if Champion == nil and myHero.charName == 'Varus' then
         if not Control.IsKeyDown(HK_Q) then
             return
         end
-        local qtimer = self.Timer - GG_Spell.QkTimer
+        local qtimer = self.Timer - GG_Spell.QTimer
         if qtimer > 6 then
             return
         end
@@ -1472,9 +1475,10 @@ if Champion == nil and myHero.charName == 'Varus' then
         if #aaenemies == 0 and qtimer < MENU_Q_TIME then
             return
         end
+        QPrediction.Range = 925 + (qtimer * 0.5 * 700)
         local canusew = Game.CanUseSpell(_W) == 0 and ((self.IsCombo and MENU_W_COMBO) or (self.IsHarass and MENU_W_HARASS))
-        local enemies = Utils:GetEnemyHeroes(925 + (qtimer * 0.5 * 700) - 50)
-        if self:QCanUp(self.AttackTarget) then
+        local enemies = Utils:GetEnemyHeroes(QPrediction.Range)
+        if self:QCanUp(self.AttackTarget) and GGPrediction:GetDistance(self.AttackTarget.pos, self.Pos) < QPrediction.Range - 50 then
             if canusew and 100 * self.AttackTarget.health / self.AttackTarget.maxHealth < MENU_W_HP then
                 Control.KeyDown(HK_W)
                 Control.KeyUp(HK_W)
@@ -1484,7 +1488,7 @@ if Champion == nil and myHero.charName == 'Varus' then
         end
         for i = 1, #enemies do
             local enemy = enemies[i]
-            if self:QCanUp(enemy) then
+            if self:QCanUp(enemy) and GGPrediction:GetDistance(enemy.pos, self.Pos) < QPrediction.Range - 50 then
                 if canusew and 100 * enemy.health / enemy.maxHealth < MENU_W_HP then
                     Control.KeyDown(HK_W)
                     Control.KeyUp(HK_W)
