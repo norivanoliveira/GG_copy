@@ -1,4 +1,4 @@
-local Version = 2.0
+local Version = 2.1
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -1832,7 +1832,7 @@ do
         _G.Control.KeyDown = function(key)
             if key == HK_Q then
                 local timer = Game.Timer()
-                if timer > self.QkTimer + 0.33 and GameCanUseSpell(_Q) == 0 then
+                if timer > self.QTimer + 0.5 and GameCanUseSpell(_Q) == 0 then
                     self.QTimer = timer
                     for i = 1, #self.OnSpellCastCb do
                         self.OnSpellCastCb[i](_Q)
@@ -1841,7 +1841,7 @@ do
             end
             if key == HK_W then
                 local timer = Game.Timer()
-                if timer > self.WkTimer + 0.33 and GameCanUseSpell(_W) == 0 then
+                if timer > self.WTimer + 0.5 and GameCanUseSpell(_W) == 0 then
                     self.WTimer = timer
                     for i = 1, #self.OnSpellCastCb do
                         self.OnSpellCastCb[i](_W)
@@ -1850,7 +1850,7 @@ do
             end
             if key == HK_E then
                 local timer = Game.Timer()
-                if timer > self.EkTimer + 0.33 and GameCanUseSpell(_E) == 0 then
+                if timer > self.ETimer + 0.5 and GameCanUseSpell(_E) == 0 then
                     self.ETimer = timer
                     for i = 1, #self.OnSpellCastCb do
                         self.OnSpellCastCb[i](_E)
@@ -1859,7 +1859,7 @@ do
             end
             if key == HK_R then
                 local timer = Game.Timer()
-                if timer > self.RkTimer + 0.33 and GameCanUseSpell(_R) == 0 then
+                if timer > self.RTimer + 0.5 and GameCanUseSpell(_R) == 0 then
                     self.RTimer = timer
                     for i = 1, #self.OnSpellCastCb do
                         self.OnSpellCastCb[i](_R)
@@ -1877,25 +1877,25 @@ do
     function Spell:WndMsg(msg, wParam)
         local timer = Game.Timer()
         if wParam == HK_Q then
-            if timer > self.QkTimer + 0.33 and GameCanUseSpell(_Q) == 0 then
+            if timer > self.QkTimer + 0.5 and GameCanUseSpell(_Q) == 0 then
                 self.QkTimer = timer
             end
             return
         end
         if wParam == HK_W then
-            if timer > self.WkTimer + 0.33 and GameCanUseSpell(_W) == 0 then
+            if timer > self.WkTimer + 0.5 and GameCanUseSpell(_W) == 0 then
                 self.WkTimer = timer
             end
             return
         end
         if wParam == HK_E then
-            if timer > self.EkTimer + 0.33 and GameCanUseSpell(_E) == 0 then
+            if timer > self.EkTimer + 0.5 and GameCanUseSpell(_E) == 0 then
                 self.EkTimer = timer
             end
             return
         end
         if wParam == HK_R then
-            if timer > self.RkTimer + 0.33 and GameCanUseSpell(_R) == 0 then
+            if timer > self.RkTimer + 0.5 and GameCanUseSpell(_R) == 0 then
                 self.RkTimer = timer
             end
             return
