@@ -3821,9 +3821,6 @@ do
         if (self.Msg and msg == self.Msg) or (self.WParam and wParam == self.WParam) then
             self.Timer = GetTickCount() + self.MenuDelay:Value()
             self.WndChecked = true
-            if GetTickCount() - self.StartTimer > 70 then
-                print(GetTickCount() - self.StartTimer)
-            end
         end
     end
     -- set to cast pos
