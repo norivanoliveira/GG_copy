@@ -1,4 +1,4 @@
-local Version = 1.5
+local Version = 1.6
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -121,6 +121,9 @@ do
     -- get enemy heroes
     function Utils:GetEnemyHeroes(range)
         local result = {}
+        if not self.CanUseSpell then
+            return result
+        end
         for i, unit in ipairs(Champion.EnemyHeroes) do
             if self.CachedDistance[i] == nil then
                 self.CachedDistance[i] = unit.distance
@@ -229,15 +232,15 @@ if Champion == nil and myHero.charName == 'Twitch' then
     }
     -- tick
     function Champion:OnTick()
+        self:EBuffManager()
         if not self.IsAttacking then
-            self:EKS()
+            self:ELogic()
         end
         self:RLogic()
         self:QLogic()
         if self.IsAttacking or self.CanAttackTarget or self.AttackTarget then
             return
         end
-        self:ELogic()
         self:WLogic()
     end
     -- draw
@@ -262,11 +265,11 @@ if Champion == nil and myHero.charName == 'Twitch' then
     end
     -- e logic
     function Champion:ELogic()
-        self:EBuffManager()
         if not GG_Spell:IsReady(_E, {q = 0, w = 0.33, e = 1, r = 0}) then
             return
         end
         self.ETargets = Utils:GetEnemyHeroes(1200 - 35)
+        self:EKS()
         self:ECombo()
     end
     -- r logic
@@ -332,22 +335,20 @@ if Champion == nil and myHero.charName == 'Twitch' then
         if not Menu.e_ks_enabled:Value() then
             return
         end
-        if not GG_Spell:IsReady(_E, {q = 0, w = 0.33, e = 1, r = 0}) then
-            return
-        end
-        self.ETargets = Utils:GetEnemyHeroes(1200 - 35)
         for _, hero in ipairs(self.ETargets) do
-            local ecount = EBuffs[hero.networkID].count
-            if ecount > 0 then
-                local elvl = myHero:GetSpellData(_E).level
-                local basedmg = 10 + (elvl * 10)
-                local perstack = (10 + (5 * elvl)) * ecount
-                local bonusAD = myHero.bonusDamage * 0.25 * ecount
-                local bonusAP = myHero.ap * 0.2 * ecount
-                local edmg = basedmg + perstack + bonusAD + bonusAP
-                if GG_Damage:CalculateDamage(myHero, hero, DAMAGE_TYPE_PHYSICAL, edmg) >= hero.health + (1.5 * hero.hpRegen) then
-                    Utils:Cast(HK_E)
-                    break
+            if EBuffs[hero.networkID] then
+                local ecount = EBuffs[hero.networkID].count
+                if ecount > 0 then
+                    local elvl = myHero:GetSpellData(_E).level
+                    local basedmg = 10 + (elvl * 10)
+                    local perstack = (10 + (5 * elvl)) * ecount
+                    local bonusAD = myHero.bonusDamage * 0.25 * ecount
+                    local bonusAP = myHero.ap * 0.2 * ecount
+                    local edmg = basedmg + perstack + bonusAD + bonusAP
+                    if GG_Damage:CalculateDamage(myHero, hero, DAMAGE_TYPE_PHYSICAL, edmg) >= hero.health + (1.5 * hero.hpRegen) then
+                        Utils:Cast(HK_E)
+                        break
+                    end
                 end
             end
         end
