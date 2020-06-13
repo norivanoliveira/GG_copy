@@ -1,4 +1,4 @@
-local Version = 2.1
+local Version = 2.2
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -2015,15 +2015,12 @@ do
         end
         -- tick
         function c:Tick()
-            if Orbwalker:IsAutoAttacking() or not isReady() then
+            if Cursor.Step > 0 or Orbwalker:IsAutoAttacking() or not isReady() then
                 return
             end
             local isLastHit = canLastHit() and (Orbwalker.Modes[ORBWALKER_MODE_LASTHIT] or Orbwalker.Modes[ORBWALKER_MODE_LANECLEAR])
             local isLaneClear = canLaneClear() and Orbwalker.Modes[ORBWALKER_MODE_LANECLEAR]
             if not isLastHit and not isLaneClear then
-                return
-            end
-            if Cursor.Step ~= 0 then
                 return
             end
             if myHero:GetSpellData(spell).level == 0 then
@@ -3671,8 +3668,7 @@ do
         return false
     end
     _G.Control.Attack = function(target)
-        if Cursor.Step == 0 then
-            local pos = target.pos
+        if target then
             Cursor:Add(AttackKey:Key(), target)
             if FastKiting:Value() then
                 Movement.MoveTimer = 0
@@ -3725,106 +3721,37 @@ end
 -- cursor
 Cursor = {}
 do
+    local MenuDelay = Menu.Main.CursorDelay
+    local MenuDrawCursor = Menu.Main.Drawings.Cursor
     -- init
     function Cursor:__init()
-        self.MenuDelay = Menu.Main.CursorDelay
-        self.MenuDrawCursor = Menu.Main.Drawings.Cursor
         self.Step = 0
-        self.Flash = nil
-        self.WndChecked = false
-        self.Timer = 0
-        self.CursorPos = nil
-        self.CastPos = nil
-        self.IsHero = false
-        self.WParam = nil
-        self.Msg = nil
     end
     -- add
     function Cursor:Add(key, castPos)
-        self.Step = 1
-        if key == MOUSEEVENTF_RIGHTDOWN then
-            self.WParam = nil
-            self.Msg = WM_RBUTTONUP
-        else
-            self.WParam = key
-            self.Msg = nil
-        end
+        self.Key = key
         self.CursorPos = cursorPos
-        self.WndChecked = false
-        self.StartTimer = GetTickCount()
-        self.Timer = self.StartTimer + 70 + self.MenuDelay:Value()
-        self.IsTarget = false
         self.CastPos = castPos
         if self.CastPos ~= nil then
             self.IsTarget = self.CastPos.pos ~= nil
-            self:SetToCastPos()
-        end
-        if (self.Msg) then
-            Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
-            Control.mouse_event(MOUSEEVENTF_RIGHTUP)
-        else
-            Control.KeyDown(self.WParam)
-            Control.KeyUp(self.WParam)
+            self.IsMouseClick = key == MOUSEEVENTF_RIGHTDOWN
+            self.Timer = GetTickCount() + MenuDelay:Value()
+            self:StepSetToCastPos()
+            self:StepPressKey()
         end
     end
-    -- on tick
-    function Cursor:OnTick()
-        local step = self.Step
-        if (step == 0) then
-            if FlashHelper.Flash then
-                --print('flash ' .. GetTickCount())
-                self:Add(FlashHelper.Flash, myHero.pos:Extended(Vector(mousePos), 600))
-                FlashHelper.Flash = nil
-                return
-            end
-            if EvadeSupport then
-                --print('evade ' .. GetTickCount())
-                self:Add(MOUSEEVENTF_RIGHTDOWN, EvadeSupport)
-                EvadeSupport = nil
-                return
-            end
-        end
-        if (step == 1) then
-            self.Step = 2
-            if self.CastPos == nil then
-                self.Step = 0
-            else
-                self:SetToCastPos()
-            end
-            return
-        end
-        if (step == 2) then
-            if (GetTickCount() > self.Timer) then
-                self.Step = 3
-                self:SetToCursor()
-            elseif self.CastPos ~= nil then
-                self:SetToCastPos()
-            end
-            return
-        end
-        if (step == 3) then
-            self:SetToCursor()
-            return
+    -- step ready
+    function Cursor:StepReady()
+        if FlashHelper.Flash then
+            self:Add(FlashHelper.Flash, myHero.pos:Extended(Vector(mousePos), 600))
+            FlashHelper.Flash = nil
+        elseif EvadeSupport then
+            self:Add(MOUSEEVENTF_RIGHTDOWN, EvadeSupport)
+            EvadeSupport = nil
         end
     end
-    -- on draw
-    function Cursor:OnDraw()
-        if self.MenuDrawCursor:Value() then
-            Draw.Circle(mousePos, 150, 1, Color.Cursor)
-        end
-    end
-    -- wnd msg
-    function Cursor:WndMsg(msg, wParam)
-        if self.Step == 0 or self.WndChecked then
-            return
-        end
-        if (self.Msg and msg == self.Msg) or (self.WParam and wParam == self.WParam) then
-            self.Timer = GetTickCount() + self.MenuDelay:Value()
-            self.WndChecked = true
-        end
-    end
-    -- set to cast pos
-    function Cursor:SetToCastPos()
+    -- step set to cast pos
+    function Cursor:StepSetToCastPos()
         local pos
         if self.IsTarget then
             pos = self.CastPos.pos:To2D()
@@ -3833,13 +3760,53 @@ do
         end
         Control.SetCursorPos(pos.x, pos.y)
     end
-    -- set to cursor
-    function Cursor:SetToCursor()
+    -- step press key
+    function Cursor:StepPressKey()
+        if self.IsMouseClick then
+            Control.mouse_event(MOUSEEVENTF_RIGHTDOWN)
+            Control.mouse_event(MOUSEEVENTF_RIGHTUP)
+        else
+            Control.KeyDown(self.Key)
+            Control.KeyUp(self.Key)
+        end
+        self.Step = 1
+    end
+    -- step wait for response
+    function Cursor:StepWaitForResponse()
+        if GetTickCount() > self.Timer then
+            self.Step = 2
+            --else self:StepSetToCastPos() self:StepPressKey()
+        end
+    end
+    -- step set to cursor pos
+    function Cursor:StepSetToCursorPos()
         Control.SetCursorPos(self.CursorPos.x, self.CursorPos.y)
-        local dx = cursorPos.x - self.CursorPos.x
-        local dy = cursorPos.y - self.CursorPos.y
-        if (dx * dx + dy * dy < 15000) then
+        self.Timer = GetTickCount() + MenuDelay:Value()
+        self.Step = 3
+    end
+    -- step wait for ready
+    function Cursor:StepWaitForReady()
+        if GetTickCount() > self.Timer then
             self.Step = 0
+        end
+    end
+    -- on tick
+    function Cursor:OnTick()
+        local step = self.Step
+        if step == 0 then
+            self:StepReady()
+        elseif step == 1 then
+            self:StepWaitForResponse()
+        elseif step == 2 then
+            self:StepSetToCursorPos()
+        elseif step == 3 then
+            self:StepWaitForReady()
+        end
+    end
+    -- on draw
+    function Cursor:OnDraw()
+        if MenuDrawCursor:Value() then
+            Draw.Circle(mousePos, 150, 1, Color.Cursor)
         end
     end
     -- init call
@@ -4226,7 +4193,7 @@ do
         if not self.Menu.AttackEnabled:Value() then
             return
         end
-        if self.AttackEnabled and unit and unit.valid and unit.visible and unit.pos:ToScreen().onScreen and self:CanAttack() then
+        if self.AttackEnabled and unit and unit.valid and unit.visible and self:CanAttack() then
             local args = {Target = unit, Process = true}
             for i = 1, #self.OnPreAttackCb do
                 self.OnPreAttackCb[i](args)
@@ -4234,7 +4201,9 @@ do
             if args.Process then
                 if args.Target then
                     self.LastTarget = args.Target
-                    if Control.Attack(args.Target) then
+                    local targetpos = args.Target.pos
+                    local attackpos = targetpos:ToScreen().onScreen and unit or myHero.pos:Extended(targetpos, 800)
+                    if Control.Attack(attackpos) then
                         Attack.Reset = false
                         Attack.LocalStart = Game.Timer()
                         self.PostAttackBool = true
@@ -4388,7 +4357,6 @@ Callback.Add('Load', function()
         Data:WndMsg(msg, wParam)
         Spell:WndMsg(msg, wParam)
         Target:WndMsg(msg, wParam)
-        Cursor:WndMsg(msg, wParam)
         for i = 1, #wndmsgs do
             wndmsgs[i](msg, wParam)
         end
