@@ -4202,7 +4202,7 @@ do
                 if args.Target then
                     self.LastTarget = args.Target
                     local targetpos = args.Target.pos
-                    local attackpos = targetpos:ToScreen().onScreen and unit or myHero.pos:Extended(targetpos, 800)
+                    local attackpos = targetpos:ToScreen().onScreen and args.Target or myHero.pos:Extended(targetpos, 800)
                     if Control.Attack(attackpos) then
                         Attack.Reset = false
                         Attack.LocalStart = Game.Timer()
