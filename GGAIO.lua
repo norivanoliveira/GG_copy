@@ -1,4 +1,4 @@
-local Version = 1.6
+local Version = 1.7
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -119,7 +119,7 @@ do
     -- cached distance
     Utils.CachedDistance = {}
     -- get enemy heroes
-    function Utils:GetEnemyHeroes(range)
+    function Utils:GetEnemyHeroes(range, bbox)
         local result = {}
         if not self.CanUseSpell then
             return result
@@ -128,7 +128,25 @@ do
             if self.CachedDistance[i] == nil then
                 self.CachedDistance[i] = unit.distance
             end
-            if self.CachedDistance[i] < range then
+            local extrarange = bbox and unit.boundingRadius or 0
+            if self.CachedDistance[i] < range + extrarange then
+                table_insert(result, unit)
+            end
+        end
+        return result
+    end
+    -- get enemy heroes inside polygon
+    function Utils:GetEnemyHeroesInsidePolygon(range, polygon, bbox)
+        local result = {}
+        if not self.CanUseSpell then
+            return result
+        end
+        for i, unit in ipairs(Champion.EnemyHeroes) do
+            if self.CachedDistance[i] == nil then
+                self.CachedDistance[i] = unit.distance
+            end
+            local extrarange = bbox and unit.boundingRadius or 0
+            if self.CachedDistance[i] < range + extrarange and self:InsidePolygon(polygon, unit) then
                 table_insert(result, unit)
             end
         end
@@ -170,6 +188,23 @@ do
             return true
         end
         return false
+    end
+    -- inside polygon
+    function Utils:InsidePolygon(polygon, point)
+        local result = false
+        local j = #polygon
+        point = point.pos or point
+        local pointx = point.x
+        local pointz = point.z or point.y
+        for i = 1, #polygon do
+            if (polygon[i].z < pointz and polygon[j].z >= pointz or polygon[j].z < pointz and polygon[i].z >= pointz) then
+                if (polygon[i].x + (pointz - polygon[i].z) / (polygon[j].z - polygon[i].z) * (polygon[j].x - polygon[i].x) < pointx) then
+                    result = not result
+                end
+            end
+            j = i
+        end
+        return result
     end
 end
 
@@ -360,9 +395,11 @@ if Champion == nil and myHero.charName == 'Twitch' then
         end
         local xenemies = 0
         for _, hero in ipairs(self.ETargets) do
-            local ecount = EBuffs[hero.networkID].count
-            if ecount > 0 and ecount >= Menu.e_xstacks:Value() then
-                xenemies = xenemies + 1
+            if EBuffs[hero.networkID] then
+                local ecount = EBuffs[hero.networkID].count
+                if ecount > 0 and ecount >= Menu.e_xstacks:Value() then
+                    xenemies = xenemies + 1
+                end
             end
         end
         if xenemies >= Menu.e_xenemies:Value() then
@@ -868,9 +905,8 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     -- e logic
     function Champion:ELogic()
         local timer = GetTickCount()
-        if self.EHelper then
+        if self.EHelper ~= nil then
             if GG_Cursor.Step == 0 then
-                self.LastE = timer
                 GG_Cursor:Add(self.EHelper, myHero.pos:Extended(Vector(mousePos), 600))
                 self.EHelper = nil
             end
@@ -888,8 +924,8 @@ if Champion == nil and myHero.charName == 'Ezreal' then
         if timer < LevelUpKeyTimer + 1000 then
             return
         end
+        self.LastE = timer
         if GG_Cursor.Step == 0 then
-            self.LastE = timer
             GG_Cursor:Add(Menu.e_lol:Key(), myHero.pos:Extended(Vector(mousePos), 600))
             return
         end
@@ -1560,7 +1596,7 @@ if Champion == nil and myHero.charName == 'Varus' then
             return
         end
         local nearToDeath = myHero.health <= MENU_R_XHeroHP
-        if self.AttackTarget and (nearToDeath or self.AttackTarget.health >= MENU_R_XEnemyHP) then
+        if self.AttackTarget and GGPrediction:GetDistance(self.AttackTarget.pos, self.Pos) < 900 and (nearToDeath or self.AttackTarget.health >= MENU_R_XEnemyHP) then
             if Utils:Cast(HK_R, self.AttackTarget, RPrediction, MENU_R_HITCHANCE + 1) then
                 return
             end
@@ -1568,9 +1604,11 @@ if Champion == nil and myHero.charName == 'Varus' then
         local enemies = Utils:GetEnemyHeroes(RPrediction.Range)
         for i = 1, #enemies do
             local enemy = enemies[i]
-            if nearToDeath or enemy.health >= MENU_R_XEnemyHP then
-                if Utils:Cast(HK_R, enemy, RPrediction, MENU_R_HITCHANCE + 1) then
-                    break
+            if GGPrediction:GetDistance(enemy.pos, self.Pos) < 900 then
+                if nearToDeath or enemy.health >= MENU_R_XEnemyHP then
+                    if Utils:Cast(HK_R, enemy, RPrediction, MENU_R_HITCHANCE + 1) then
+                        break
+                    end
                 end
             end
         end
@@ -1855,6 +1893,284 @@ if Champion == nil and myHero.charName == 'Vayne' then
                 Menu.e_antimelee_useon:MenuElement({id = args.charName, name = args.charName, value = true})
             end
         end)
+    end
+end
+
+if Champion == nil and myHero.charName == 'Jhin' then
+    
+    -- menu
+    Menu.q_combo = Menu.q:MenuElement({id = "combo", name = "Combo", value = true})
+    Menu.q_harass = Menu.q:MenuElement({id = "harass", name = "Harass", value = false})
+    Menu.q:MenuElement({id = "lane", name = "LaneClear", type = _G.MENU})
+    Menu.q_lh_enabled = Menu.q.lane:MenuElement({id = "lhenabled", name = "LastHit Enabled", value = true})
+    Menu.q_lh_mana = Menu.q.lane:MenuElement({id = "lhmana", name = "LastHit Min. Mana %", value = 50, min = 0, max = 100, step = 5})
+    Menu.q_lc_enabled = Menu.q.lane:MenuElement({id = "lcenabled", name = "LaneClear Enabled", value = false})
+    Menu.q_lc_mana = Menu.q.lane:MenuElement({id = "lcmana", name = "LaneClear Min. Mana %", value = 75, min = 0, max = 100, step = 5})
+    
+    Menu.w_combo = Menu.w:MenuElement({id = "combo", name = "Combo", value = true})
+    Menu.w_harass = Menu.w:MenuElement({id = "harass", name = "Harass", value = false})
+    Menu.w_hitchance = Menu.w:MenuElement({id = "hitchance", name = "Hitchance", value = 1, drop = {"normal", "high", "immobile"}})
+    Menu.w:MenuElement({id = "lane", name = "LaneClear", type = _G.MENU})
+    Menu.w_lh_enabled = Menu.w.lane:MenuElement({id = "lhenabled", name = "LastHit Enabled", value = false})
+    Menu.w_lh_mana = Menu.w.lane:MenuElement({id = "lhmana", name = "LastHit Min. Mana %", value = 50, min = 0, max = 100, step = 5})
+    Menu.w_lc_enabled = Menu.w.lane:MenuElement({id = "lcenabled", name = "LaneClear Enabled", value = false})
+    Menu.w_lc_mana = Menu.w.lane:MenuElement({id = "lcmana", name = "LaneClear Min. Mana %", value = 75, min = 0, max = 100, step = 5})
+    
+    Menu.e_combo = Menu.e:MenuElement({id = "combo", name = "Combo", value = true})
+    Menu.e_harass = Menu.e:MenuElement({id = "harass", name = "Harass", value = false})
+    Menu.e_hitchance = Menu.e:MenuElement({id = "hitchance", name = "Hitchance", value = 3, drop = {"normal", "high", "immobile"}})
+    Menu.e:MenuElement({id = "lane", name = "LaneClear", type = _G.MENU})
+    Menu.e_lh_enabled = Menu.e.lane:MenuElement({id = "lhenabled", name = "LastHit Enabled", value = false})
+    Menu.e_lh_mana = Menu.e.lane:MenuElement({id = "lhmana", name = "LastHit Min. Mana %", value = 50, min = 0, max = 100, step = 5})
+    Menu.e_lc_enabled = Menu.e.lane:MenuElement({id = "lcenabled", name = "LaneClear Enabled", value = false})
+    Menu.e_lc_mana = Menu.e.lane:MenuElement({id = "lcmana", name = "LaneClear Min. Mana %", value = 75, min = 0, max = 100, step = 5})
+    
+    Menu.r_auto = Menu.r:MenuElement({id = "auto", name = "Auto - when jhin has r buff", value = true})
+    Menu.r_hitchance = Menu.r:MenuElement({id = "hitchance", name = "Hitchance", value = 1, drop = {"normal", "high", "immobile"}})
+    
+    -- locals
+    local QPrediction = {Delay = 0.25, Range = 550, Speed = 2500}
+    local WPrediction = GGPrediction:SpellPrediction({Delay = 0.75, Range = 3000, Radius = 45, Speed = math.huge, Type = GGPrediction.SPELLTYPE_LINE})
+    local EPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Range = 750, Radius = 120, Speed = 1600, Type = GGPrediction.SPELLTYPE_CIRCLE})
+    local RPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Range = 3500, Radius = 80, Speed = 5000, Type = GGPrediction.SPELLTYPE_LINE})
+    
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return GG_Spell:CanTakeAction({q = 0.33, w = 0.77, e = 0.33, r = 0.77}) and not GG_Buff:HasBuff(myHero, "jhinpassivereload") and not Champion:HasRBuff()
+        end,
+        CanMoveCb = function()
+            return GG_Spell:CanTakeAction({q = 0.2, w = 0.5, e = 0.2, r = 0.5}) and not Champion:HasRBuff()
+        end,
+    }
+    
+    -- on load
+    function Champion:OnLoad()
+        self:QLaneClear()
+        self:WLaneClear()
+        self:ELaneClear()
+    end
+    
+    -- q LaneClear
+    function Champion:QLaneClear()
+        local getQDamage = function()
+            local level = myHero:GetSpellData(_Q).level
+            local adratio = (37.5 + (7.5 * level)) / 100
+            return 20 + (25 * level) + (adratio * myHero.totalDamage) + (0.6 * myHero.ap)
+        end
+        local canQLastHit = function()
+            return Menu.q_lh_enabled:Value() and self.ManaPercent >= Menu.q_lh_mana:Value()
+        end
+        local canQLaneClear = function()
+            return Menu.q_lc_enabled:Value() and self.ManaPercent >= Menu.q_lc_mana:Value()
+        end
+        local isQReady = function()
+            return GG_Spell:IsReady(_Q, {q = 0.33, w = 0.77, e = 0.33, r = 0.77})
+        end
+        GG_Spell:SpellClear(_Q, QPrediction, isQReady, canQLastHit, canQLaneClear, getQDamage)
+    end
+    
+    -- w LaneClear
+    function Champion:WLaneClear()
+        local getWDamage = function()
+            local level = myHero:GetSpellData(_W).level
+            return 15 + (35 * level) + (0.5 * myHero.totalDamage)
+        end
+        local canWLastHit = function()
+            return Menu.w_lh_enabled:Value() and self.ManaPercent >= Menu.w_lh_mana:Value()
+        end
+        local canWLaneClear = function()
+            return Menu.w_lc_enabled:Value() and self.ManaPercent >= Menu.w_lc_mana:Value()
+        end
+        local isWReady = function()
+            return GG_Spell:IsReady(_W, {q = 0.33, w = 0.77, e = 0.33, r = 0.77}) and GG_Buff:HasBuff(myHero, "jhinpassivereload")
+        end
+        GG_Spell:SpellClear(_W, WPrediction, isWReady, canWLastHit, canWLaneClear, getWDamage)
+    end
+    
+    -- e LaneClear
+    function Champion:ELaneClear()
+        local getEDamage = function()
+            local level = myHero:GetSpellData(_E).level
+            return - 40 + (60 * level) + (1.2 * myHero.totalDamage) + (1.0 * myHero.ap)
+        end
+        local canELastHit = function()
+            return Menu.e_lh_enabled:Value() and self.ManaPercent >= Menu.e_lh_mana:Value()
+        end
+        local canELaneClear = function()
+            return Menu.e_lc_enabled:Value() and self.ManaPercent >= Menu.e_lc_mana:Value()
+        end
+        local isEReady = function()
+            return GG_Spell:IsReady(_E, {q = 0.33, w = 0.77, e = 0.33, r = 0.77}) and GG_Buff:HasBuff(myHero, "jhinpassivereload")
+        end
+        GG_Spell:SpellClear(_E, EPrediction, isEReady, canELastHit, canELaneClear, getEDamage)
+    end
+    
+    -- on draw
+    function Champion:OnDraw()
+        local spell = myHero.activeSpell
+        if self:HasRBuff(spell) then
+            local middlePos = Vector(spell.placementPos)
+            local startPos = Vector(spell.startPos)
+            local pos1 = startPos + (middlePos - startPos):Rotated(0, 30.6 * math.pi / 180, 0):Normalized() * 3500
+            local pos2 = startPos + (middlePos - startPos):Rotated(0, -30.6 * math.pi / 180, 0):Normalized() * 3500
+            local p1 = startPos:To2D()
+            local p2 = pos1:To2D()
+            local p3 = pos2:To2D()
+            Draw.Line(p1.x, p1.y, p2.x, p2.y, 1, Draw.Color(255, 255, 255, 255))
+            Draw.Line(p1.x, p1.y, p3.x, p3.y, 1, Draw.Color(255, 255, 255, 255))
+        end
+    end
+    
+    -- on tick
+    function Champion:OnTick()
+        self:RLogic()
+        if self:HasRBuff() or self.IsAttacking then
+            return
+        end
+        self:WLogic()
+        self:QLogic()
+        self:ELogic()
+    end
+    
+    -- has r buff
+    function Champion:HasRBuff(spell)
+        local s = spell or myHero.activeSpell
+        if s and s.valid and s.name:lower() == "jhinr" then
+            return true
+        end
+        return false
+    end
+    
+    -- r logic
+    function Champion:RLogic()
+        if GG_Cursor.Step > 0 then
+            return
+        end
+        if not GG_Spell:IsReady(_R, {q = 0, w = 0, e = 0, r = 0.75}) then
+            return
+        end
+        local spell = myHero.activeSpell
+        if not self:HasRBuff(spell) then
+            return
+        end
+        self.IsRAuto = Menu.r_auto:Value()
+        if not self.IsRAuto then
+            return
+        end
+        local middlePos = Vector(spell.placementPos)
+        local startPos = Vector(spell.startPos)
+        local pos1 = startPos + (middlePos - startPos):Rotated(0, 30.6 * math.pi / 180, 0):Normalized() * 3500
+        local pos2 = startPos + (middlePos - startPos):Rotated(0, -30.6 * math.pi / 180, 0):Normalized() * 3500
+        local polygon =
+        {
+            pos1 + (pos1 - startPos):Normalized() * 3500,
+            pos2 + (pos2 - startPos):Normalized() * 3500,
+            startPos
+        }
+        self.RTarget = GG_Target:GetTarget(Utils:GetEnemyHeroesInsidePolygon(3500, polygon), DAMAGE_TYPE_PHYSICAL)
+        self:RAuto()
+    end
+    
+    -- r auto
+    function Champion:RAuto()
+        if GG_Cursor.Step > 0 then
+            return
+        end
+        if self.IsRAuto then
+            Utils:Cast(HK_R, self.RTarget, RPrediction, Menu.r_hitchance:Value() + 1)
+        end
+    end
+    
+    -- q logic
+    function Champion:QLogic()
+        if GG_Cursor.Step > 0 then
+            return
+        end
+        if not GG_Spell:IsReady(_Q, {q = 1, w = 0.75, e = 0.35, r = 0.5}) then
+            return
+        end
+        self.IsQCombo = (self.IsCombo and Menu.q_combo:Value()) or (self.IsHarass and Menu.q_harass:Value())
+        if not self.IsQCombo then
+            return
+        end
+        self.QTarget = self.AttackTarget ~= nil and self.AttackTarget or GG_Target:GetTarget(Utils:GetEnemyHeroes(550 + self.BoundingRadius - 35, true), DAMAGE_TYPE_PHYSICAL)
+        if self.QTarget == nil then
+            return
+        end
+        self:QCombo()
+    end
+    
+    -- q combo
+    function Champion:QCombo()
+        if GG_Cursor.Step > 0 then
+            return
+        end
+        if self.IsQCombo then
+            Utils:Cast(HK_Q, self.QTarget)
+        end
+    end
+    
+    -- w logic
+    function Champion:WLogic()
+        if GG_Cursor.Step > 0 then
+            return
+        end
+        if not GG_Spell:IsReady(_W, {q = 0.35, w = 1, e = 0.35, r = 0.5}) then
+            return
+        end
+        self.IsWCombo = (self.IsCombo and Menu.w_combo:Value()) or (self.IsHarass and Menu.w_harass:Value())
+        if not self.IsWCombo then
+            return
+        end
+        self.WTarget = self.AttackTarget ~= nil and self.AttackTarget or GG_Target:GetTarget(Utils:GetEnemyHeroes(3000), DAMAGE_TYPE_PHYSICAL)
+        if self.WTarget == nil or not GG_Buff:HasBuff(self.WTarget, "jhinespotteddebuff") then
+            return
+        end
+        self:WCombo()
+    end
+    
+    -- w combo
+    function Champion:WCombo()
+        if GG_Cursor.Step > 0 then
+            return
+        end
+        if self.IsWCombo then
+            Utils:Cast(HK_W, self.WTarget, WPrediction, Menu.w_hitchance:Value() + 1)
+        end
+    end
+    
+    -- e logic
+    function Champion:ELogic()
+        if GG_Cursor.Step > 0 then
+            return
+        end
+        if not GG_Buff:HasBuff(myHero, "jhinpassivereload") then
+            return
+        end
+        if not GG_Spell:IsReady(_E, {q = 0.35, w = 0.75, e = 1, r = 0.5}) then
+            return
+        end
+        self.IsECombo = (self.IsCombo and Menu.e_combo:Value()) or (self.IsHarass and Menu.e_harass:Value())
+        if not self.IsECombo then
+            return
+        end
+        self.ETarget = self.AttackTarget ~= nil and self.AttackTarget or GG_Target:GetTarget(Utils:GetEnemyHeroes(750), DAMAGE_TYPE_PHYSICAL)
+        if self.ETarget == nil then
+            return
+        end
+        self:ECombo()
+    end
+    
+    -- w combo
+    function Champion:ECombo()
+        if GG_Cursor.Step > 0 then
+            return
+        end
+        if self.IsECombo then
+            Utils:Cast(HK_E, self.ETarget, EPrediction, Menu.e_hitchance:Value() + 1)
+        end
     end
 end
 
@@ -2437,167 +2753,7 @@ if Champion == nil and myHero.charName == 'Brand' then
         return true
     end
 end
- 
-if Champion == nil and myHero.charName == 'Jhin' then
-    class "Jhin"
- 
-    function Jhin:__init()
-        
-        self.HasPBuff = false
-        self.HasRBuff = false
-        
-        self.R_Polygon = nil
-        self.R_CanDraw = false
-        self.R_StartPos = nil
-        self.R_Pos1 = nil
-        self.R_Middle = nil
-        self.R_Pos2 = nil
-        
-        self.QData = {Delay = 0.25, Range = 550, }
-        self.WData = {Delay = 0.75, Range = 3000, Radius = 45, Speed = math.huge, Type = 0, Collision = false, }
-        self.EData = {Delay = 0.25, Range = 750, Radius = 120, Speed = 1600, Type = 1, Collision = false, }
-        self.RData = {Delay = 0.25, Range = 3500, Radius = 80, Speed = 5000, Type = 0, Collision = false, }
-    end
- 
-    function Jhin:CreateMenu()
-        Menu = MenuElement({name = "Gamsteron Jhin", id = "gsojhin", type = MENU})
-        Menu:MenuElement({id = "autor", name = "Auto R -> if jhin has R Buff", value = true})
-        Menu:MenuElement({name = "Q settings", id = "qset", type = MENU})
-        Menu.qset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.qset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu:MenuElement({name = "W settings", id = "wset", type = MENU})
-        Menu.wset:MenuElement({id = "stun", name = "Only if stun (marked targets)", value = true})
-        Menu.wset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.wset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu:MenuElement({name = "E settings", id = "eset", type = MENU})
-        Menu.eset:MenuElement({id = "onlyimmo", name = "Only Immobile", value = true})
-        Menu.eset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.eset:MenuElement({id = "harass", name = "Harass", value = false})
-    end
- 
-    function Jhin:Tick
-        ()
-        
-        self.HasPBuff = GG_Buff:HasBuff(myHero, "jhinpassivereload")
-        
-        self:RLogic()
-        
-        if (self.HasRBuff) then
-            return
-        end
-        
-        if (self.HasPBuff or GG_Orbwalker:CanMove()) and SDKCursor.Step == 0 then
-            
-            if (AIO:IsReadyCombo(_Q, Menu.qset.combo:Value(), Menu.qset.harass:Value(), {q = 1, w = 0.75, e = 0.35, r = 0.5, })) then
-                if AIO:CastTarget(HK_Q, self.QData, DAMAGE_TYPE_PHYSICAL, true) then
-                    return
-                end
-            end
-            
-            if AIO:IsReadyCombo(_W, Menu.wset.combo:Value(), Menu.wset.harass:Value(), {q = 0.35, w = 1, e = 0.35, r = 0.5, }) then
-                if AIO:CastSkillShot(HK_W, self.WData, DAMAGE_TYPE_PHYSICAL, false, HITCHANCE_HIGH, function(unit)
-                    if (Menu.wset.stun:Value()) then
-                        if (GG_Buff:HasBuff(unit, "jhinespotteddebuff")) then
-                            return true
-                        end
-                        return false
-                    end
-                    return true
-                end) then return end
-            end
-        end
-        
-        if (AIO:IsReadyCombo(_E, Menu.eset.combo:Value(), Menu.eset.harass:Value(), {q = 0.35, w = 0.75, e = 1, r = 0.5, })) then
-            local target = AIO:GetImmobileEnemy(AIO:GetEnemyHeroes(), self.EData.Range, 0.5)
-            if target and AIO:Cast(HK_E, target.pos) then
-                return
-            end
-            if not Menu.eset.onlyimmo:Value() and AIO:CastSkillShot(HK_E, self.EData, DAMAGE_TYPE_PHYSICAL, false, HITCHANCE_HIGH) then
-                return
-            end
-        end
-    end
- 
-    function Jhin:Draw
-        ()
-        
-        if self.R_CanDraw then
-            local p1 = self.R_StartPos:To2D()
-            local p2 = self.R_Pos1:To2D()
-            local p3 = self.R_Pos2:To2D()
-            Draw.Line(p1.x, p1.y, p2.x, p2.y, 1, Draw.Color(255, 255, 255, 255))
-            Draw.Line(p1.x, p1.y, p3.x, p3.y, 1, Draw.Color(255, 255, 255, 255))
-        end
-    end
- 
-    function Jhin:RLogic
-        ()
-        
-        local spell = myHero.activeSpell
-        if (spell and spell.valid and spell.name:lower() == "jhinr") then
-            self.HasRBuff = true
-            if (self.R_CanDraw == false and Game.Timer() > GG_Spell.RkTimer + 0.250) then
-                self.R_CanDraw = true
-                local middlePos = Vector(spell.placementPos)
-                local startPos = Vector(spell.startPos)
-                local pos1 = startPos + (middlePos - startPos):Rotated(0, 30.6 * math.pi / 180, 0):Normalized() * 3500
-                local pos2 = startPos + (middlePos - startPos):Rotated(0, -30.6 * math.pi / 180, 0):Normalized() * 3500
-                self.R_Polygon =
-                {
-                    pos1 + (pos1 - startPos):Normalized() * 3500,
-                    pos2 + (pos2 - startPos):Normalized() * 3500,
-                    startPos,
-                }
-                self.R_Middle = middlePos
-                self.R_Pos1 = pos1
-                self.R_Pos2 = pos2
-                self.R_StartPos = startPos
-            end
-            if (self.R_CanDraw == true and Menu.autor:Value() and GG_Spell:IsReady(_R, {q = 0, w = 0, e = 0, r = 0.75})) then
-                local rTargets = {}
-                local enemyList = AIO:GetEnemyHeroes(3500)
-                for i, unit in pairs(enemyList) do
-                    if (SDKMath:InsidePolygon(self.R_Polygon, unit) == true) then
-                        table.insert(rTargets, unit)
-                    end
-                end
-                local rTarget = GG_Target:GetTarget(rTargets, 0)
-                if (rTarget) then
-                    local HitChance = 3
-                    local Pred = GetGamsteronPrediction(rTarget, self.RData, myHero)
-                    if (Pred.Hitchance >= HitChance and SDKMath:InsidePolygon(self.R_Polygon, Pred.CastPosition) == true) then
-                        Control.CastSpell(HK_R, Pred.CastPosition)
-                    end
-                end
-            end
-        elseif (self.HasRBuff == true and self.R_CanDraw == true and Game.Timer() > GG_Spell.RkTimer + 0.500) then
-            self.HasRBuff = false
-            self.R_CanDraw = false
-        elseif (Game.Timer() < GG_Spell.RkTimer + 0.35) then
-            self.HasRBuff = true
-        elseif self.HasRBuff then
-            self.HasRBuff = false
-        end
-    end
- 
-    function Jhin:CanAttack
-        ()
-        
-        if GG_Spell:CanTakeAction({q = 0.25, w = 0.75, e = 0.25, r = 0.5}) and not self.HasPBuff and not self.HasRBuff then
-            return true
-        end
-        return false
-    end
- 
-    function Jhin:CanMove
-        ()
-        
-        if GG_Spell:CanTakeAction({q = 0.15, w = 0.6, e = 0.15, r = 0.5}) and not self.HasRBuff then
-            return true
-        end
-        return false
-    end
-end]]
+]]
 
 if Champion ~= nil then
     function Champion:PreTick()
@@ -2673,183 +2829,3 @@ if Champion ~= nil then
     return
 end
 print(myHero.charName .. " not supported !")
-
---[[
- 
- 
-AIO =
-{
-}
- 
-function AIO:Init()
-end
- 
-function AIO:CheckWall
-    (from, to, distance)
- 
-    local pos1 = to + (to - from):Normalized() * 50
-    local pos2 = pos1 + (to - from):Normalized() * (distance - 50)
-    local point1 = {x=pos1.x, z=pos1.z}
-    local point2 = {x=pos2.x, z=pos2.z}
-    if MapPosition:intersectsWall(point1, point2) or (MapPosition:inWall(point1) and MapPosition:inWall(point2)) then
-        return true
-    end
-    return false
-end
- 
-function AIO:Cast
-    (spell, unit, spelldata, hitchance)
-    
-    if unit ~= nil then
-        if unit.pos then
-            if spelldata == nil then
-                return Control.CastSpell(spell, unit)
-            end
-            local pred = GetGamsteronPrediction(unit, spelldata, myHero)
-            if pred.Hitchance >= (hitchance or HITCHANCE_HIGH) then
-                return Control.CastSpell(spell, pred.CastPosition)
-            end
-            return false
-        end
-        if unit.x then
-            return Control.CastSpell(spell, unit)
-        end
-        return false
-    end
-    
-    if spelldata == nil then
-        return Control.CastSpell(spell)
-    end
-    
-    return false
-end
- 
-function AIO:CastTarget
-    (spell, data, damage, bbox, func)
-    
-    local range = data.Range + (bbox and myHero.boundingRadius or 0) - 35
-    local target = GG_Target:GetComboTarget()
-    if target == nil or (func and not func(target)) then
-        target = GG_Target:GetTarget(AIO:GetEnemyHeroes(range, bbox, func), damage)
-    end
-    
-    if target and target.distance < range + (bbox and target.boundingRadius or 0) then
-        return AIO:Cast(spell, target)
-    end
-    
-    return false
-end
- 
-function AIO:CastSkillShot
-    (spell, data, damage, bbox, hitchance, func)
-    
-    local range = data.Range + (bbox and myHero.boundingRadius or 0) - 35
-    local target = GG_Target:GetComboTarget()
-    if target == nil or (func and not func(target)) then
-        target = GG_Target:GetTarget(AIO:GetEnemyHeroes(range, bbox, func), damage)
-    end
-    
-    if target and target.distance < range + (bbox and target.boundingRadius or 0) then
-        return AIO:Cast(spell, target, data, hitchance)
-    end
-    
-    return false
-end
- 
-function AIO:IsReadyCombo
-    (spell, menuCombo, menuHarass, delays)
-    
-    local isCombo = GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO]
-    local isHarass = GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS]
-    if ((isCombo and menuCombo) or (isHarass and menuHarass)) and GG_Spell:IsReady(spell, delays) then
-        return true
-    end
-    return false
-end
- 
-function AIO:GetEnemyHeroes
-    (range, bbox, func)
-    
-    return GG_Object:GetEnemyHeroes(range or 999999, bbox, true, true, false, func)
-end
- 
-function AIO:GetEnemyHeroesAA
-    (range, bbox, func)
-    
-    return GG_Object:GetEnemyHeroes(range or 999999, bbox, true, true, true, func)
-end
- 
-function AIO:IsValidHero
-    (unit, range, bbox)
-    
-    if GG_Object:IsValid(unit, Obj_AI_Hero, true, true) and (range == nil or unit.distance < range + (bbox and unit.boundingRadius or 0)) then
-        return true
-    end
-    
-    return false
-end
- 
-function AIO:IsValidHeroAA
-    (unit, range, bbox)
-    
-    if GG_Object:IsValid(unit, Obj_AI_Hero, true, true, true) and (range == nil or unit.distance < range + (bbox and unit.boundingRadius or 0)) then
-        return true
-    end
-    
-    return false
-end
- 
-function AIO:GetClosestEnemy
-    (enemyList, maxDistance)
-    
-    local result = nil
-    for i = 1, #enemyList do
-        local hero = enemyList[i]
-        local distance = hero.distance
-        if distance < maxDistance then
-            maxDistance = distance
-            result = hero
-        end
-    end
-    return result
-end
- 
-function AIO:ImmobileTime
-    (unit)
-    
-    local iT = 0
-    for i = 0, unit.buffCount do
-        local buff = unit:GetBuff(i)
-        if buff and buff.count > 0 then
-            local bType = buff.type
-            if bType == 5 or bType == 11 or bType == 21 or bType == 22 or bType == 24 or bType == 29 or buff.name == "recall" then
-                local bDuration = buff.duration
-                if bDuration > iT then
-                    iT = bDuration
-                end
-            end
-        end
-    end
-    return iT
-end
- 
-function AIO:GetImmobileEnemy
-    (enemyList, maxDistance, minDuration)
-    
-    minDuration = minDuration or 0
-    local result = nil
-    local num = 0
-    for i = 1, #enemyList do
-        local hero = enemyList[i]
-        local iT = self:ImmobileTime(hero)
-        if hero.distance < maxDistance and iT >= minDuration and iT > num then
-            num = iT
-            result = hero
-        end
-    end
-    return result
-end
- 
- 
- 
-]]
