@@ -1,4 +1,4 @@
-local Version = 1.7
+local Version = 1.8
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -2172,6 +2172,222 @@ if Champion == nil and myHero.charName == 'Jhin' then
             Utils:Cast(HK_E, self.ETarget, EPrediction, Menu.e_hitchance:Value() + 1)
         end
     end
+end
+
+if Champion == nil and myHero.charName == 'Blitzcrank' then
+    --menu
+    
+    Menu.q_combo = Menu.q:MenuElement({id = 'combo', name = 'Combo', value = true})
+    Menu.q_harass = Menu.q:MenuElement({id = 'harass', name = 'Harass', value = true})
+    Menu.q_hitchance = Menu.q:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"Normal", "High", "Immobile"}})
+    Menu.q_useon_combo = Menu.q:MenuElement({id = "useon_combo", name = "Combo Use on", type = _G.MENU})
+    Menu.q_useon_harass = Menu.q:MenuElement({id = "useon_harass", name = "Harass Use on", type = _G.MENU})
+    Menu.q:MenuElement({id = "auto", name = "Auto", type = _G.MENU})
+    Menu.q_auto_enabled = Menu.q.auto:MenuElement({id = "enabled", name = "Enabled", value = false})
+    Menu.q_auto_hitchance = Menu.q.auto:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"Normal", "High", "Immobile"}})
+    Menu.q_auto_useon = Menu.q.auto:MenuElement({id = "useon", name = "Use on", type = _G.MENU})
+    Menu.q:MenuElement({id = "ks", name = "Killsteal", type = _G.MENU})
+    Menu.q_ks_enabled = Menu.q.ks:MenuElement({id = "enabled", name = "Enabled", value = false})
+    Menu.q_ks_hitchance = Menu.q.ks:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"Normal", "High", "Immobile"}})
+    Menu.q:MenuElement({id = "interrupter", name = "Interrupter", type = _G.MENU})
+    Menu.q_interrupter_enabled = Menu.q.interrupter:MenuElement({id = "enabled", name = "Enabled", value = false})
+    
+    Menu.r_xenemies = Menu.r:MenuElement({id = "xenemies", name = "X Enemies", value = 2, min = 1, max = 5, step = 1})
+    Menu.r_xrange = Menu.r:MenuElement({id = "xrange", name = "X Distance", value = 550, min = 300, max = 600, step = 50})
+    Menu.r:MenuElement({id = "auto", name = "Auto", type = _G.MENU})
+    Menu.r_auto_enabled = Menu.r.auto:MenuElement({id = "enabled", name = "Enabled", value = false})
+    Menu.r_auto_xenemies = Menu.r.auto:MenuElement({id = "xenemies", name = "X Enemies", value = 3, min = 1, max = 5, step = 1})
+    Menu.r_auto_xrange = Menu.r.auto:MenuElement({id = "xrange", name = "X Distance", value = 550, min = 300, max = 600, step = 50})
+    Menu.r:MenuElement({id = "ks", name = "Killsteal", type = _G.MENU})
+    Menu.r_ks_enabled = Menu.r.ks:MenuElement({id = "enabled", name = "Enabled", value = false})
+    
+    Menu.d_Draw_Q = Menu.d:MenuElement({id = "Draw_Q", name = "Draw Q", value = true})
+    Menu.d_Draw_R = Menu.d:MenuElement({id = "Draw_R", name = "Draw R", value = true})
+    -- locals
+    local QPrediction = GGPrediction:SpellPrediction({Type = GGPrediction.SPELLTYPE_LINE, Delay = 0.25, Radius = 140 / 2, Range = 1090, Speed = 1800, Collision = true, MaxCollision = 0, CollisionTypes = {GGPrediction.COLLISION_MINION, GGPrediction.COLLISION_YASUOWALL}})
+    local RPrediction = {Range = 590}
+    
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            --[[local qdata = myHero:GetSpellData(_Q)
+            if qdata.level > 0 and myHero.mana > qdata.mana and (Game.CanUseSpell(_Q) == 0 or qdata.currentCd < 1) then
+                return false
+            end]]
+            return not myHero.isChanneling and GG_Spell:CanTakeAction({q = 0.33, w = 0, e = 0, r = 0.33})
+        end,
+        CanMoveCb = function()
+            return GG_Spell:CanTakeAction({q = 0.2, w = 0, e = 0, r = 0.2})
+        end,
+    }
+    -- load
+    function Champion:OnLoad()
+        GG_Object:OnEnemyHeroLoad(function(args)
+            Menu.q_auto_useon:MenuElement({id = args.charName, name = args.charName, value = true})
+            Menu.q_useon_combo:MenuElement({id = args.charName, name = args.charName, value = true})
+            Menu.q_useon_harass:MenuElement({id = args.charName, name = args.charName, value = true})
+        end)
+    end
+    -- tick
+    function Champion:OnTick()
+        self:ELogic()
+        self:QLogic()
+        self:RLogic()
+    end
+    
+    --q logic
+    function Champion:QLogic()
+        if not GG_Spell:IsReady(_Q, {q = 0.33, w = 0, e = 0, r = 0.33}) then
+            return
+        end
+        self.QTargets = Utils:GetEnemyHeroes(QPrediction.Range)
+        self:QKS()
+        self:QInterrupter()
+        self:QAuto()
+        self:QCombo()
+        self:QHarass()
+    end
+    
+    --e logic
+    function Champion:ELogic()
+        if not GG_Spell:IsReady(_E, {q = 0.33, w = 0, e = 1, r = 0.33}) then
+            return
+        end
+        if self.AttackTarget or Game.Timer() < GG_Spell.QkTimer + 0.77 then
+            Utils:Cast(HK_E)
+        end
+    end
+    
+    --r logic
+    function Champion:RLogic()
+        if not GG_Spell:IsReady(_R, {q = 0.33, w = 0, e = 0, r = 0.33}) then
+            return
+        end
+        self.RTargets = Utils:GetEnemyHeroes(RPrediction.Range)
+        self:RKS()
+        self:RAuto()
+    end
+    
+    -- q ks
+    function Champion:QKS()
+        if not Menu.q_ks_enabled:Value() then
+            return
+        end
+        local baseDmg = 20
+        local lvlDmg = 50 * myHero:GetSpellData(_Q).level
+        local apDmg = myHero.ap
+        local qDmg = baseDmg + lvlDmg + apDmg
+        if qDmg < 100 then
+            return
+        end
+        for i, unit in ipairs(self.QTargets) do
+            local health = unit.health
+            if health > 100 and health < GG_Damage:CalculateDamage(myHero, unit, DAMAGE_TYPE_MAGICAL, qDmg) then
+                Utils:Cast(HK_Q, unit, QPrediction, Menu.q_ks_hitchance:Value() + 1)
+            end
+        end
+    end
+    -- q interrupter
+    function Champion:QInterrupter()
+        if not Menu.q_interrupter_enabled:Value() then
+            return
+        end
+        for i, unit in ipairs(self.QTargets) do
+            local spell = unit.activeSpell
+            if spell and spell.valid and Utils.InterruptableSpells[spell.name] and spell.castEndTime - self.Timer > 0.33 then
+                Utils:Cast(HK_Q, unit, QPrediction, HITCHANCE_NORMAL)
+            end
+        end
+    end
+    -- q auto
+    function Champion:QAuto()
+        if not Menu.q_auto_enabled:Value() then
+            return
+        end
+        local enemies = {}
+        for i, unit in ipairs(self.QTargets) do
+            local canuse = Menu.q_auto_useon[unit.charName]
+            if canuse and canuse:Value() then
+                table_insert(enemies, unit)
+            end
+        end
+        Utils:Cast(HK_Q, GG_Target:GetTarget(enemies, DAMAGE_TYPE_MAGICAL), QPrediction, Menu.q_auto_hitchance:Value() + 1)
+    end
+    -- q combo
+    function Champion:QCombo()
+        if not(self.IsCombo and Menu.q_combo:Value()) then
+            return
+        end
+        local enemies = {}
+        for i, unit in ipairs(self.QTargets) do
+            local canuse = Menu.q_useon_combo[unit.charName]
+            if canuse and canuse:Value() then
+                table_insert(enemies, unit)
+            end
+        end
+        Utils:Cast(HK_Q, GG_Target:GetTarget(enemies, DAMAGE_TYPE_MAGICAL), QPrediction, Menu.q_hitchance:Value() + 1)
+    end
+    -- q harass
+    function Champion:QHarass()
+        if not (self.IsHarass and Menu.q_harass:Value()) then
+            return
+        end
+        local enemies = {}
+        for i, unit in ipairs(self.QTargets) do
+            local canuse = Menu.q_useon_harass[unit.charName]
+            if canuse and canuse:Value() then
+                table_insert(enemies, unit)
+            end
+        end
+        Utils:Cast(HK_Q, GG_Target:GetTarget(enemies, DAMAGE_TYPE_MAGICAL), QPrediction, Menu.q_hitchance:Value() + 1)
+    end
+    -- r ks
+    function Champion:RKS()
+        if not Menu.r_ks_enabled:Value() then
+            return
+        end
+        local basedmg = 125
+        local lvldmg = 125 * myHero:GetSpellData(_R).level
+        local apdmg = myHero.ap
+        local rdmg = basedmg + lvldmg + apdmg
+        if rdmg < 100 then
+            return
+        end
+        for i, unit in ipairs(self.RTargets) do
+            local health = unit.health
+            if health > 100 and health < GG_Damage:CalculateDamage(myHero, unit, DAMAGE_TYPE_MAGICAL, rdmg) then
+                Utils:Cast(HK_R)
+            end
+        end
+    end
+    -- r auto
+    function Champion:RAuto()
+        if not Menu.r_auto_enabled:Value() then
+            return
+        end
+        local count = 0
+        for i, unit in ipairs(self.RTargets) do
+            if unit.distance < Menu.r_auto_xrange:Value() then
+                count = count + 1
+            end
+        end
+        if count >= Menu.r_auto_xenemies:Value() then
+            Utils:Cast(HK_R)
+        end
+    end
+    
+    -- draw
+    function Champion:OnDraw()
+        if Menu.d_Draw_Q:Value() and GG_Spell:IsReady(_Q) then
+            Draw.Circle(myHero.pos, 1090, Draw.Color(0, 128, 128))
+        end
+        if Menu.d_Draw_R:Value() and GG_Spell:IsReady(_R) then
+            Draw.Circle(myHero.pos, 590, Draw.Color(0, 128, 123))
+        end
+        
+    end
+    
 end
 
 --[[
