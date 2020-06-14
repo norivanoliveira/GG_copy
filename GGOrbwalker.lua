@@ -1,4 +1,4 @@
-local Version = 2.2
+local Version = 2.3
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -2659,7 +2659,7 @@ do
         local cachedminions = Cached:GetMinions()
         for i = 1, #cachedminions do
             local obj = cachedminions[i]
-            if obj.isEnemy and obj.team < 300 and (not immortal or not obj.isImmortal) then
+            if obj.isEnemy and (not immortal or not obj.isImmortal) then
                 if not range or obj.distance < range + (bbox and obj.boundingRadius or 0) then
                     table_insert(result, obj)
                 end
@@ -3775,7 +3775,8 @@ do
     function Cursor:StepWaitForResponse()
         if GetTickCount() > self.Timer then
             self.Step = 2
-            --else self:StepSetToCastPos() self:StepPressKey()
+        else
+            self:StepSetToCastPos()-- self:StepPressKey()
         end
     end
     -- step set to cursor pos
@@ -4042,6 +4043,10 @@ do
     -- register menu key
     function Orbwalker:RegisterMenuKey(mode, key)
         table_insert(self.MenuKeys[mode], key)
+    end
+    -- reset movement
+    function Orbwalker:ResetMovement()
+        Movement.MoveTimer = 0
     end
     -- get modes
     function Orbwalker:GetModes()
