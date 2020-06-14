@@ -1,4 +1,4 @@
-local Version = 1.8
+local Version = 1.9
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -71,14 +71,14 @@ local GetTickCount = GetTickCount
 
 Menu = {}
 do
-    local m = MenuElement({name = "GG " .. myHero.charName, id = 'GG' .. myHero.charName, type = _G.MENU})
-    Menu.q = m:MenuElement({name = 'Q', id = 'q', type = _G.MENU})
-    Menu.w = m:MenuElement({name = 'W', id = 'w', type = _G.MENU})
-    Menu.e = m:MenuElement({name = 'E', id = 'e', type = _G.MENU})
-    Menu.r = m:MenuElement({name = 'R', id = 'r', type = _G.MENU})
-    Menu.d = m:MenuElement({name = 'Drawings', id = 'd', type = _G.MENU})
-    m:MenuElement({name = '', type = _G.SPACE, id = 'VersionSpaceA'})
-    m:MenuElement({name = 'Version  ' .. Version, type = _G.SPACE, id = 'VersionSpaceB'})
+    Menu.m = MenuElement({name = "GG " .. myHero.charName, id = 'GG' .. myHero.charName, type = _G.MENU})
+    Menu.q = Menu.m:MenuElement({name = 'Q', id = 'q', type = _G.MENU})
+    Menu.w = Menu.m:MenuElement({name = 'W', id = 'w', type = _G.MENU})
+    Menu.e = Menu.m:MenuElement({name = 'E', id = 'e', type = _G.MENU})
+    Menu.r = Menu.m:MenuElement({name = 'R', id = 'r', type = _G.MENU})
+    Menu.d = Menu.m:MenuElement({name = 'Drawings', id = 'd', type = _G.MENU})
+    Menu.m:MenuElement({name = '', type = _G.SPACE, id = 'VersionSpaceA'})
+    Menu.m:MenuElement({name = 'Version  ' .. Version, type = _G.SPACE, id = 'VersionSpaceB'})
 end
 
 Utils = {}
@@ -1909,6 +1909,8 @@ if Champion == nil and myHero.charName == 'Jhin' then
     
     Menu.w_combo = Menu.w:MenuElement({id = "combo", name = "Combo", value = true})
     Menu.w_harass = Menu.w:MenuElement({id = "harass", name = "Harass", value = false})
+    Menu.w_noaatarget = Menu.w:MenuElement({id = "noaatarget", name = "Only when no attack target", value = true})
+    Menu.w_onlypassive = Menu.w:MenuElement({id = "onlypassive", name = "Only when target has jhin buff", value = true})
     Menu.w_hitchance = Menu.w:MenuElement({id = "hitchance", name = "Hitchance", value = 1, drop = {"normal", "high", "immobile"}})
     Menu.w:MenuElement({id = "lane", name = "LaneClear", type = _G.MENU})
     Menu.w_lh_enabled = Menu.w.lane:MenuElement({id = "lhenabled", name = "LastHit Enabled", value = false})
@@ -2117,6 +2119,9 @@ if Champion == nil and myHero.charName == 'Jhin' then
         if GG_Cursor.Step > 0 then
             return
         end
+        if Menu.w_noaatarget:Value() and self.AttackTarget then
+            return
+        end
         if not GG_Spell:IsReady(_W, {q = 0.35, w = 1, e = 0.35, r = 0.5}) then
             return
         end
@@ -2125,7 +2130,7 @@ if Champion == nil and myHero.charName == 'Jhin' then
             return
         end
         self.WTarget = self.AttackTarget ~= nil and self.AttackTarget or GG_Target:GetTarget(Utils:GetEnemyHeroes(3000), DAMAGE_TYPE_PHYSICAL)
-        if self.WTarget == nil or not GG_Buff:HasBuff(self.WTarget, "jhinespotteddebuff") then
+        if self.WTarget == nil or (Menu.w_onlypassive:Value() and not GG_Buff:HasBuff(self.WTarget, "jhinespotteddebuff")) then
             return
         end
         self:WCombo()
@@ -2385,9 +2390,254 @@ if Champion == nil and myHero.charName == 'Blitzcrank' then
         if Menu.d_Draw_R:Value() and GG_Spell:IsReady(_R) then
             Draw.Circle(myHero.pos, 590, Draw.Color(0, 128, 123))
         end
-        
+    end
+end
+
+if Champion == nil and myHero.charName == 'Taric' then
+    local inTimer, process, selected, data = 0, false, nil, {unit = nil, dir = nil, timer = 0}
+    
+    -- menu
+    Menu.q_mana = Menu.q:MenuElement({id = "mana", name = "Min. Mana %", value = 50, min = 0, max = 100, step = 5})
+    Menu.e_follow = Menu.e:MenuElement({id = "Follow", name = "Auto-Follow", value = true})
+    
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return true
+        end,
+        CanMoveCb = function()
+            return true
+        end,
+    }
+    
+    -- Methods
+    local function Distance(p1, p2)
+        local dx, dy = p2.x - p1.x, p2.z - p1.z
+        return math.sqrt(dx * dx + dy * dy)
     end
     
+    local function GetPathCount(unit)
+        local c = unit.pathing.pathCount
+        return (not c or c < 0 or c > 20) and - 1 or c
+    end
+    
+    local function GetPathIndex(unit)
+        local i = unit.pathing.pathIndex
+        return (not i or i < 0 or i > 20) and - 1 or i
+    end
+    
+    local function GetWaypoints(unit)
+        local result = {}
+        table.insert(result, unit.pos)
+        if unit.pathing.hasMovePath then
+            local index, count = GetPathIndex(unit), GetPathCount(unit)
+            if index == -1 or count == -1 then return result end
+            for i = index, count do table.insert(result, unit:GetPath(i)) end
+        end
+        return result
+    end
+    
+    local function PositionAfter(unit, time)
+        if not (unit and unit.valid and
+        unit.visible) then return nil end
+        local path = GetWaypoints(unit)
+        if #path == 1 then return path[1] end
+        local moveSpeed = unit.pathing.isDashing and unit.pathing.dashSpeed or unit.ms
+        local distance = moveSpeed * time
+        for i = 1, #path - 1 do
+            local a, b = path[i], path[i + 1]
+            local dist = Distance(a, b)
+            if dist >= distance then
+                return a:Extended(b, distance)
+            end
+            distance = distance - dist
+        end
+        return path[#path]
+    end
+    
+    local function IsComboMode()
+        return (SDK and SDK.Orbwalker.Modes[SDK.ORBWALKER_MODE_COMBO]) or (PremiumOrbwalker and PremiumOrbwalker:GetMode() == "Combo")
+    end
+    
+    local function IsValid(unit, range)
+        if unit and unit.valid and unit.visible and unit.alive and unit.isTargetable and (range == nil or unit.distance < range) then
+            return true
+        end
+        return false
+    end
+    
+    local function GetTargets()
+        local result = {}
+        local count = 0
+        for i = 1, Game.HeroCount() do
+            local unit = Game.Hero(i)
+            if IsValid(unit, 1000) and not unit.isAlly then
+                count = count + 1
+                result[count] = {unit.pos, unit.boundingRadius + 180}
+            end
+        end
+        for i = 1, Game.MinionCount() do
+            local unit = Game.Minion(i)
+            if IsValid(unit, 1000) and not unit.isAlly then
+                count = count + 1
+                result[count] = {unit.pos, unit.boundingRadius + 120}
+            end
+        end
+        for i = 1, Game.TurretCount() do
+            local unit = Game.Turret(i)
+            if IsValid(unit, 1000) and not unit.isAlly then
+                count = count + 1
+                result[count] = {unit.pos, unit.boundingRadius + 120}
+            end
+        end
+        return result
+    end
+    
+    local function IsCursorOnTarget(targets, pos)
+        for i = 1, #targets do
+            local item = targets[i]
+            if pos:DistanceTo(item[1]) < item[2] then
+                return true
+            end
+        end
+        return false
+    end
+    
+    local function SkipTargetsPos(pos)
+        local i = 0
+        local result = pos
+        local dir = (pos - myHero.pos):Normalized()
+        local targets = GetTargets()
+        while (IsCursorOnTarget(targets, result)) do
+            i = i + 50
+            result = pos + dir * i
+        end
+        return result
+    end
+    
+    local function OnPreAttack(args)
+        if not process then args.Process = false end
+    end
+    
+    local function OnPreMovement(args)
+        if not process then args.Process = false end
+    end
+    
+    local function IsEvading()
+        if JustEvade and JustEvade:Evading() then
+            return true
+        end
+        if ExtLibEvade and ExtLibEvade.Evading then
+            return true
+        end
+        return false
+    end
+    
+    local function CastE(unit, pos)
+        if IsValid(unit, 600) and unit.isEnemy then
+            local pred = PositionAfter(unit, 0.25)
+            if pred and Distance(myHero.pos, pred) < 600 then
+                Control.CastSpell(HK_E, pred)
+                data.dir, data.timer, data.unit = Vector(pred - myHero.pos), Game.Timer(), unit
+                process = false
+                if SDK then
+                    SDK.Orbwalker:ResetMovement()
+                end
+                return true
+            end
+        end
+        return false
+    end
+    
+    local function MoveToPred()
+        local timer = Game.Timer()
+        if Menu.e_follow:Value() and timer - data.timer <= 1 then
+            if timer - inTimer > 0.1 then
+                inTimer = timer
+                local pred = PositionAfter(data.unit, 0.25)
+                if pred then
+                    local dirPos = Vector(pred - data.dir)
+                    local pos = myHero.pos:Extended(dirPos, 100)
+                    if Distance(pos, pred) > 600 then
+                        pos = myHero.pos:Extended(dirPos, -100)
+                    end
+                    process = false
+                    _G.Control.Move(SkipTargetsPos(pos))
+                end
+            end
+            return
+        end
+        if not process then
+            process = true
+        end
+    end
+    
+    -- load
+    function Champion:OnLoad()
+        if _G.SDK then
+            _G.SDK.Orbwalker:OnPreAttack(function(...) OnPreAttack(...) end)
+            _G.SDK.Orbwalker:OnPreMovement(function(...) OnPreMovement(...) end)
+        elseif _G.PremiumOrbwalker then
+            _G.PremiumOrbwalker:OnPreAttack(function(...) OnPreAttack(...) end)
+            _G.PremiumOrbwalker:OnPreMovement(function(...) OnPreMovement(...) end)
+        end
+    end
+    
+    -- wnd msg
+    function Champion:OnWndMsg(msg, wParam)
+        if not (msg == 513 and wParam == 0) then
+            return
+        end
+        for i = 1, Game.HeroCount() do
+            local unit = Game.Hero(i)
+            if IsValid(unit) and unit.isEnemy and Distance(unit.pos, mousePos) <= 150 then
+                selected = unit
+                return
+            end
+        end
+        selected = nil
+    end
+    
+    -- draw
+    function Champion:OnDraw()
+        if not IsEvading() then
+            MoveToPred()
+        end
+        if IsValid(selected) then
+            Draw.Circle(selected.pos, 115, 5, Draw.Color(192, 148, 0, 211))
+        end
+    end
+    
+    -- tick
+    function Champion:OnTick()
+        if IsEvading() or Game.IsChatOpen() or myHero.dead then
+            return
+        end
+        MoveToPred()
+        if not IsComboMode() or self.IsAttacking then
+            return
+        end
+        local timer = Game.Timer()
+        if Game.CanUseSpell(_Q) == 0 and self.AttackTarget and timer - data.timer > 1 and self.ManaPercent >= Menu.q_mana:Value() then
+            Utils:Cast(HK_Q)
+            return
+        end
+        if Game.CanUseSpell(_E) == 0 and GG_Spell:CanTakeAction({q = 0.33, w = 0, e = 0, r = 0.33}) then
+            if SDK and SDK.Cursor.Step > 0 then
+                return
+            end
+            if CastE(selected) then
+                return
+            end
+            for i = 0, Game.HeroCount() do
+                local unit = Game.Hero(i)
+                if CastE(unit) then
+                    break
+                end
+            end
+        end
+    end
 end
 
 --[[
