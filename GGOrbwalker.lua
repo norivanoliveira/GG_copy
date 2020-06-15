@@ -1,4 +1,4 @@
-local Version = 2.3
+local Version = 2.4
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -612,6 +612,7 @@ do
         self.Main:MenuElement({name = '', type = _G.SPACE, id = 'GeneralSpace'})
         self.Main:MenuElement({id = 'AttackTKey', name = 'Attack Target Key', key = string.byte('U'), tooltip = 'You should bind this one in ingame settings'})
         self.Main:MenuElement({id = 'Latency', name = 'Ping [ms]', value = 50, min = 0, max = 120, step = 1, callback = function(value) _G.LATENCY = value end})
+        self.Main:MenuElement({id = 'SetCursorMultipleTimes', name = 'Set Cursor Position Multiple Times', value = false})
         self.Main:MenuElement({id = 'CursorDelay', name = 'Cursor Delay', value = 30, min = 30, max = 50, step = 1})
         self.Main:MenuElement({name = '', type = _G.SPACE, id = 'VersionSpaceA'})
         self.Main:MenuElement({name = 'Version  ' .. Version, type = _G.SPACE, id = 'VersionSpaceB'})
@@ -3721,6 +3722,7 @@ end
 -- cursor
 Cursor = {}
 do
+    local MenuMultipleTimes = Menu.Main.SetCursorMultipleTimes
     local MenuDelay = Menu.Main.CursorDelay
     local MenuDrawCursor = Menu.Main.Drawings.Cursor
     -- init
@@ -3775,8 +3777,9 @@ do
     function Cursor:StepWaitForResponse()
         if GetTickCount() > self.Timer then
             self.Step = 2
-        else
-            self:StepSetToCastPos()-- self:StepPressKey()
+        elseif MenuMultipleTimes:Value() then
+            self:StepSetToCastPos()
+            --self:StepPressKey()
         end
     end
     -- step set to cursor pos
