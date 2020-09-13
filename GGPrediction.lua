@@ -1,4 +1,4 @@
-local Version = 1.3
+local Version = 1.4
 local Name = "GGPrediction"
 
 Callback.Add('Load', function()
@@ -406,7 +406,8 @@ Immobile =
     UnitData =
     {
         Visible = {},
-    Waypoints = {}}
+        Waypoints = {},
+    }
     function UnitData:OnVisible(id, visible)
         if (self.Visible[id] == nil) then
             self.Visible[id] = {visible = visible, visibleTick = GetTickCount(), invisibleTick = GetTickCount()}
@@ -523,7 +524,7 @@ function Collision:GetCollision(source, castPos, speed, delay, radius, collision
         if (colType == COLLISION_MINION) then
             for k = 1, Game.MinionCount() do
                 local unit = Game.Minion(k)
-                if (ObjectManager:IsValid(unit) and unit.isEnemy and Math:GetDistance(source, Math:Get2D(unit.pos)) < 2000) then
+                if (unit.networkID ~= skipID and ObjectManager:IsValid(unit) and unit.isEnemy and Math:GetDistance(source, Math:Get2D(unit.pos)) < 2000) then
                     table_insert(objects, unit)
                 end
             end
@@ -738,8 +739,9 @@ function Prediction:SpellPrediction(args)
         if not self.IsOnScreen then
             self.CastPosition = Math:Extended(self.MyHeroPos, Math:Normalized(self.CastPosition, self.MyHeroPos), 800)
         end
-        self.CastPosition.y = 0
-        self.UnitPosition.y = 0
+        local y = self.Target.pos.y
+        self.CastPosition.y = y
+        self.UnitPosition.y = y
         return true
     end
     function c:GetPrediction(target, source)
@@ -812,6 +814,9 @@ _G.GGPrediction =
 }
 function GGPrediction:GetPrediction(target, source, speed, delay, radius)
     return Prediction:GetPrediction(target, Math:Get2D(source), speed, delay, radius, target.type == Obj_AI_Hero)
+end
+function GGPrediction:GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
+    return Collision:GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
 end
 function GGPrediction:SpellPrediction(args)
     return Prediction:SpellPrediction(args)
