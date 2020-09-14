@@ -1,4 +1,4 @@
-local Version = 1.9
+local Version = 1.91
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -804,8 +804,8 @@ if Champion == nil and myHero.charName == 'Ezreal' then
     Menu.w_hitchance = Menu.w:MenuElement({id = "hitchance", name = "Hitchance", value = 1, drop = {"normal", "high", "immobile"}})
     Menu.w_mana = Menu.w:MenuElement({id = "mana", name = "Min. Mana %", value = 5, min = 0, max = 100, step = 1})
     
-    Menu.e_fake = Menu.e:MenuElement({id = "efake", name = "E Fake Key", value = false, key = string.byte("E")})
-    Menu.e_lol = Menu.e:MenuElement({id = "elol", name = "E LoL Key", value = false, key = string.byte("L")})
+    Menu.e_fake = Menu.e:MenuElement({id = "efake", name = "Key to use", value = false, key = string.byte("E")})
+    Menu.e_lol = Menu.e:MenuElement({id = "elol", name = "key in game", value = false, key = string.byte("L")})
     
     Menu.r_combo = Menu.r:MenuElement({id = 'combo', name = 'Combo', value = true})
     Menu.r_harass = Menu.r:MenuElement({id = 'harass', name = 'Harass', value = false})
