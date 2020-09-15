@@ -1,4 +1,4 @@
-local Version = 2.4
+local Version = 2.5
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -776,6 +776,19 @@ do
         end
         return result
     end
+    -- print
+    function Buff:Print()
+        local result = ''
+        local buffs = self:GetBuffs(myHero)
+        for i = 1, #buffs do
+            local buff = buffs[i]
+            result = result .. buff.name .. ': count=' .. buff.count .. '\n'
+        end
+        local pos2D = myHero.pos:To2D()
+        local posX = pos2D.x - 50
+        local posY = pos2D.y
+        Draw.Text(result, posX + 50, posY - 15)
+    end
 end
 
 -- damage
@@ -1344,6 +1357,12 @@ do
         }
         self.SpecialMissileSpeeds =
         {
+            ['aphelios'] = function()
+                if Buff:HasBuff(myHero, 'ApheliosCrescendumManager') then
+                    return math.huge
+                end
+                return 1500
+            end,
             ['caitlyn'] = function()
                 if Buff:HasBuff(myHero, 'caitlynheadshot') then
                     return 3000
