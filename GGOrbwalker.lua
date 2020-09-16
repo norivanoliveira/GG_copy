@@ -1,4 +1,4 @@
-local Version = 2.6
+local Version = 2.7
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -1496,6 +1496,7 @@ do
         }
         self.AttackResets =
         {
+            ["ashe"] = {Slot = _Q, Key = HK_Q},
             ["blitzcrank"] = {Slot = _E, Key = HK_E},
             ["camille"] = {Slot = _Q, Key = HK_Q},
             ["chogath"] = {Slot = _E, Key = HK_E},
