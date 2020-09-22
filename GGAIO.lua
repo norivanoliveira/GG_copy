@@ -1,4 +1,4 @@
-local Version = 1.91
+local Version = 1.92
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -1677,10 +1677,11 @@ if Champion == nil and myHero.charName == 'Vayne' then
     -- on tick
     function Champion:OnTick()
         self:RLogic()
+        self:ELogic()
         if self.IsAttacking or self.CanAttackTarget or self.AttackTarget then
             return
         end
-        self:ELogic()
+        --self:ELogic()
         self:QLogic()
     end
     
