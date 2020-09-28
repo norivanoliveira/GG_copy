@@ -1,4 +1,4 @@
-local Version = 1.92
+local Version = 1.93
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -377,8 +377,8 @@ if Champion == nil and myHero.charName == 'Twitch' then
                     local elvl = myHero:GetSpellData(_E).level
                     local basedmg = 10 + (elvl * 10)
                     local perstack = (10 + (5 * elvl)) * ecount
-                    local bonusAD = myHero.bonusDamage * 0.25 * ecount
-                    local bonusAP = myHero.ap * 0.2 * ecount
+                    local bonusAD = myHero.bonusDamage * 0.35 * ecount
+                    local bonusAP = myHero.ap * 0.333 * ecount
                     local edmg = basedmg + perstack + bonusAD + bonusAP
                     if GG_Damage:CalculateDamage(myHero, hero, DAMAGE_TYPE_PHYSICAL, edmg) >= hero.health + (1.5 * hero.hpRegen) then
                         Utils:Cast(HK_E)
@@ -1405,6 +1405,7 @@ if Champion == nil and myHero.charName == 'Varus' then
     local MENU_Q_COMBO = true
     local MENU_Q_HARASS = false
     local MENU_Q_WSTACKS = true
+    local MENU_Q_SKIP_WSTACKS = false
     local MENU_Q_TIME = 0.5
     local MENU_Q_RANGE = 300
     local MENU_Q_HITCHANCE = 2
@@ -1413,7 +1414,8 @@ if Champion == nil and myHero.charName == 'Varus' then
     local MENU_W_HP = 50
     local MENU_E_COMBO = true
     local MENU_E_HARASS = false
-    local MENU_E_WSTACKS = false
+    local MENU_E_WSTACKS = true
+    local MENU_E_SKIP_WSTACKS = false
     local MENU_E_HITCHANCE = 2
     local MENU_R_COMBO = true
     local MENU_R_HARASS = false
@@ -1426,6 +1428,7 @@ if Champion == nil and myHero.charName == 'Varus' then
     Menu.q:MenuElement({id = "combo", name = "Combo", value = MENU_Q_COMBO, callback = function(x) MENU_Q_COMBO = x end})
     Menu.q:MenuElement({id = "harass", name = "Harass", value = MENU_Q_HARASS, callback = function(x) MENU_Q_HARASS = x end})
     Menu.q:MenuElement({id = "wstacks", name = "when enemy has W buff x3", value = MENU_Q_WSTACKS, callback = function(x) MENU_Q_WSTACKS = x end})
+    Menu.q:MenuElement({id = "wstacksskip", name = "skip W buff check if no attack target", value = MENU_Q_SKIP_WSTACKS, callback = function(x) MENU_Q_SKIP_WSTACKS = x end})
     Menu.q:MenuElement({id = "xtime", name = "minimum charging time", value = MENU_Q_TIME, min = 0.1, max = 1.4, step = 0.1, callback = function(x) MENU_Q_TIME = x end})
     Menu.q:MenuElement({id = "xrange", name = "charging time only if no enemies in aarange + x", value = MENU_Q_RANGE, min = 100, max = 600, step = 10, callback = function(x) MENU_Q_RANGE = x end})
     Menu.q:MenuElement({id = "hitchance", name = "Hitchance", value = MENU_Q_HITCHANCE, drop = {"normal", "high", "immobile"}, callback = function(x) MENU_Q_HITCHANCE = x end})
@@ -1435,6 +1438,7 @@ if Champion == nil and myHero.charName == 'Varus' then
     Menu.e:MenuElement({id = "combo", name = "Combo", value = MENU_E_COMBO, callback = function(x) MENU_E_COMBO = x end})
     Menu.e:MenuElement({id = "harass", name = "Harass", value = MENU_E_HARASS, callback = function(x) MENU_E_HARASS = x end})
     Menu.e:MenuElement({id = "wstacks", name = "when enemy has W buff x3", value = MENU_E_WSTACKS, callback = function(x) MENU_E_WSTACKS = x end})
+    Menu.e:MenuElement({id = "wstacksskip", name = "skip W buff check if no attack target", value = MENU_E_SKIP_WSTACKS, callback = function(x) MENU_E_SKIP_WSTACKS = x end})
     Menu.e:MenuElement({id = "hitchance", name = "Hitchance", value = MENU_E_HITCHANCE, drop = {"normal", "high", "immobile"}, callback = function(x) MENU_E_HITCHANCE = x end})
     Menu.r:MenuElement({id = "combo", name = "Use R Combo", value = MENU_R_COMBO, callback = function(x) MENU_R_COMBO = x end})
     Menu.r:MenuElement({id = "harass", name = "Use R Harass", value = MENU_R_HARASS, callback = function(x) MENU_R_HARASS = x end})
@@ -1550,7 +1554,7 @@ if Champion == nil and myHero.charName == 'Varus' then
         local enemies = Utils:GetEnemyHeroes(1500)
         for i = 1, #enemies do
             local enemy = enemies[i]
-            if not MENU_Q_WSTACKS or self.WSpellData.level == 0 or GG_Buff:GetBuffCount(enemy, "varuswdebuff") == 3 or self.AttackTarget == nil then
+            if not MENU_Q_WSTACKS or self.WSpellData.level == 0 or GG_Buff:GetBuffCount(enemy, "varuswdebuff") == 3 or (MENU_Q_SKIP_WSTACKS and self.AttackTarget == nil) then
                 Control.KeyDown(HK_Q)
                 break
             end
@@ -1576,7 +1580,7 @@ if Champion == nil and myHero.charName == 'Varus' then
         local enemies = Utils:GetEnemyHeroes(EPrediction.Range)
         for i = 1, #enemies do
             local enemy = enemies[i]
-            if not MENU_E_WSTACKS or self.WSpellData.level == 0 or GG_Buff:GetBuffCount(enemy, "varuswdebuff") == 3 or self.AttackTarget == nil then
+            if not MENU_E_WSTACKS or self.WSpellData.level == 0 or GG_Buff:GetBuffCount(enemy, "varuswdebuff") == 3 or (MENU_E_SKIP_WSTACKS and self.AttackTarget == nil) then
                 if Utils:Cast(HK_E, enemy, EPrediction, MENU_E_HITCHANCE + 1) then
                     break
                 end
@@ -1635,7 +1639,8 @@ if Champion == nil and myHero.charName == 'Vayne' then
     -- menu
     Menu.q_combo = Menu.q:MenuElement({id = "combo", name = "Combo", value = true})
     Menu.q_harass = Menu.q:MenuElement({id = "harass", name = "Harass", value = false})
-    Menu.q_xdistance = Menu.q:MenuElement({id = "xdistance", name = "hold distance", value = 400, min = 200, max = 700, step = 50})
+    Menu.q_mode = Menu.q:MenuElement({id = "mode", name = "Q Cast Mode", value = 1, drop = {"To Side", "To Mouse"}})
+    Menu.q_xdistance = Menu.q:MenuElement({id = "xdistance", name = "To Side - hold distance", value = 400, min = 200, max = 700, step = 50})
     Menu.e_combo = Menu.e:MenuElement({id = "combo", name = "Combo (Stun)", value = true})
     Menu.e_harass = Menu.e:MenuElement({id = "harass", name = "Harass (Stun)", value = false})
     Menu.e_hitchance = Menu.e:MenuElement({id = "hitchance", name = "Hitchance", value = 1, drop = {"normal", "high", "immobile"}})
@@ -1654,6 +1659,23 @@ if Champion == nil and myHero.charName == 'Vayne' then
     
     -- locals
     local EPrediction = GGPrediction:SpellPrediction({Delay = 0.5, Radius = 0, Range = 550, Speed = 2000, Collision = false, UseBoundingRadius = false, Type = GGPrediction.SPELLTYPE_LINE})
+
+    local function CastQ(target, castMode, castRange)
+        if castMode == 1 then
+            local c1, c2, r1, r2 = myHero.pos, target.pos, myHero.range, 525
+            local O1, O2 = CircleCircleIntersection(c1, c2, r1, r2)
+            
+            if O1 and O2 then
+                local closestPoint = Vector(self:ClosestToMouse(O1, O2))
+                local castPos = c1:Extended(closestPoint, castRange)
+                
+                self.E:Cast(castPos)
+            end
+        elseif castMode == 2 then
+            local castPos = myHero.pos:Extended(mousePos, castRange)
+            self.E:Cast(castPos)
+        end
+    end
     
     -- champion
     Champion =
@@ -1737,13 +1759,17 @@ if Champion == nil and myHero.charName == 'Vayne' then
                 closestEnemy = enemy
             end
         end
-        local holdDistance = Menu.q_xdistance:Value()
-        local pos = GGPrediction:CircleCircleIntersection(self.Pos, closestEnemy.pos, 300, holdDistance)
-        if #pos > 0 and (GG_Object:IsFacing(closestEnemy, myHero, 60) or closestEnemy.distance < holdDistance) then
-            if GGPrediction:GetDistance(pos[1], _G.mousePos) < GGPrediction:GetDistance(pos[2], _G.mousePos) then
-                Utils:Cast(HK_Q, {x = pos[1].x, y = 0, z = pos[1].z})
+        if Menu.q_mode:Value() == 1 then
+            local holdDistance = Menu.q_xdistance:Value()
+            local pos = GGPrediction:CircleCircleIntersection(self.Pos, closestEnemy.pos, 300, holdDistance)
+            if #pos > 0 and (GG_Object:IsFacing(closestEnemy, myHero, 60) or closestEnemy.distance < holdDistance) then
+                if GGPrediction:GetDistance(pos[1], _G.mousePos) < GGPrediction:GetDistance(pos[2], _G.mousePos) then
+                    Utils:Cast(HK_Q, {x = pos[1].x, y = 0, z = pos[1].z})
+                else
+                    Utils:Cast(HK_Q, {x = pos[2].x, y = 0, z = pos[2].z})
+                end
             else
-                Utils:Cast(HK_Q, {x = pos[2].x, y = 0, z = pos[2].z})
+                Utils:Cast(HK_Q)
             end
         else
             Utils:Cast(HK_Q)
@@ -2640,61 +2666,88 @@ if Champion == nil and myHero.charName == 'Taric' then
         end
     end
 end
-
 --[[
 if Champion == nil and myHero.charName == 'Karthus' then
-    class "Karthus"
- 
-    function Karthus:__init()
-        self.QData = {Delay = 1, Radius = 200, Range = 875, Speed = math.huge, Collision = false, Type = _G.SPELLTYPE_CIRCLE}
-        self.WData = {Delay = 0.25, Radius = 1, Range = 1000, Speed = math.huge, Collision = false, Type = _G.SPELLTYPE_CIRCLE}
+    -- Q
+    -- Disable Attack
+    Menu.q_disaa = Menu.q:MenuElement({id = "disaa", name = "Disable attack", value = true})
+    -- KS
+    Menu.q_ks = Menu.q:MenuElement({name = "KS", id = "killsteal", type = _G.MENU})
+    Menu.q_ks_enabled = Menu.q_ks:MenuElement({id = "enabled", name = "Enabled", value = true})
+    Menu.q_ks_minhp = Menu.q_ks:MenuElement({id = "minhp", name = "minimum enemy hp", value = 200, min = 1, max = 300, step = 1})
+    Menu.q_ks_hitchance = Menu.q_ks:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
+    -- Auto
+    Menu.q_auto = Menu.q:MenuElement({name = "Auto", id = "auto", type = _G.MENU})
+    Menu.q_auto_enabled = Menu.q_auto:MenuElement({id = "enabled", name = "Enabled", value = true})
+    Menu.q_auto_useon = Menu.q_auto:MenuElement({name = "Use on:", id = "useon", type = _G.MENU})
+    Menu.q_auto_hitchance = Menu.q_auto:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
+    -- Combo / Harass
+    Menu.q_comhar = Menu.q:MenuElement({name = "Combo / Harass", id = "comhar", type = _G.MENU})
+    Menu.q_comhar_combo = Menu.q_comhar:MenuElement({id = "combo", name = "Combo", value = true})
+    Menu.q_comhar_harass = Menu.q_comhar:MenuElement({id = "harass", name = "Harass", value = false})
+    Menu.q_comhar_hitchance = Menu.q_comhar:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
+    -- W
+    Menu.w_combo = Menu.w:MenuElement({id = "combo", name = "Combo", value = true})
+    Menu.w_harass = Menu.w:MenuElement({id = "harass", name = "Harass", value = false})
+    Menu.w_hitchance = Menu.w:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
+    -- E
+    Menu.e_auto = Menu.e:MenuElement({id = "auto", name = "Auto", value = true})
+    Menu.e_combo = Menu.e:MenuElement({id = "combo", name = "Combo", value = true})
+    Menu.e_harass = Menu.e:MenuElement({id = "harass", name = "Harass", value = false})
+    Menu.e_minmp = Menu.e:MenuElement({id = "minmp", name = "minimum mana percent", value = 25, min = 1, max = 100, step = 1})
+    --R
+    Menu.r_killsteal = Menu.r:MenuElement({id = "killsteal", name = "Auto KS X enemies in passive form", value = true})
+    Menu.r_kscount = Menu.r:MenuElement({id = "kscount", name = "^^^ X enemies ^^^", value = 2, min = 1, max = 5, step = 1})
+    -- Drawings
+    Menu.d_ksdraw = Menu.d:MenuElement({name = "Draw Kill Count", id = "ksdraw", type = _G.MENU})
+    Menu.d_enabled = Menu.d:MenuElement({id = "enabled", name = "Enabled", value = true})
+    Menu.d_size = Menu.d:MenuElement({id = "size", name = "Text Size", value = 25, min = 1, max = 64, step = 1})
+
+    -- locals
+    local QPrediction = GGPrediction:SpellPrediction({Delay = 1, Radius = 200, Range = 875, Speed = math.huge, Collision = false, Type = _G.SPELLTYPE_CIRCLE})
+    local WPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 1, Range = 1000, Speed = math.huge, Collision = false, Type = _G.SPELLTYPE_CIRCLE})
+
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            if not GG_Spell:CanTakeAction({q = 0.33, w = 0.33, e = 0.33, r = 3.23}) then
+                return false
+            end
+            if not Menu.q_disaa:Value() then
+                return true
+            end
+            if not GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and not GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] then
+                return true
+            end
+            if myHero.mana > myHero:GetSpellData(_Q).mana then
+                return false
+            end
+            return true
+        end,
+        CanMoveCb = function()
+            if not GG_Spell:CanTakeAction({q = 0.2, w = 0.2, e = 0.2, r = 3.13}) then
+                return false
+            end
+            return true
+        end,
+    }
+    
+    -- on load
+    function Champion:OnLoad()
+        GG_Object:OnEnemyHeroLoad(function(args)
+            Menu.q_auto_useon:MenuElement({id = args.charName, name = args.charName, value = true})
+        end)
     end
  
-    function Karthus:CreateMenu()
-        Menu = MenuElement({name = "Gamsteron Karthus", id = "Gamsteron_Karthus", type = _G.MENU})
-        -- Q
-        Menu:MenuElement({name = "Q settings", id = "qset", type = _G.MENU})
-        -- Disable Attack
-        Menu.qset:MenuElement({id = "disaa", name = "Disable attack", value = true})
-        -- KS
-        Menu.qset:MenuElement({name = "KS", id = "killsteal", type = _G.MENU})
-        Menu.qset.killsteal:MenuElement({id = "enabled", name = "Enabled", value = true})
-        Menu.qset.killsteal:MenuElement({id = "minhp", name = "minimum enemy hp", value = 200, min = 1, max = 300, step = 1})
-        Menu.qset.killsteal:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
-        -- Auto
-        Menu.qset:MenuElement({name = "Auto", id = "auto", type = _G.MENU})
-        Menu.qset.auto:MenuElement({id = "enabled", name = "Enabled", value = true})
-        Menu.qset.auto:MenuElement({name = "Use on:", id = "useon", type = _G.MENU})
-        GG_Object:OnEnemyHeroLoad(function(args) Menu.qset.auto.useon:MenuElement({id = args.charName, name = args.charName, value = true}) end)
-        Menu.qset.auto:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
-        -- Combo / Harass
-        Menu.qset:MenuElement({name = "Combo / Harass", id = "comhar", type = _G.MENU})
-        Menu.qset.comhar:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.qset.comhar:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu.qset.comhar:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
-        -- W
-        Menu:MenuElement({name = "W settings", id = "wset", type = _G.MENU})
-        Menu.wset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.wset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu.wset:MenuElement({id = "hitchance", name = "Hitchance", value = 2, drop = {"normal", "high"}})
-        -- E
-        Menu:MenuElement({name = "E settings", id = "eset", type = _G.MENU})
-        Menu.eset:MenuElement({id = "auto", name = "Auto", value = true})
-        Menu.eset:MenuElement({id = "combo", name = "Combo", value = true})
-        Menu.eset:MenuElement({id = "harass", name = "Harass", value = false})
-        Menu.eset:MenuElement({id = "minmp", name = "minimum mana percent", value = 25, min = 1, max = 100, step = 1})
-        --R
-        Menu:MenuElement({name = "R settings", id = "rset", type = _G.MENU})
-        Menu.rset:MenuElement({id = "killsteal", name = "Auto KS X enemies in passive form", value = true})
-        Menu.rset:MenuElement({id = "kscount", name = "^^^ X enemies ^^^", value = 2, min = 1, max = 5, step = 1})
-        -- Drawings
-        Menu:MenuElement({name = "Drawings", id = "draws", type = _G.MENU})
-        Menu.draws:MenuElement({name = "Draw Kill Count", id = "ksdraw", type = _G.MENU})
-        Menu.draws.ksdraw:MenuElement({id = "enabled", name = "Enabled", value = true})
-        Menu.draws.ksdraw:MenuElement({id = "size", name = "Text Size", value = 25, min = 1, max = 64, step = 1})
+    function Champion:OnTick()
+        if GG_Cursor.Step == 0 then
+            self:QLogic()
+            self:WLogic()
+        end
+        self:ELogic()
+        self:RLogic()
     end
- 
-    function Karthus:Tick()
         -- Is Attacking
         if GG_Orbwalker:IsAutoAttacking() then
             return
@@ -2777,7 +2830,7 @@ if Champion == nil and myHero.charName == 'Karthus' then
         end
     end
  
-    function Karthus:Draw()
+    function Champion:OnDraw()
         if Menu.draws.ksdraw.enabled:Value() and Game.CanUseSpell(_R) == 0 then
             local rCount = 0
             local enemyList = AIO:GetEnemyHeroes()
@@ -2798,30 +2851,7 @@ if Champion == nil and myHero.charName == 'Karthus' then
         end
     end
  
-    function Karthus:CanAttack()
-        if not GG_Spell:CanTakeAction({q = 0.33, w = 0.33, e = 0.33, r = 3.23}) then
-            return false
-        end
-        if not Menu.qset.disaa:Value() then
-            return true
-        end
-        if not GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and not GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS] then
-            return true
-        end
-        if myHero.mana > myHero:GetSpellData(_Q).mana then
-            return false
-        end
-        return true
-    end
- 
-    function Karthus:CanMove()
-        if not GG_Spell:CanTakeAction({q = 0.2, w = 0.2, e = 0.2, r = 3.13}) then
-            return false
-        end
-        return true
-    end
- 
-    function Karthus:GetQDmg()
+    function Champion:GetQDmg()
         local qLvl = myHero:GetSpellData(_Q).level
         if qLvl == 0 then return 0 end
         local baseDmg = 30
@@ -2830,15 +2860,17 @@ if Champion == nil and myHero.charName == 'Karthus' then
         return baseDmg + lvlDmg + apDmg
     end
  
-    function Karthus:GetRDmg()
+    function Champion:GetRDmg()
         local rLvl = myHero:GetSpellData(_R).level
         if rLvl == 0 then return 0 end
-        local baseDmg = 100
+        local baseDmg = 50
         local lvlDmg = 150 * rLvl
         local apDmg = myHero.ap * 0.75
         return baseDmg + lvlDmg + apDmg
     end
 end
+
+
  
 if Champion == nil and myHero.charName == 'Brand' then
     class "Brand"
