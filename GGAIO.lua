@@ -1659,23 +1659,6 @@ if Champion == nil and myHero.charName == 'Vayne' then
     
     -- locals
     local EPrediction = GGPrediction:SpellPrediction({Delay = 0.5, Radius = 0, Range = 550, Speed = 2000, Collision = false, UseBoundingRadius = false, Type = GGPrediction.SPELLTYPE_LINE})
-
-    local function CastQ(target, castMode, castRange)
-        if castMode == 1 then
-            local c1, c2, r1, r2 = myHero.pos, target.pos, myHero.range, 525
-            local O1, O2 = CircleCircleIntersection(c1, c2, r1, r2)
-            
-            if O1 and O2 then
-                local closestPoint = Vector(self:ClosestToMouse(O1, O2))
-                local castPos = c1:Extended(closestPoint, castRange)
-                
-                self.E:Cast(castPos)
-            end
-        elseif castMode == 2 then
-            local castPos = myHero.pos:Extended(mousePos, castRange)
-            self.E:Cast(castPos)
-        end
-    end
     
     -- champion
     Champion =
