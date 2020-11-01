@@ -3076,16 +3076,17 @@ do
     -- get combo target
     function Target:GetComboTarget(dmgType)
         dmgType = dmgType or DAMAGE_TYPE_PHYSICAL
-        local attackRange = myHero.range + myHero.boundingRadius - self.MenuAARange:Value()
+        local menuRange = self.MenuAARange:Value()
+        local attackRange = myHero.range + myHero.boundingRadius - menuRange
         local enemies = Object:GetEnemyHeroes(false, false, true, true)
         local enemiesaa = {}
         for i = 1, #enemies do
             local enemy = enemies[i]
-            local extraRange = enemy.boundingRadius
             if Object.IsCaitlyn and Buff:HasBuff(enemy, 'caitlynyordletrapinternal') then
-                extraRange = extraRange + 600
-            end
-            if enemy.distance < attackRange + extraRange then
+                if enemy.distance < 800 then
+                    table_insert(enemiesaa, enemy)
+                end
+            elseif enemy.distance < attackRange + enemy.boundingRadius then
                 table_insert(enemiesaa, enemy)
             end
         end
