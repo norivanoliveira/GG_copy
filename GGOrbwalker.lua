@@ -1,4 +1,4 @@
-local Version = 2.81
+local Version = 2.82
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -3082,11 +3082,11 @@ do
         local enemiesaa = {}
         for i = 1, #enemies do
             local enemy = enemies[i]
+            local extraRange = enemy.boundingRadius
             if Object.IsCaitlyn and Buff:HasBuff(enemy, 'caitlynyordletrapinternal') then
-                if enemy.distance < 800 then
-                    table_insert(enemiesaa, enemy)
-                end
-            elseif enemy.distance < attackRange + enemy.boundingRadius then
+                extraRange = extraRange + 425
+            end
+            if enemy.distance < attackRange + extraRange then
                 table_insert(enemiesaa, enemy)
             end
         end
@@ -4372,6 +4372,15 @@ Callback.Add('Load', function()
         end
     end)
     Callback.Add("Tick", function()
+        local enemies = Object:GetEnemyHeroes(false, false, true, true)
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            if enemy.charName ~= "Soraka" then
+                print(enemy.distance .. " " .. myHero.range)
+            end
+        end
+
+
         Cached:Reset()
         SummonerSpell:OnTick()
         Item:OnTick()
