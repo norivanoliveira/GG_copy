@@ -1,4 +1,4 @@
-local Version = 2.82
+local Version = 2.83
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -4372,15 +4372,6 @@ Callback.Add('Load', function()
         end
     end)
     Callback.Add("Tick", function()
-        local enemies = Object:GetEnemyHeroes(false, false, true, true)
-        for i = 1, #enemies do
-            local enemy = enemies[i]
-            if enemy.charName ~= "Soraka" then
-                print(enemy.distance .. " " .. myHero.range)
-            end
-        end
-
-
         Cached:Reset()
         SummonerSpell:OnTick()
         Item:OnTick()
