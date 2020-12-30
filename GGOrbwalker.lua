@@ -1,4 +1,4 @@
-local Version = 2.84
+local Version = 2.85
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -20,7 +20,7 @@ do
             for line in file:lines() do
                 local str = self:Trim(line)
                 if #str > 0 then
-                    table_insert(result, str)
+                    table.insert(result, str)
                 end
             end
             file:close()
@@ -85,7 +85,7 @@ do
             end
         end
         updater:__init()
-        table_insert(self.Callbacks, updater)
+        table.insert(self.Callbacks, updater)
     end
     GGUpdate:__init()
 end
