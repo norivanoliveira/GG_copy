@@ -1,4 +1,4 @@
-local Version = 2.83
+local Version = 2.84
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -20,7 +20,7 @@ do
             for line in file:lines() do
                 local str = self:Trim(line)
                 if #str > 0 then
-                    table.insert(result, str)
+                    table_insert(result, str)
                 end
             end
             file:close()
@@ -85,7 +85,7 @@ do
             end
         end
         updater:__init()
-        table.insert(self.Callbacks, updater)
+        table_insert(self.Callbacks, updater)
     end
     GGUpdate:__init()
 end
@@ -102,16 +102,15 @@ if _G.SDK then
     return
 end
 
-local Updated, FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, Cursor, Health, Attack, EvadeSupport
+local Updated, ChampionInfo, FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, Cursor, Health, Attack, EvadeSupport
 
 local myHero = _G.myHero
 local os = _G.os
-local Game = _G.Game
 local Vector = _G.Vector
 local Control = _G.Control
 local Draw = _G.Draw
 local pairs = _G.pairs
-local GetTickCount = _G.GetTickCount
+
 local math_huge = math.huge
 local math_pi = math.pi
 local math_sqrt = assert(math.sqrt)
@@ -123,10 +122,28 @@ local math_pow = assert(math.pow)
 local math_atan = assert(math.atan)
 local math_acos = assert(math.acos)
 local math_random = assert(math.random)
+
 local table_sort = assert(table.sort)
 local table_remove = assert(table.remove)
 local table_insert = assert(table.insert)
+
+local GetTickCount = _G.GetTickCount
+
+local GameTimer = _G.Game.Timer
+local GameIsOnTop = _G.Game.IsOnTop
+local GameIsChatOpen = _G.Game.IsChatOpen
 local GameCanUseSpell = _G.Game.CanUseSpell
+
+local GameWard = _G.Game.Ward
+local GameHero = _G.Game.Hero
+local GameObject = _G.Game.Object
+local GameTurret = _G.Game.Turret
+local GameMinion = _G.Game.Minion
+local GameWardCount = _G.Game.WardCount
+local GameHeroCount = _G.Game.HeroCount
+local GameObjectCount = _G.Game.ObjectCount
+local GameTurretCount = _G.Game.TurretCount
+local GameMinionCount = _G.Game.MinionCount
 
 local DAMAGE_TYPE_PHYSICAL = 0
 local DAMAGE_TYPE_MAGICAL = 1
@@ -257,6 +274,50 @@ local function CastKey(key)
     end
 end
 
+--champion info
+ChampionInfo = {}
+do
+    function ChampionInfo:__init()
+        self.AzirSoldiers = {}
+    end
+    
+    function ChampionInfo:OnTick()
+        if Object.IsAzir then
+            for i = #self.AzirSoldiers, 1, -1 do
+                local soldier = self.AzirSoldiers[i]
+                if soldier and (soldier.health == 0 or soldier.name ~= "AzirSoldier") then
+                    table_remove(self.AzirSoldiers, i)
+                end
+            end
+            local activeSpell = myHero.activeSpell
+            if activeSpell and activeSpell.valid then
+                if activeSpell.name == "AzirWSpawnSoldier" then
+                    for i = 1, GameObjectCount() do
+                        local obj = GameObject(i)
+                        if obj and GetDistance(myHero.pos, obj.pos) <= 1000 and obj.name == "AzirSoldier" then
+                            table_insert(self.AzirSoldiers, obj)
+                        end
+                    end
+                end
+            end
+        end
+    end
+    
+    function ChampionInfo:IsInAzirSoldierRange(obj)
+        local result = false
+        for i = 1, #self.AzirSoldiers do
+            local soldier = self.AzirSoldiers[i]
+            if soldier and soldier.name == "AzirSoldier" and soldier.health > 0 and GetDistance(soldier, myHero) < 750 and GetDistance(soldier, obj) < 340 then
+                result = true
+            end
+        end
+        return result
+    end
+
+    -- init call
+    ChampionInfo:__init()
+end
+
 -- flash helper
 FlashHelper = {}
 do
@@ -284,7 +345,7 @@ do
     
     -- on tick
     function FlashHelper:OnTick()
-        if self.Menu.Flashgos:Value() and self.Menu.Enabled:Value() and self:IsReady() and not myHero.dead and not Game.IsChatOpen() and Game.IsOnTop() then
+        if self.Menu.Flashgos:Value() and self.Menu.Enabled:Value() and self:IsReady() and not myHero.dead and not GameIsChatOpen() and GameIsOnTop() then
             print("Flash Helper | Flashing!")
             self.Timer = GetTickCount()
             Control.Flash()
@@ -311,7 +372,7 @@ do
         if (myHero:GetSpellData(self.FlashSpell).currentCd > 0) then
             return false
         end
-        if (Game.CanUseSpell(self.FlashSpell) ~= 0) then
+        if (GameCanUseSpell(self.FlashSpell) ~= 0) then
             return false
         end
         if GetTickCount() < self.Timer + 1000 then
@@ -401,10 +462,10 @@ do
     function Cached:GetHeroes()
         if not self.HeroesSaved then
             self.HeroesSaved = true
-            local count = Game.HeroCount()
+            local count = GameHeroCount()
             if count and count > 0 and count < 1000 then
                 for i = 1, count do
-                    local o = Game.Hero(i)
+                    local o = GameHero(i)
                     if o and o.valid and o.visible and o.isTargetable and not o.dead then
                         table_insert(self.Heroes, o)
                     end
@@ -417,10 +478,10 @@ do
     function Cached:GetMinions()
         if not self.MinionsSaved then
             self.MinionsSaved = true
-            local count = Game.MinionCount()
+            local count = GameMinionCount()
             if count and count > 0 and count < 1000 then
                 for i = 1, count do
-                    local o = Game.Minion(i)
+                    local o = GameMinion(i)
                     if o and o.valid and o.visible and o.isTargetable and not o.dead and not o.isImmortal then
                         table_insert(self.Minions, o)
                     end
@@ -433,10 +494,10 @@ do
     function Cached:GetTurrets()
         if not self.TurretsSaved then
             self.TurretsSaved = true
-            local count = Game.TurretCount()
+            local count = GameTurretCount()
             if count and count > 0 and count < 1000 then
                 for i = 1, count do
-                    local o = Game.Turret(i)
+                    local o = GameTurret(i)
                     if o and o.valid and o.visible and o.isTargetable and not o.dead and not o.isImmortal then
                         table_insert(self.Turrets, o)
                     end
@@ -449,10 +510,10 @@ do
     function Cached:GetWards()
         if not self.WardsSaved then
             self.WardsSaved = true
-            local count = Game.WardCount()
+            local count = GameWardCount()
             if count and count > 0 and count < 1000 then
                 for i = 1, count do
-                    local o = Game.Ward(i)
+                    local o = GameWard(i)
                     if o and o.valid and o.visible and o.isTargetable and not o.dead and not o.isImmortal then
                         table_insert(self.Wards, o)
                     end
@@ -1422,8 +1483,8 @@ do
                 return nil
             end,
         }
-        --10.19.1
-        self.HEROES = {aatrox = {3, true, 0.651}, ahri = {4, false, 0.668}, akali = {4, true, 0.625}, alistar = {1, true, 0.625}, amumu = {1, true, 0.736}, anivia = {4, false, 0.625}, annie = {4, false, 0.579}, aphelios = {5, false, 0.64}, ashe = {5, false, 0.658}, aurelionsol = {4, false, 0.625}, azir = {4, true, 0.625}, bard = {3, false, 0.625}, blitzcrank = {1, true, 0.625}, brand = {4, false, 0.625}, braum = {1, true, 0.644}, caitlyn = {5, false, 0.681}, camille = {3, true, 0.644}, cassiopeia = {4, false, 0.647}, chogath = {1, true, 0.625}, corki = {5, false, 0.638}, darius = {2, true, 0.625}, diana = {4, true, 0.625}, draven = {5, false, 0.679}, drmundo = {1, true, 0.721}, ekko = {4, true, 0.688}, elise = {3, false, 0.625}, evelynn = {4, true, 0.667}, ezreal = {5, false, 0.625}, fiddlesticks = {3, false, 0.625}, fiora = {3, true, 0.69}, fizz = {4, true, 0.658}, galio = {1, true, 0.625}, gangplank = {4, true, 0.658}, garen = {1, true, 0.625}, gnar = {1, false, 0.625}, gragas = {2, true, 0.675}, graves = {4, false, 0.475}, hecarim = {2, true, 0.67}, heimerdinger = {3, false, 0.625}, illaoi = {3, true, 0.571}, irelia = {3, true, 0.656}, ivern = {1, true, 0.644}, janna = {2, false, 0.625}, jarvaniv = {3, true, 0.658}, jax = {3, true, 0.638}, jayce = {4, false, 0.658}, jhin = {5, false, 0.625}, jinx = {5, false, 0.625}, kaisa = {5, false, 0.644}, kalista = {5, false, 0.694}, karma = {4, false, 0.625}, karthus = {4, false, 0.625}, kassadin = {4, true, 0.64}, katarina = {4, true, 0.658}, kayle = {4, false, 0.625}, kayn = {4, true, 0.669}, kennen = {4, false, 0.625}, khazix = {4, true, 0.668}, kindred = {4, false, 0.625}, kled = {2, true, 0.625}, kogmaw = {5, false, 0.665}, leblanc = {4, false, 0.625}, leesin = {3, true, 0.651}, leona = {1, true, 0.625}, lillia = {4, false, 0.625}, lissandra = {4, false, 0.656}, lucian = {5, false, 0.638}, lulu = {3, false, 0.625}, lux = {4, false, 0.669}, malphite = {1, true, 0.736}, malzahar = {3, false, 0.625}, maokai = {2, true, 0.8}, masteryi = {5, true, 0.679}, missfortune = {5, false, 0.656}, monkeyking = {3, true, 0.711}, mordekaiser = {4, true, 0.625}, morgana = {3, false, 0.625}, nami = {3, false, 0.644}, nasus = {2, true, 0.638}, nautilus = {1, true, 0.706}, neeko = {4, false, 0.625}, nidalee = {4, false, 0.638}, nocturne = {4, true, 0.721}, nunu = {2, true, 0.625}, olaf = {2, true, 0.694}, orianna = {4, false, 0.658}, ornn = {2, true, 0.625}, pantheon = {3, true, 0.644}, poppy = {2, true, 0.625}, pyke = {4, true, 0.667}, qiyana = {4, true, 0.625}, quinn = {5, false, 0.668}, rakan = {3, true, 0.635}, rammus = {1, true, 0.656}, reksai = {2, true, 0.667}, renekton = {2, true, 0.665}, rengar = {4, true, 0.667}, riven = {4, true, 0.625}, rumble = {4, true, 0.644}, ryze = {4, false, 0.625}, samira = {5, false, 0.658}, sejuani = {2, true, 0.688}, senna = {5, true, 0.625}, seraphine = {3, false, 0.669}, sett = {2, true, 0.625}, shaco = {4, true, 0.694}, shen = {1, true, 0.751}, shyvana = {2, true, 0.658}, singed = {1, true, 0.613}, sion = {1, true, 0.679}, sivir = {5, false, 0.625}, skarner = {2, true, 0.625}, sona = {3, false, 0.644}, soraka = {3, false, 0.625}, swain = {3, false, 0.625}, sylas = {4, true, 0.645}, syndra = {4, false, 0.625}, tahmkench = {1, true, 0.658}, taliyah = {4, false, 0.625}, talon = {4, true, 0.625}, taric = {1, true, 0.625}, teemo = {4, false, 0.69}, thresh = {1, true, 0.625}, tristana = {5, false, 0.656}, trundle = {2, true, 0.67}, tryndamere = {4, true, 0.67}, twistedfate = {4, false, 0.651}, twitch = {5, false, 0.679}, udyr = {2, true, 0.658}, urgot = {2, true, 0.625}, varus = {5, false, 0.658}, vayne = {5, false, 0.658}, veigar = {4, false, 0.625}, velkoz = {4, false, 0.625}, vi = {2, true, 0.644}, viktor = {4, false, 0.658}, vladimir = {3, false, 0.658}, volibear = {2, true, 0.625}, warwick = {2, true, 0.638}, xayah = {5, false, 0.625}, xerath = {4, false, 0.625}, xinzhao = {3, true, 0.645}, yasuo = {4, true, 0.697}, yone = {4, true, 0.625}, yorick = {2, true, 0.625}, yuumi = {3, false, 0.625}, zac = {1, true, 0.736}, zed = {4, true, 0.651}, ziggs = {4, false, 0.656}, zilean = {3, false, 0.625}, zoe = {4, false, 0.625}, zyra = {2, false, 0.625}, }
+        --10.25.1
+        self.HEROES = {aatrox = {3, true, 0.651}, ahri = {4, false, 0.668}, akali = {4, true, 0.625}, alistar = {1, true, 0.625}, amumu = {1, true, 0.736}, anivia = {4, false, 0.625}, annie = {4, false, 0.579}, aphelios = {5, false, 0.64}, ashe = {5, false, 0.658}, aurelionsol = {4, false, 0.625}, azir = {4, true, 0.625}, bard = {3, false, 0.625}, blitzcrank = {1, true, 0.625}, brand = {4, false, 0.625}, braum = {1, true, 0.644}, caitlyn = {5, false, 0.681}, camille = {3, true, 0.644}, cassiopeia = {4, false, 0.647}, chogath = {1, true, 0.625}, corki = {5, false, 0.638}, darius = {2, true, 0.625}, diana = {4, true, 0.625}, draven = {5, false, 0.679}, drmundo = {1, true, 0.721}, ekko = {4, true, 0.688}, elise = {3, false, 0.625}, evelynn = {4, true, 0.667}, ezreal = {5, false, 0.625}, fiddlesticks = {3, false, 0.625}, fiora = {3, true, 0.69}, fizz = {4, true, 0.658}, galio = {1, true, 0.625}, gangplank = {4, true, 0.658}, garen = {1, true, 0.625}, gnar = {1, false, 0.625}, gragas = {2, true, 0.675}, graves = {4, false, 0.475}, hecarim = {2, true, 0.67}, heimerdinger = {3, false, 0.625}, illaoi = {3, true, 0.571}, irelia = {3, true, 0.656}, ivern = {1, true, 0.644}, janna = {2, false, 0.625}, jarvaniv = {3, true, 0.658}, jax = {3, true, 0.638}, jayce = {4, false, 0.658}, jhin = {5, false, 0.625}, jinx = {5, false, 0.625}, kaisa = {5, false, 0.644}, kalista = {5, false, 0.694}, karma = {4, false, 0.625}, karthus = {4, false, 0.625}, kassadin = {4, true, 0.64}, katarina = {4, true, 0.658}, kayle = {4, false, 0.625}, kayn = {4, true, 0.669}, kennen = {4, false, 0.625}, khazix = {4, true, 0.668}, kindred = {4, false, 0.625}, kled = {2, true, 0.625}, kogmaw = {5, false, 0.665}, leblanc = {4, false, 0.625}, leesin = {3, true, 0.651}, leona = {1, true, 0.625}, lillia = {4, false, 0.625}, lissandra = {4, false, 0.656}, lucian = {5, false, 0.638}, lulu = {3, false, 0.625}, lux = {4, false, 0.669}, malphite = {1, true, 0.736}, malzahar = {3, false, 0.625}, maokai = {2, true, 0.8}, masteryi = {5, true, 0.679}, missfortune = {5, false, 0.656}, monkeyking = {3, true, 0.711}, mordekaiser = {4, true, 0.625}, morgana = {3, false, 0.625}, nami = {3, false, 0.644}, nasus = {2, true, 0.638}, nautilus = {1, true, 0.706}, neeko = {4, false, 0.625}, nidalee = {4, false, 0.638}, nocturne = {4, true, 0.721}, nunu = {2, true, 0.625}, olaf = {2, true, 0.694}, orianna = {4, false, 0.658}, ornn = {2, true, 0.625}, pantheon = {3, true, 0.644}, poppy = {2, true, 0.625}, pyke = {4, true, 0.667}, qiyana = {4, true, 0.625}, quinn = {5, false, 0.668}, rakan = {3, true, 0.635}, rammus = {1, true, 0.656}, reksai = {2, true, 0.667}, rell = {1, true, 0.55}, renekton = {2, true, 0.665}, rengar = {4, true, 0.667}, riven = {4, true, 0.625}, rumble = {4, true, 0.644}, ryze = {4, false, 0.625}, samira = {5, false, 0.658}, sejuani = {2, true, 0.688}, senna = {5, true, 0.625}, seraphine = {3, false, 0.669}, sett = {2, true, 0.625}, shaco = {4, true, 0.694}, shen = {1, true, 0.751}, shyvana = {2, true, 0.658}, singed = {1, true, 0.613}, sion = {1, true, 0.679}, sivir = {5, false, 0.625}, skarner = {2, true, 0.625}, sona = {3, false, 0.644}, soraka = {3, false, 0.625}, swain = {3, false, 0.625}, sylas = {4, true, 0.645}, syndra = {4, false, 0.625}, tahmkench = {1, true, 0.658}, taliyah = {4, false, 0.625}, talon = {4, true, 0.625}, taric = {1, true, 0.625}, teemo = {4, false, 0.69}, thresh = {1, true, 0.625}, tristana = {5, false, 0.656}, trundle = {2, true, 0.67}, tryndamere = {4, true, 0.67}, twistedfate = {4, false, 0.651}, twitch = {5, false, 0.679}, udyr = {2, true, 0.658}, urgot = {2, true, 0.625}, varus = {5, false, 0.658}, vayne = {5, false, 0.658}, veigar = {4, false, 0.625}, velkoz = {4, false, 0.625}, vi = {2, true, 0.644}, viktor = {4, false, 0.658}, vladimir = {3, false, 0.658}, volibear = {2, true, 0.625}, warwick = {2, true, 0.638}, xayah = {5, false, 0.625}, xerath = {4, false, 0.625}, xinzhao = {3, true, 0.645}, yasuo = {4, true, 0.697}, yone = {4, true, 0.625}, yorick = {2, true, 0.625}, yuumi = {3, false, 0.625}, zac = {1, true, 0.736}, zed = {4, true, 0.651}, ziggs = {4, false, 0.656}, zilean = {3, false, 0.625}, zoe = {4, false, 0.625}, zyra = {2, false, 0.625}, }
         self.HeroSpecialMelees =
         {
             ['elise'] = function()
@@ -1567,12 +1628,12 @@ do
         local AttackResetName = self.AttackReset.Name
         local AttackResetSpellName = self.AttackReset.SpellName
         local X, T = 0, 0
-        if not self.AttackResetSuccess and not Control.IsKeyDown(HK_LUS) and not Game.IsChatOpen() and wParam == AttackResetKey then
+        if not self.AttackResetSuccess and not Control.IsKeyDown(HK_LUS) and not GameIsChatOpen() and wParam == AttackResetKey then
             local checkNum = Object.IsRiven and 400 or 600
             if GetTickCount() <= self.AttackResetTimer + checkNum then
                 return
             end
-            if AttackResetIsReady and Game.CanUseSpell(self.AttackResetSlot) ~= 0 then
+            if AttackResetIsReady and GameCanUseSpell(self.AttackResetSlot) ~= 0 then
                 return
             end
             local spellData = myHero:GetSpellData(self.AttackResetSlot)
@@ -1702,7 +1763,7 @@ do
                 if self.AttackResetBuff == nil or Buff:HasBuff(myHero, self.AttackResetBuff) then
                     local spellData = myHero:GetSpellData(self.AttackResetSlot)
                     local startTime = spellData.castTime - spellData.cd
-                    if not self.AttackResetSuccess and Game.Timer() - startTime > 0.075 and Game.Timer() - startTime < 0.5 and GetTickCount() > self.AttackResetTimer + 1000 then
+                    if not self.AttackResetSuccess and GameTimer() - startTime > 0.075 and GameTimer() - startTime < 0.5 and GetTickCount() > self.AttackResetTimer + 1000 then
                         --print('Reset Cast, Buff ' .. tostring(os.clock()))
                         self.AttackResetSuccess = true
                         self.AttackResetTimeout = GetTickCount()
@@ -1837,7 +1898,7 @@ do
     end
     -- stop
     function Data:Stop()
-        return Game.IsChatOpen() or (ExtLibEvade and ExtLibEvade.Evading) or (JustEvade and JustEvade.Evading()) or (not Game.IsOnTop())
+        return GameIsChatOpen() or (ExtLibEvade and ExtLibEvade.Evading) or (JustEvade and JustEvade.Evading()) or (not GameIsOnTop())
     end
     -- init call
     Data:__init()
@@ -1860,7 +1921,7 @@ do
         self.ControlKeyDown = _G.Control.KeyDown
         _G.Control.KeyDown = function(key)
             if key == HK_Q then
-                local timer = Game.Timer()
+                local timer = GameTimer()
                 if timer > self.QTimer + 0.5 and GameCanUseSpell(_Q) == 0 then
                     self.QTimer = timer
                     for i = 1, #self.OnSpellCastCb do
@@ -1869,7 +1930,7 @@ do
                 end
             end
             if key == HK_W then
-                local timer = Game.Timer()
+                local timer = GameTimer()
                 if timer > self.WTimer + 0.5 and GameCanUseSpell(_W) == 0 then
                     self.WTimer = timer
                     for i = 1, #self.OnSpellCastCb do
@@ -1878,7 +1939,7 @@ do
                 end
             end
             if key == HK_E then
-                local timer = Game.Timer()
+                local timer = GameTimer()
                 if timer > self.ETimer + 0.5 and GameCanUseSpell(_E) == 0 then
                     self.ETimer = timer
                     for i = 1, #self.OnSpellCastCb do
@@ -1887,7 +1948,7 @@ do
                 end
             end
             if key == HK_R then
-                local timer = Game.Timer()
+                local timer = GameTimer()
                 if timer > self.RTimer + 0.5 and GameCanUseSpell(_R) == 0 then
                     self.RTimer = timer
                     for i = 1, #self.OnSpellCastCb do
@@ -1904,7 +1965,7 @@ do
     end
     -- wnd msg
     function Spell:WndMsg(msg, wParam)
-        local timer = Game.Timer()
+        local timer = GameTimer()
         if wParam == HK_Q then
             if timer > self.QkTimer + 0.5 and GameCanUseSpell(_Q) == 0 then
                 self.QkTimer = timer
@@ -1945,7 +2006,7 @@ do
         if delays == nil then
             return true
         end
-        local t = Game.Timer()
+        local t = GameTimer()
         local q = t - delays.q
         local w = t - delays.w
         local e = t - delays.e
@@ -2017,7 +2078,7 @@ do
         end
         -- should wait
         function c:ShouldWait()
-            return Game.Timer() <= self.ShouldWaitTime + 1
+            return GameTimer() <= self.ShouldWaitTime + 1
         end
         -- set last hitable
         function c:SetLastHitable(target, time, damage)
@@ -2029,7 +2090,7 @@ do
                 self.IsLastHitable = true
             elseif Health:GetPrediction(target, myHero:GetSpellData(spell).cd + (time * 3)) - damage < 0 then
                 almostLastHitable = true
-                self.ShouldWaitTime = Game.Timer()
+                self.ShouldWaitTime = GameTimer()
             end
             return {LastHitable = lastHitable, Unkillable = hpPred < 0, Time = time, AlmostLastHitable = almostLastHitable, PredictedHP = hpPred, Minion = target}
         end
@@ -2058,7 +2119,7 @@ do
             if myHero.mana < myHero:GetSpellData(spell).mana then
                 return
             end
-            if Game.CanUseSpell(spell) ~= 0 and myHero:GetSpellData(spell).currentCd > 0.5 then
+            if GameCanUseSpell(spell) ~= 0 and myHero:GetSpellData(spell).currentCd > 0.5 then
                 return
             end
             local targets = Object:GetEnemyMinions(self.Range, false, true)
@@ -2164,11 +2225,11 @@ do
         for i = 1, 9 do
             if not success1 and sd1.name == self.SpellNames[i] then
                 self.Spell[1].Id = i
-                self.Spell[1].Ready = sd1.currentCd == 0 and Game.CanUseSpell(SUMMONER_1) == 0
+                self.Spell[1].Ready = sd1.currentCd == 0 and GameCanUseSpell(SUMMONER_1) == 0
                 success1 = true
             elseif not success2 and sd2.name == self.SpellNames[i] then
                 self.Spell[2].Id = i
-                self.Spell[2].Ready = sd2.currentCd == 0 and Game.CanUseSpell(SUMMONER_2) == 0
+                self.Spell[2].Ready = sd2.currentCd == 0 and GameCanUseSpell(SUMMONER_2) == 0
                 success2 = true
             end
         end
@@ -2510,6 +2571,7 @@ do
         self.CachedMinions = {}
         self.CachedTurrets = {}
         self.CachedWards = {}
+        self.IsAzir = myHero.charName == 'Azir'
         self.IsKalista = myHero.charName == "Kalista"
         self.IsCaitlyn = myHero.charName == "Caitlyn"
         self.IsRiven = myHero.charName == "Riven"
@@ -2564,8 +2626,8 @@ do
     end
     -- on load
     function Object:OnLoad()
-        for i = 1, Game.ObjectCount() do
-            local object = Game.Object(i)
+        for i = 1, GameObjectCount() do
+            local object = GameObject(i)
             if object and (object.type == Obj_AI_Barracks or object.type == Obj_AI_Nexus) then
                 if object.isEnemy then
                     table_insert(self.EnemyBuildings, object)
@@ -2576,8 +2638,8 @@ do
         end
         Action:Add(function()
             local success = false
-            for i = 1, Game.HeroCount() do
-                local args = Data:GetHeroData(Game.Hero(i))
+            for i = 1, GameHeroCount() do
+                local args = Data:GetHeroData(GameHero(i))
                 if args.valid and args.isAlly and self.AllyHeroesInGame[args.networkID] == nil then
                     self.AllyHeroesInGame[args.networkID] = true
                     for j, func in pairs(self.AllyHeroCb) do
@@ -3086,7 +3148,9 @@ do
             if Object.IsCaitlyn and Buff:HasBuff(enemy, 'caitlynyordletrapinternal') then
                 extraRange = extraRange + 425
             end
-            if enemy.distance < attackRange + extraRange then
+            if Object.IsAzir and ChampionInfo:IsInAzirSoldierRange(enemy) then
+                table_insert(enemiesaa, enemy)
+            elseif enemy.distance < attackRange + extraRange then
                 table_insert(enemiesaa, enemy)
             end
         end
@@ -3186,11 +3250,11 @@ do
             if team == Data.AllyTeam then
                 self.AllyMinionsHandles[handle] = obj
             elseif team == Data.EnemyTeam then
-                if IsInRange(myHero, obj, attackRange + obj.boundingRadius) then
+                if IsInRange(myHero, obj, attackRange + obj.boundingRadius) or (Object.IsAzir and ChampionInfo:IsInAzirSoldierRange(obj)) then
                     table_insert(self.EnemyMinionsInAttackRange, obj)
                 end
             elseif team == Data.JungleTeam then
-                if IsInRange(myHero, obj, attackRange + obj.boundingRadius) then
+                if IsInRange(myHero, obj, attackRange + obj.boundingRadius) or (Object.IsAzir and ChampionInfo:IsInAzirSoldierRange(obj)) then
                     table_insert(self.JungleMinionsInAttackRange, obj)
                 end
             end
@@ -3227,7 +3291,7 @@ do
             end
         end
         -- ON ATTACK
-        local timer = Game.Timer()
+        local timer = GameTimer()
         for handle, obj in pairs(self.Handles) do
             local s = obj.activeSpell
             if s and s.valid and s.isAutoAttack then
@@ -3283,7 +3347,7 @@ do
     -- get prediction
     function Health:GetPrediction(target, time)
         local timer, pos, team, handle, health, attackers
-        timer = Game.Timer()
+        timer = GameTimer()
         pos = target.pos
         handle = target.handle
         if self.TargetsHealth[handle] == nil then
@@ -3319,7 +3383,7 @@ do
     function Health:LocalGetPrediction(target, time)
         local timer, pos, team, handle, health, attackers, turretAttacked
         turretAttacked = false
-        timer = Game.Timer()
+        timer = GameTimer()
         pos = target.pos
         handle = target.handle
         if self.TargetsHealth[handle] == nil then
@@ -3414,7 +3478,7 @@ do
     -- set last hitable
     function Health:SetLastHitable(target, anim, time, damage)
         local timer, handle, currentHealth, health, lastHitable, almostLastHitable, almostalmost, unkillable
-        timer = Game.Timer()
+        timer = GameTimer()
         handle = target.handle
         currentHealth = target.health + Data:GetTotalShield(target)
         self.TargetsHealth[handle] = currentHealth
@@ -3875,7 +3939,7 @@ do
         end
         local spell = myHero.activeSpell
         if spell and spell.valid and spell.target > 0 and spell.castEndTime > self.CastEndTime and (spell.isAutoAttack or Data:IsAttack(spell.name)) then
-            -- spell.isAutoAttack then  and Game.Timer() < self.LocalStart + 0.2
+            -- spell.isAutoAttack then  and GameTimer() < self.LocalStart + 0.2
             for i = 1, #Orbwalker.OnAttackCb do
                 Orbwalker.OnAttackCb[i]()
             end
@@ -3885,11 +3949,11 @@ do
             self.AttackAnimation = spell.animation
             if self.TestDamage then
                 if self.TestCount == 0 then
-                    self.TestStartTime = Game.Timer()
+                    self.TestStartTime = GameTimer()
                 end
                 self.TestCount = self.TestCount + 1
                 if self.TestCount == 5 then
-                    print('5 attacks in time: ' .. tostring(Game.Timer() - self.TestStartTime) .. '[sec]')
+                    print('5 attacks in time: ' .. tostring(GameTimer() - self.TestStartTime) .. '[sec]')
                     self.TestCount = 0
                     self.TestStartTime = 0
                 end
@@ -3949,12 +4013,12 @@ do
     -- is ready
     function Attack:IsReady()
         if self.CastEndTime > self.LocalStart then
-            if self.Reset or Game.Timer() >= self.ServerStart + self:GetAnimation() - Data:GetLatency() - 0.01 then
+            if self.Reset or GameTimer() >= self.ServerStart + self:GetAnimation() - Data:GetLatency() - 0.01 then
                 return true
             end
             return false
         end
-        if Game.Timer() < self.LocalStart + 0.2 then
+        if GameTimer() < self.LocalStart + 0.2 then
             return false
         end
         return true
@@ -3968,19 +4032,19 @@ do
     function Attack:IsActive(num)
         num = num or 0
         if self.CastEndTime > self.LocalStart then
-            if Game.Timer() >= self.ServerStart + self:GetWindup() - Data:GetLatency() + 0.025 + num + (Orbwalker.Menu.General.ExtraWindUpTime:Value() * 0.001) then
+            if GameTimer() >= self.ServerStart + self:GetWindup() - Data:GetLatency() + 0.025 + num + (Orbwalker.Menu.General.ExtraWindUpTime:Value() * 0.001) then
                 return false
             end
             return true
         end
-        if Game.Timer() < self.LocalStart + 0.2 then
+        if GameTimer() < self.LocalStart + 0.2 then
             return true
         end
         return false
     end
     -- is before
     function Attack:IsBefore(multipier)
-        return Game.Timer() > self.LocalStart + multipier * self:GetAnimation()
+        return GameTimer() > self.LocalStart + multipier * self:GetAnimation()
     end
     -- init call
     Attack:__init()
@@ -4159,7 +4223,7 @@ do
         if unit == nil or unit.isMe then
             return Attack:IsActive()
         end
-        return Game.Timer() < unit.attackData.endTime - unit.attackData.windDownTime
+        return GameTimer() < unit.attackData.endTime - unit.attackData.windDownTime
     end
     -- can move
     function Orbwalker:CanMove(unit)
@@ -4179,7 +4243,7 @@ do
             return not Attack:IsActive()
         end
         local attackData = unit.attackData
-        return Game.Timer() > attackData.endTime - attackData.windDownTime
+        return GameTimer() > attackData.endTime - attackData.windDownTime
     end
     -- can attack
     function Orbwalker:CanAttack(unit)
@@ -4195,7 +4259,7 @@ do
             end
             return Attack:IsReady()
         end
-        return Game.Timer() > unit.attackData.endTime
+        return GameTimer() > unit.attackData.endTime
     end
     -- get target
     function Orbwalker:GetTarget()
@@ -4243,7 +4307,7 @@ do
                     local attackpos = targetpos:ToScreen().onScreen and args.Target or myHero.pos:Extended(targetpos, 800)
                     if Control.Attack(attackpos) then
                         Attack.Reset = false
-                        Attack.LocalStart = Game.Timer()
+                        Attack.LocalStart = GameTimer()
                         self.PostAttackBool = true
                     end
                 end
@@ -4262,10 +4326,10 @@ do
                 for i = 1, #self.OnPostAttackCb do
                     self.OnPostAttackCb[i]()
                 end
-                self.PostAttackTimer = Game.Timer()
+                self.PostAttackTimer = GameTimer()
                 self.PostAttackBool = false
             end
-            if not Attack:IsActive(0.025) and Game.Timer() < self.PostAttackTimer + 1 then
+            if not Attack:IsActive(0.025) and GameTimer() < self.PostAttackTimer + 1 then
                 for i = 1, #self.OnPostAttackTickCb do
                     self.OnPostAttackTickCb[i](self.PostAttackTimer)
                 end
@@ -4373,6 +4437,7 @@ Callback.Add('Load', function()
     end)
     Callback.Add("Tick", function()
         Cached:Reset()
+        ChampionInfo:OnTick()
         SummonerSpell:OnTick()
         Item:OnTick()
         Target:OnTick()
