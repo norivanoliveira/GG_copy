@@ -1263,8 +1263,8 @@ if Champion == nil and myHero.charName == 'KogMaw' then
     
     -- load
     function Champion:OnLoad()
-        self:QLaneClear()
-        self:ELaneClear()
+        --self:QLaneClear()
+        --self:ELaneClear()
         GG_Object:OnEnemyHeroLoad(function(args) Menu.r_semi_useon:MenuElement({id = args.charName, name = args.charName, value = true}) end)
     end
     -- tick
