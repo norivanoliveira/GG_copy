@@ -1,4 +1,4 @@
-local Version = 2.85
+local Version = 2.86
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -313,7 +313,7 @@ do
         end
         return result
     end
-
+    
     -- init call
     ChampionInfo:__init()
 end
@@ -839,14 +839,14 @@ do
         return result
     end
     -- print
-    function Buff:Print()
+    function Buff:Print(target)
         local result = ''
-        local buffs = self:GetBuffs(myHero)
+        local buffs = self:GetBuffs(target)
         for i = 1, #buffs do
             local buff = buffs[i]
             result = result .. buff.name .. ': count=' .. buff.count .. '\n'
         end
-        local pos2D = myHero.pos:To2D()
+        local pos2D = target.pos:To2D()
         local posX = pos2D.x - 50
         local posY = pos2D.y
         Draw.Text(result, posX + 50, posY - 15)
@@ -4295,23 +4295,26 @@ do
         if not self.Menu.AttackEnabled:Value() then
             return
         end
-        if self.AttackEnabled and unit and unit.valid and unit.visible and self:CanAttack() then
-            local args = {Target = unit, Process = true}
-            for i = 1, #self.OnPreAttackCb do
-                self.OnPreAttackCb[i](args)
-            end
-            if args.Process then
-                if args.Target then
-                    self.LastTarget = args.Target
-                    local targetpos = args.Target.pos
-                    local attackpos = targetpos:ToScreen().onScreen and args.Target or myHero.pos:Extended(targetpos, 800)
-                    if Control.Attack(attackpos) then
-                        Attack.Reset = false
-                        Attack.LocalStart = GameTimer()
-                        self.PostAttackBool = true
-                    end
+        if self.AttackEnabled and unit and unit.valid and unit.visible then
+            self.LastTarget = unit
+            if self:CanAttack() then
+                local args = {Target = unit, Process = true}
+                for i = 1, #self.OnPreAttackCb do
+                    self.OnPreAttackCb[i](args)
                 end
-                return true
+                if args.Process then
+                    if args.Target then
+                        self.LastTarget = args.Target
+                        local targetpos = args.Target.pos
+                        local attackpos = targetpos:ToScreen().onScreen and args.Target or myHero.pos:Extended(targetpos, 800)
+                        if Control.Attack(attackpos) then
+                            Attack.Reset = false
+                            Attack.LocalStart = GameTimer()
+                            self.PostAttackBool = true
+                        end
+                    end
+                    return true
+                end
             end
         end
         return false
@@ -4415,6 +4418,11 @@ Callback.Add('Load', function()
     local draws = SDK.OnDraw
     local wndmsgs = SDK.OnWndMsg
     Callback.Add("Draw", function()
+        --[[local target = Target:GetTarget()
+        if target then
+            Buff:Print(target)
+        end
+        Buff:Print(myHero)]]
         FlashHelper:OnTick()
         Cached:Reset()
         Cursor:OnTick()
