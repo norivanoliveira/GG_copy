@@ -1,4 +1,4 @@
-local Version = 1.93
+local Version = 1.94
 local Name = 'GGAIO'
 
 Callback.Add('Load', function()
@@ -68,6 +68,25 @@ local Draw = Draw
 local table = table
 local pairs = pairs
 local GetTickCount = GetTickCount
+
+local function IsInRange(v1, v2, range)
+    v1 = v1.pos or v1
+    v2 = v2.pos or v2
+    local dx = v1.x - v2.x
+    local dz = (v1.z or v1.y) - (v2.z or v2.y)
+    if dx * dx + dz * dz <= range * range then
+        return true
+    end
+    return false
+end
+
+local function GetDistance(v1, v2)
+    v1 = v1.pos or v1
+    v2 = v2.pos or v2
+    local dx = v1.x - v2.x
+    local dz = (v1.z or v1.y) - (v2.z or v2.y)
+    return math.sqrt(dx * dx + dz * dz)
+end
 
 Menu = {}
 do
@@ -721,7 +740,7 @@ if Champion == nil and myHero.charName == 'Morgana' then
                             local width = ally.boundingRadius + 100
                             if s.width > 0 then width = width + s.width end
                             local point, isOnSegment = GGPrediction:ClosestPointOnLineSegment(allyPos, spellPos, heroPos)
-                            if isOnSegment and GGPrediction:IsInRange(point, allyPos, width) then
+                            if isOnSegment and IsInRange(point, allyPos, width) then
                                 canUse = true
                             end
                         end
@@ -1207,8 +1226,45 @@ if Champion == nil and myHero.charName == 'KogMaw' then
             Champion:RLogic()
         end,
     }
+    function Champion:QLaneClear()
+        local getQDamage = function()
+            local level = myHero:GetSpellData(_Q).level
+            local adratio = (37.5 + (7.5 * level)) / 100
+            return 20 + (25 * level) + (adratio * myHero.totalDamage) + (0.6 * myHero.ap)
+        end
+        local canQLastHit = function()
+            return true
+        end
+        local canQLaneClear = function()
+            return true
+        end
+        local isQReady = function()
+            return GG_Spell:IsReady(_Q, {q = 0.33, w = 0.77, e = 0.33, r = 0.77})
+        end
+        GG_Spell:SpellClear(_Q, QPrediction, isQReady, canQLastHit, canQLaneClear, getQDamage)
+    end
+    function Champion:ELaneClear()
+        local getQDamage = function()
+            local level = myHero:GetSpellData(_Q).level
+            local adratio = (37.5 + (7.5 * level)) / 100
+            return 20 + (25 * level) + (adratio * myHero.totalDamage) + (0.6 * myHero.ap)
+        end
+        local canQLastHit = function()
+            return true
+        end
+        local canQLaneClear = function()
+            return true
+        end
+        local isQReady = function()
+            return GG_Spell:IsReady(_E, {q = 0.33, w = 0.77, e = 0.33, r = 0.77})
+        end
+        GG_Spell:SpellClear(_E, EPrediction, isQReady, canQLastHit, canQLaneClear, getQDamage)
+    end
+    
     -- load
     function Champion:OnLoad()
+        self:QLaneClear()
+        self:ELaneClear()
         GG_Object:OnEnemyHeroLoad(function(args) Menu.r_semi_useon:MenuElement({id = args.charName, name = args.charName, value = true}) end)
     end
     -- tick
@@ -1244,7 +1300,10 @@ if Champion == nil and myHero.charName == 'KogMaw' then
         if Game.CanUseSpell(_W) ~= 0 then
             return
         end
+        --normal game:
         self:WCombo()
+        --urf:
+        --if self.IsCombo or self.IsLaneClear then Utils:Cast(HK_W) end
     end
     -- e logic
     function Champion:ELogic()
@@ -1627,6 +1686,295 @@ if Champion == nil and myHero.charName == 'Varus' then
             local enemy = enemies[i]
             if Utils:Cast(HK_R, enemy, RPrediction, Menu.r_semi_hitchance:Value() + 1) then
                 break
+            end
+        end
+    end
+end
+
+if Champion == nil and myHero.charName == 'Quinn' then
+    -- version
+    local QuinnVersion = '1.01'
+    -- hide ggaio menu
+    Menu.m:Hide()
+    -- premium pred
+    if not FileExist(COMMON_PATH .. "PremiumPrediction.lua") then
+        print("PremiumPrediction: Library not found! Please download it and put into Common folder!");
+        return
+    end
+    print("Loading PremiumSeries...")
+    require "PremiumPrediction"
+    print("PremiumSeries successfully loaded!")
+    -- mode
+    local function GetOrbwalkerMode()
+        if _G.SDK then
+            return GG_Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_COMBO] and "Combo"
+            or GG_Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_HARASS] and "Harass"
+            or GG_Orbwalker.Modes[_G.SDK.ORBWALKER_MODE_LANECLEAR] and "LaneClear"
+            or nil
+        elseif _G.PremiumOrbwalker then
+            return _G.PremiumOrbwalker:GetMode()
+        end
+        return nil
+    end
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            if not Champion.States[1] and GG_Orbwalker.LastTarget and GG_Orbwalker.LastTarget.type == Obj_AI_Hero then
+                if GG_Spell:CanTakeAction({q = 1, w = 0, e = 0.5, r = 0}) and not Champion:HasPassive(GG_Orbwalker.LastTarget) then
+                    local success = false
+                    if Champion.States[3] then
+                        success = Champion:CastQSpell(GG_Orbwalker.LastTarget, "Auto")
+                        if not success then success = Champion:CastESpell(GG_Orbwalker.LastTarget, "Auto") end
+                    else
+                        success = Champion:CastESpell(GG_Orbwalker.LastTarget, "Auto")
+                        if not success then success = Champion:CastQSpell(GG_Orbwalker.LastTarget, "Auto") end
+                    end
+                    if success then
+                        return false
+                    end
+                end
+            end
+            return not myHero.pathing.isDashing and GG_Spell:CanTakeAction({q = 0.33, w = 0, e = 0.33, r = 0.33})
+        end,
+        CanMoveCb = function()
+            return GG_Spell:CanTakeAction({q = 0.2, w = 0, e = 0.2, r = 0.2})
+        end,
+        OnPreAttack = function(args)
+            Champion:OnPreAttackCb(args)
+        end,
+        OnPostAttackTick = function(timer)
+            Champion:PreTick()
+            Champion:OnPostAttackCb(timer)
+        end,
+    }
+    -- init
+    function Champion:Init()
+        self.Window = {x = Game.Resolution().x * 0.5, y = Game.Resolution().y * 0.5}
+        self.AllowMove, self.LastEnemy, self.States = nil, nil, {true, true, true}
+        self.Q = {speed = 1550, range = 1025, delay = 0.25, radius = 60, collision = {"minion"}, type = "linear"}
+        self.W, self.E = {range = 2100}, {range = 675}
+        _G.PremiumPrediction:OnLoseVision(function(...) self:OnLoseVision(...) end)
+    end
+    Champion:Init()
+    -- menu
+    function Champion:CreateMenu()
+        local Icons, Png = "https://raw.githubusercontent.com/Ark223/LoL-Icons/master/", ".png"
+        self.QuinnMenu = MenuElement({type = MENU, id = "Quinn", name = "Premium Quinn v" .. QuinnVersion})
+        self.QuinnMenu:MenuElement({id = "Auto", name = "Auto", type = MENU})
+        self.QuinnMenu.Auto:MenuElement({id = "UseW", name = "W [Heightened Senses]", value = true, leftIcon = Icons.."QuinnW"..Png})
+        self.QuinnMenu:MenuElement({id = "Combo", name = "Combo", type = MENU})
+        self.QuinnMenu.Combo:MenuElement({id = "UseQ", name = "Q [Blinding Assault]", value = true, leftIcon = Icons.."QuinnQ"..Png})
+        self.QuinnMenu.Combo:MenuElement({id = "UseE", name = "E [Vault]", value = true, leftIcon = Icons.."QuinnE"..Png})
+        self.QuinnMenu:MenuElement({id = "Harass", name = "Harass", type = MENU})
+        self.QuinnMenu.Harass:MenuElement({id = "UseQ", name = "Q [Blinding Assault]", value = true, leftIcon = Icons.."QuinnQ"..Png})
+        self.QuinnMenu.Harass:MenuElement({id = "UseE", name = "E [Vault]", value = false, leftIcon = Icons.."QuinnE"..Png})
+        self.QuinnMenu:MenuElement({id = "Interrupter", name = "Interrupter", type = MENU})
+        self.QuinnMenu.Interrupter:MenuElement({id = "UseE", name = "E [Vault]", value = true, leftIcon = Icons.."QuinnE"..Png})
+        self.QuinnMenu.Interrupter:MenuElement({id = "MeleeE", name = "E: Cast Against Melees", value = true})
+        self.QuinnMenu.Interrupter:MenuElement({id = "DashE", name = "E: Cast Against Dashes", value = true})
+        self.QuinnMenu.Interrupter:MenuElement({id = "Whitelist", name = "Whitelist:", type = MENU})
+        self.QuinnMenu:MenuElement({id = "Drawings", name = "Drawings", type = MENU})
+        self.QuinnMenu.Drawings:MenuElement({id = "DrawQ", name = "Q: Draw Range", value = true})
+        self.QuinnMenu.Drawings:MenuElement({id = "DrawE", name = "E: Draw Range", value = true})
+        self.QuinnMenu.Drawings:MenuElement({id = "Track", name = "Track Enemies", value = true})
+        self.QuinnMenu:MenuElement({id = "Misc", name = "Misc", type = MENU})
+        self.QuinnMenu.Misc:MenuElement({id = "AA", name = "AA Priority", key = string.byte("1")})
+        self.QuinnMenu.Misc:MenuElement({id = "Block", name = "Block Spells On Passive", key = string.byte("2")})
+        self.QuinnMenu.Misc:MenuElement({id = "Spell", name = "Spell Priority", key = string.byte("3")})
+    end
+    Champion:CreateMenu()
+    -- METHODS
+    -- has passive buff
+    function Champion:HasPassive(target)
+        if target and target.valid and target.visible and not target.dead then
+            return GG_Buff:HasBuff(target, "QuinnW")
+        end
+        return false
+    end
+    --CastQSpell
+    function Champion:CastQSpell(unit, mode)
+        if not (mode == "Combo" and self.QuinnMenu.Combo.UseQ:Value() or (mode == "Harass" and self.QuinnMenu.Harass.UseQ:Value() or mode == "Auto")) then
+            return false
+        end
+        if not GG_Object:IsValid(unit) or not IsInRange(myHero, unit, self.Q.range) or not GG_Spell:IsReady(_Q, {q = 0.33, w = 0, e = 0.33, r = 0.33}) then
+            return false
+        end
+        local pred = _G.PremiumPrediction:GetPrediction(myHero, unit, self.Q)
+        if pred.CastPos and pred.HitChance > 0.25 and Utils:Cast(HK_Q, pred.CastPos) then
+            return true
+        end
+        return false
+    end
+    --CastESpell
+    function Champion:CastESpell(unit, mode)
+        if not (mode == "Combo" and self.QuinnMenu.Combo.UseE:Value() or (mode == "Harass" and self.QuinnMenu.Harass.UseE:Value() or mode == "Auto")) then
+            return false
+        end
+        if not GG_Object:IsValid(unit) or not IsInRange(myHero, unit, self.E.range) or not GG_Spell:IsReady(_E, {q = 0.33, w = 0, e = 0.33, r = 0.33}) then
+            return false
+        end
+        if Utils:Cast(HK_E, unit.pos) then
+            return true
+        end
+        return false
+    end
+    --IsInAutoAttackRange
+    function Champion:IsInAutoAttackRange(unit)
+        return unit and GG_Data:IsInAutoAttackRange(myHero, unit)
+    end
+    --IsInStatusBox
+    function Champion:IsInStatusBox(pt)
+        return pt.x >= self.Window.x and pt.x <= self.Window.x + 186 and pt.y >= self.Window.y and pt.y <= self.Window.y + 68
+    end
+    --GetTarget
+    function Champion:GetTarget(range)
+        local units = {}
+        for i, enemy in ipairs(GG_Object:GetEnemyHeroes(range)) do
+            if self:HasPassive(enemy) then
+                table.insert(units, enemy)
+            end
+        end
+        return GG_Target:GetTarget(units, DAMAGE_TYPE_PHYSICAL)
+    end
+    -- EVENTS
+    -- on load
+    function Champion:OnLoad()
+        GG_Object:OnEnemyHeroLoad(function(args)
+            self.QuinnMenu.Interrupter.Whitelist:MenuElement({id = args.charName, name = args.charName, value = true})
+        end)
+    end
+    -- on wnd msg
+    function Champion:OnWndMsg(msg, wParam)
+        self.AllowMove = msg == 513 and wParam == 0 and self:IsInStatusBox(cursorPos) and {x = self.Window.x - cursorPos.x, y = self.Window.y - cursorPos.y} or nil
+        if msg == 256 then
+            if self.QuinnMenu.Misc.AA:Value() then
+                self.States[1] = not self.States[1]
+            elseif self.QuinnMenu.Misc.Block:Value() then
+                self.States[2] = not self.States[2]
+            elseif self.QuinnMenu.Misc.Spell:Value() then
+                self.States[3] = not self.States[3]
+            end
+        end
+    end
+    --OnPreAttack
+    function Champion:OnPreAttackCb(args)
+        self.LastEnemy = args.Target
+        if self.LastEnemy.type ~= Obj_AI_Hero then return end
+        if myHero:GetSpellData(_R).name == "QuinnRFinale" and Utils:Cast(HK_R) then
+            args.Process = false
+            return
+        end
+    end
+    --OnPostAttack
+    function Champion:OnPostAttackCb()
+        if not self.LastEnemy or self.LastEnemy.type ~= Obj_AI_Hero then
+            return
+        end
+        local mode = GetOrbwalkerMode()
+        if not (mode == "Combo" or mode == "Harass") then return end
+        if self.States[2] then
+            if not GG_Spell:CanTakeAction({q = 1, w = 0, e = 0.5, r = 0}) then
+                return
+            end
+            if self:HasPassive(self.LastEnemy) then
+                return
+            end
+        end
+        if self.States[3] then
+            local success = self:CastQSpell(self.LastEnemy, mode)
+            if not success then self:CastESpell(self.LastEnemy, mode) end
+        else
+            local success = self:CastESpell(self.LastEnemy, mode)
+            if not success then self:CastQSpell(self.LastEnemy, mode) end
+        end
+    end
+    --OnLoseVision
+    function Champion:OnLoseVision(unit)
+        if not IsInRange(myHero.pos, unit.pos, myHero.range + myHero.boundingRadius * 2) then
+            return
+        end
+        if GG_Spell:IsReady(_W, {q = 0, w = 0, e = 0, r = 0}) and self.QuinnMenu.Auto.UseW:Value() then
+            Utils:Cast(HK_W)
+        elseif GG_Spell:IsReady(_Q, {q = 0.33, w = 0, e = 0.33, r = 0.33}) and not _G.PremiumPrediction:IsColliding(myHero, unit.pos, self.Q, {"minion"}) then
+            Utils:Cast(HK_Q, unit.pos)
+        end
+    end
+    --OnTick
+    function Champion:OnTick()
+        self.MyPos = myHero.pos
+        if _G.JustEvade and _G.JustEvade:Evading() or (_G.ExtLibEvade and _G.ExtLibEvade.Evading) or Game.IsChatOpen() or myHero.dead then
+            return
+        end
+        if myHero:GetSpellData(_R).name == "QuinnRFinale" or GG_Orbwalker:IsAutoAttacking() then
+            return
+        end
+        if self.QuinnMenu.Interrupter.UseE:Value() and GG_Spell:IsReady(_E, {q = 0.33, w = 0, e = 0.33, r = 0}) then
+            for _, enemy in ipairs(GG_Object:GetEnemyHeroes(self.E.range)) do
+                if enemy.pathing.isDashing then
+                    if self.QuinnMenu.Interrupter.DashE:Value() and self.QuinnMenu.Interrupter.Whitelist[enemy.charName]:Value() and GetDistance(self.MyPos, enemy.pathing.endPos) < GetDistance(self.MyPos, enemy.pos) then
+                        self:CastESpell(enemy, "Auto")
+                        return
+                    end
+                elseif IsInRange(self.MyPos, enemy.pos, 275) and self.QuinnMenu.Interrupter.MeleeE:Value() then
+                    self:CastESpell(enemy, "Auto")
+                    return
+                end
+            end
+        end
+        local mode = GetOrbwalkerMode()
+        if not (mode == "Combo" or mode == "Harass") then
+            return
+        end
+        local t1, t2 = self:GetTarget(self.Q.range), self:GetTarget(self.E.range)
+        if not t1 then
+            return
+        end
+        if self.States[1] and self:IsInAutoAttackRange(t1) then
+            return
+        end
+        if self.States[2] then
+            if not GG_Spell:CanTakeAction({q = 1, w = 0, e = 0.5, r = 0}) then
+                return
+            end
+            if t1 and self:HasPassive(t1) or t2 and self:HasPassive(t2) then
+                return
+            end
+        end
+        if self.States[3] then
+            local success = self:CastQSpell(t1, mode)
+            if not success then self:CastESpell(t2, mode) end
+        else
+            local success = self:CastESpell(t2, mode)
+            if not success then self:CastQSpell(t1, mode) end
+        end
+    end
+    --OnDraw
+    local red, blue, green, white = Draw.Color(192, 220, 20, 60), Draw.Color(192, 0, 191, 255), Draw.Color(192, 50, 205, 50), Draw.Color(192, 255, 255, 255)
+    function Champion:OnDraw()
+        if Game.IsChatOpen() or myHero.dead then return end
+        if self.AllowMove then
+            self.Window = {x = cursorPos.x + self.AllowMove.x, y = cursorPos.y + self.AllowMove.y}
+        end
+        Draw.Rect(self.Window.x, self.Window.y, 186, 68, Draw.Color(224, 23, 23, 23))
+        Draw.Text("AA Priority:", 15, self.Window.x + 10, self.Window.y + 5, white)
+        Draw.Text(tostring(self.States[1]), 15, self.Window.x + 80, self.Window.y + 5, self.States[1] and green or red)
+        Draw.Text("Block Spells On Passive:", 15, self.Window.x + 10, self.Window.y + 25, white)
+        Draw.Text(tostring(self.States[2]), 15, self.Window.x + 153, self.Window.y + 25, self.States[2] and green or red)
+        Draw.Text("Spell Priority:", 15, self.Window.x + 10, self.Window.y + 45, white)
+        Draw.Text(self.States[3] and "Q" or "E", 15, self.Window.x + 92, self.Window.y + 45, blue)
+        if self.QuinnMenu.Drawings.DrawQ:Value() then
+            Draw.Circle(myHero.pos, self.Q.range, 1, Draw.Color(96, 135, 206, 235))
+        end
+        if self.QuinnMenu.Drawings.DrawE:Value() then
+            Draw.Circle(myHero.pos, self.E.range, 1, Draw.Color(96, 65, 105, 225))
+        end
+        if self.QuinnMenu.Drawings.Track:Value() then
+            for i, enemy in ipairs(GG_Object:GetEnemyHeroes()) do
+                Draw.Line(myHero.pos:To2D(), enemy.pos:To2D(), 2.5,
+                    IsInRange(myHero, enemy, 2000) and Draw.Color(128, 220, 20, 60)
+                    or IsInRange(myHero, enemy, 4000) and Draw.Color(128, 240, 230, 140)
+                or Draw.Color(128, 152, 251, 152))
             end
         end
     end
@@ -2685,11 +3033,11 @@ if Champion == nil and myHero.charName == 'Karthus' then
     Menu.d_ksdraw = Menu.d:MenuElement({name = "Draw Kill Count", id = "ksdraw", type = _G.MENU})
     Menu.d_enabled = Menu.d:MenuElement({id = "enabled", name = "Enabled", value = true})
     Menu.d_size = Menu.d:MenuElement({id = "size", name = "Text Size", value = 25, min = 1, max = 64, step = 1})
-
+ 
     -- locals
     local QPrediction = GGPrediction:SpellPrediction({Delay = 1, Radius = 200, Range = 875, Speed = math.huge, Collision = false, Type = _G.SPELLTYPE_CIRCLE})
     local WPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 1, Range = 1000, Speed = math.huge, Collision = false, Type = _G.SPELLTYPE_CIRCLE})
-
+ 
     -- champion
     Champion =
     {
@@ -2852,8 +3200,8 @@ if Champion == nil and myHero.charName == 'Karthus' then
         return baseDmg + lvlDmg + apDmg
     end
 end
-
-
+ 
+ 
  
 if Champion == nil and myHero.charName == 'Brand' then
     class "Brand"
