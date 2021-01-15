@@ -1,4 +1,4 @@
-local Version = 2.86
+local Version = 2.87
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -2637,7 +2637,7 @@ do
             end
         end
         Action:Add(function()
-            local success = false
+            local success = 0
             for i = 1, GameHeroCount() do
                 local args = Data:GetHeroData(GameHero(i))
                 if args.valid and args.isAlly and self.AllyHeroesInGame[args.networkID] == nil then
@@ -2646,15 +2646,17 @@ do
                         func(args)
                     end
                 end
-                if args.valid and args.isEnemy and self.EnemyHeroesInGame[args.networkID] == nil then
-                    self.EnemyHeroesInGame[args.networkID] = true
-                    for j, func in pairs(self.EnemyHeroCb) do
-                        func(args)
+                if args.valid and args.isEnemy then
+                    if self.EnemyHeroesInGame[args.networkID] == nil then
+                        self.EnemyHeroesInGame[args.networkID] = true
+                        for j, func in pairs(self.EnemyHeroCb) do
+                            func(args)
+                        end
                     end
-                    success = true
+                    success = success + 1
                 end
             end
-            return success
+            return success >= 5
         end, 1, 100)
     end
     -- on ally hero load
