@@ -1,4 +1,4 @@
-local Version = 1.4
+local Version = 1.5
 local Name = "GGPrediction"
 
 Callback.Add('Load', function()
@@ -64,412 +64,450 @@ function Menu:GetExtraDelay()
     return result
 end
 
+--[[
+enum class BuffType {
+    Internal = 0,
+    Aura = 1,
+    CombatEnchancer = 2,
+    CombatDehancer = 3,
+    SpellShield = 4,
+    Stun = 5,
+    Invisibility = 6,
+    Silence = 7,
+    Taunt = 8,
+    Berserk = 9,
+    Polymorph = 10,
+    Slow = 11,
+    Snare = 12,
+    Damage = 13,
+    Heal = 14,
+    Haste = 15,
+    SpellImmunity = 16,
+    PhysicalImmunity = 17,
+    Invulnerability = 18,
+    AttackSpeedSlow = 19,
+    NearSight = 20,
+    Fear = 22,
+    Charm = 23,
+    Poison = 24,
+    Suppression = 25,
+    Blind = 26,
+    Counter = 27,
+    Currency = 21,
+    Shred = 28,
+    Flee = 29,
+    Knockup = 30,
+    Knockback = 31,
+    Disarm = 32,
+    Grounded = 33,
+    Drowsy = 34,
+    Asleep = 35,
+    Obscured = 36,
+    ClickProofToEnemies = 37,
+    Unkillable = 38
+};
+--]]
+
 Immobile =
 {
-    --[=====[
-    Buff Types:
-        INTERNAL = 0, AURA = 1, ENHANCER = 2, DEHANCER = 3, SPELLSHIELD = 4, STUN = 5, INVIS = 6, SILENCE = 7,
-        TAUNT = 8, POLYMORPH = 9, SLOW = 10, SNARE = 11, DMG = 12, HEAL = 13, HASTE = 14, SPELLIMM = 15
-        PHYSIMM = 16, INVULNERABLE = 17, SLEEP = 18, NEARSIGHT = 19, FRENZY = 20, FEAR = 21, CHARM = 22, POISON = 23
-        SUPRESS = 24, BLIND = 25, COUNTER = 26, SHRED = 27, FLEE = 28, KNOCKUP = 29, KNOCKBACK = 30, DISARM = 31
-    --]=====]
     IMMOBILE_TYPES =
     {
         [5] = true,
         [8] = true,
-        [11] = true,
-        [21] = true,
+        [12] = true,
         [22] = true,
-        [24] = true,
-        [29] = true,
-        --[18] = true (zoe E, it detects new move clicks)
-    }}
-    function Immobile:GetDuration(unit)
-        local SpellCastTime = 0
-        local AttackCastTime = 0
-        local ImmobileDuration = 0
-        local KnockDuration = 0
-        if unit.pathing.hasMovePath then
-            return ImmobileDuration, SpellCastTime, AttackCastTime, KnockDuration
-        end
-        local buffs = SDK.BuffManager:GetBuffs(unit)
-        for i = 1, #buffs do
-            local buff = buffs[i]
-            local duration = buff.duration
-            if duration > 0 then
-                if duration > ImmobileDuration and self.IMMOBILE_TYPES[buff.type] then
-                    ImmobileDuration = duration
-                elseif buff.type == 30 then
-                    KnockDuration = duration
-                end
-            end
-        end
-        local spell = unit.activeSpell
-        if spell and spell.valid then
-            if spell.isAutoAttack then
-                AttackCastTime = spell.castEndTime
-            elseif spell.windup > 0.1 then
-                SpellCastTime = spell.castEndTime
-            end
-        end
+        [23] = true,
+        [25] = true,
+        [30] = true,
+        --[35] = true -> asleep zoe e, new move clicks??
+    },
+}
+function Immobile:GetDuration(unit)
+    local SpellCastTime = 0
+    local AttackCastTime = 0
+    local ImmobileDuration = 0
+    local KnockDuration = 0
+    if unit.pathing.hasMovePath then
         return ImmobileDuration, SpellCastTime, AttackCastTime, KnockDuration
     end
-    
-    Math = {}
-    function Math:Get2D(p)
-        p = p.pos == nil and p or p.pos
-        return {x = p.x, z = p.z == nil and p.y or p.z}
-    end
-    function Math:Get3D(p)
-        local result = Vector(p.x, 0, p.z)
-        return result
-    end
-    function Math:GetDistance(p1, p2)
-        local dx = p2.x - p1.x
-        local dz = p2.z - p1.z
-        return math_sqrt(dx * dx + dz * dz)
-    end
-    function Math:IsInRange(p1, p2, range)
-        local dx = p1.x - p2.x
-        local dz = p1.z - p2.z
-        if (dx * dx + dz * dz <= range * range) then
-            return true
+    local buffs = SDK.BuffManager:GetBuffs(unit)
+    for i = 1, #buffs do
+        local buff = buffs[i]
+        local duration = buff.duration
+        if duration > 0 then
+            if duration > ImmobileDuration and self.IMMOBILE_TYPES[buff.type] then
+                ImmobileDuration = duration
+            elseif buff.type == 30 then
+                KnockDuration = duration
+            end
         end
-        return false
     end
-    function Math:VectorsEqual(p1, p2, num)
-        num = num or 5
-        if (self:GetDistance(p1, p2) < num) then
-            return true
+    local spell = unit.activeSpell
+    if spell and spell.valid then
+        if spell.isAutoAttack then
+            AttackCastTime = spell.castEndTime
+        elseif spell.windup > 0.1 then
+            SpellCastTime = spell.castEndTime
         end
-        return false
     end
-    function Math:Normalized(p1, p2)
-        local dx = p1.x - p2.x
-        local dz = p1.z - p2.z
-        local length = math_sqrt(dx * dx + dz * dz)
-        local sol = nil
-        if (length > 0) then
-            local inv = 1.0 / length
-            sol = {x = (dx * inv), z = (dz * inv)}
-        end
-        return sol
+    return ImmobileDuration, SpellCastTime, AttackCastTime, KnockDuration
+end
+
+Math = {}
+function Math:Get2D(p)
+    p = p.pos == nil and p or p.pos
+    return {x = p.x, z = p.z == nil and p.y or p.z}
+end
+function Math:Get3D(p)
+    local result = Vector(p.x, 0, p.z)
+    return result
+end
+function Math:GetDistance(p1, p2)
+    local dx = p2.x - p1.x
+    local dz = p2.z - p1.z
+    return math_sqrt(dx * dx + dz * dz)
+end
+function Math:IsInRange(p1, p2, range)
+    local dx = p1.x - p2.x
+    local dz = p1.z - p2.z
+    if (dx * dx + dz * dz <= range * range) then
+        return true
     end
-    function Math:Extended(vec, dir, range)
-        if (dir == nil) then
-            return vec
-        end
-        return {x = vec.x + dir.x * range, z = vec.z + dir.z * range}
+    return false
+end
+function Math:VectorsEqual(p1, p2, num)
+    num = num or 5
+    if (self:GetDistance(p1, p2) < num) then
+        return true
     end
-    function Math:Perpendicular(dir)
-        if (dir == nil) then
-            return nil
-        end
-        return {x = -dir.z, z = dir.x}
+    return false
+end
+function Math:Normalized(p1, p2)
+    local dx = p1.x - p2.x
+    local dz = p1.z - p2.z
+    local length = math_sqrt(dx * dx + dz * dz)
+    local sol = nil
+    if (length > 0) then
+        local inv = 1.0 / length
+        sol = {x = (dx * inv), z = (dz * inv)}
     end
-    function Math:Intersection(s1, e1, s2, e2)
-        local IntersectionResult = {Intersects = false, Point = {x = 0, z = 0}}
-        local deltaACz = s1.z - s2.z
-        local deltaDCx = e2.x - s2.x
-        local deltaACx = s1.x - s2.x
-        local deltaDCz = e2.z - s2.z
-        local deltaBAx = e1.x - s1.x
-        local deltaBAz = e1.z - s1.z
-        local denominator = deltaBAx * deltaDCz - deltaBAz * deltaDCx
-        local numerator = deltaACz * deltaDCx - deltaACx * deltaDCz
-        if (denominator == 0) then
-            if (numerator == 0) then
-                if s1.x >= s2.x and s1.x <= e2.x then
-                    return {Intersects = true, Point = s1}
-                end
-                if s2.x >= s1.x and s2.x <= e1.x then
-                    return {Intersects = true, Point = s2}
-                end
-                return IntersectionResult
+    return sol
+end
+function Math:Extended(vec, dir, range)
+    if (dir == nil) then
+        return vec
+    end
+    return {x = vec.x + dir.x * range, z = vec.z + dir.z * range}
+end
+function Math:Perpendicular(dir)
+    if (dir == nil) then
+        return nil
+    end
+    return {x = -dir.z, z = dir.x}
+end
+function Math:Intersection(s1, e1, s2, e2)
+    local IntersectionResult = {Intersects = false, Point = {x = 0, z = 0}}
+    local deltaACz = s1.z - s2.z
+    local deltaDCx = e2.x - s2.x
+    local deltaACx = s1.x - s2.x
+    local deltaDCz = e2.z - s2.z
+    local deltaBAx = e1.x - s1.x
+    local deltaBAz = e1.z - s1.z
+    local denominator = deltaBAx * deltaDCz - deltaBAz * deltaDCx
+    local numerator = deltaACz * deltaDCx - deltaACx * deltaDCz
+    if (denominator == 0) then
+        if (numerator == 0) then
+            if s1.x >= s2.x and s1.x <= e2.x then
+                return {Intersects = true, Point = s1}
+            end
+            if s2.x >= s1.x and s2.x <= e1.x then
+                return {Intersects = true, Point = s2}
             end
             return IntersectionResult
         end
-        local r = numerator / denominator
-        if (r < 0 or r > 1) then
-            return IntersectionResult
-        end
-        local s = (deltaACz * deltaBAx - deltaACx * deltaBAz) / denominator
-        if (s < 0 or s > 1) then
-            return IntersectionResult
-        end
-        local point = {x = s1.x + r * deltaBAx, z = s1.z + r * deltaBAz}
-        return {Intersects = true, Point = point}
+        return IntersectionResult
     end
-    function Math:ClosestPointOnLineSegment(p, p1, p2)
-        local px = p.x
-        local pz = p.z
-        local ax = p1.x
-        local az = p1.z
-        local bx = p2.x
-        local bz = p2.z
-        local bxax = bx - ax
-        local bzaz = bz - az
-        local t = ((px - ax) * bxax + (pz - az) * bzaz) / (bxax * bxax + bzaz * bzaz)
+    local r = numerator / denominator
+    if (r < 0 or r > 1) then
+        return IntersectionResult
+    end
+    local s = (deltaACz * deltaBAx - deltaACx * deltaBAz) / denominator
+    if (s < 0 or s > 1) then
+        return IntersectionResult
+    end
+    local point = {x = s1.x + r * deltaBAx, z = s1.z + r * deltaBAz}
+    return {Intersects = true, Point = point}
+end
+function Math:ClosestPointOnLineSegment(p, p1, p2)
+    local px = p.x
+    local pz = p.z
+    local ax = p1.x
+    local az = p1.z
+    local bx = p2.x
+    local bz = p2.z
+    local bxax = bx - ax
+    local bzaz = bz - az
+    local t = ((px - ax) * bxax + (pz - az) * bzaz) / (bxax * bxax + bzaz * bzaz)
+    if (t < 0) then
+        return p1, false
+    end
+    if (t > 1) then
+        return p2, false
+    end
+    return {x = ax + t * bxax, z = az + t * bzaz}, true
+end
+function Math:Intercept(src, spos, epos, sspeed, tspeed)
+    local dx = epos.x - spos.x
+    local dz = epos.z - spos.z
+    local magnitude = math_sqrt(dx * dx + dz * dz)
+    local tx = spos.x - src.x
+    local tz = spos.z - src.z
+    local tvx = (dx / magnitude) * tspeed
+    local tvz = (dz / magnitude) * tspeed
+    local a = tvx * tvx + tvz * tvz - sspeed * sspeed
+    local b = 2 * (tvx * tx + tvz * tz)
+    local c = tx * tx + tz * tz
+    local ts
+    if (math_abs(a) < 1e-6) then
+        if (math_abs(b) < 1e-6) then
+            if (math_abs(c) < 1e-6) then
+                ts = {0, 0}
+            end
+        else
+            ts = {-c / b, -c / b}
+        end
+    else
+        local disc = b * b - 4 * a * c
+        if (disc >= 0) then
+            disc = math_sqrt(disc)
+            local a = 2 * a
+            ts = {(-b - disc) / a, (-b + disc) / a}
+        end
+    end
+    local sol
+    if (ts) then
+        local t0 = ts[1]
+        local t1 = ts[2]
+        local t = math_min(t0, t1)
         if (t < 0) then
-            return p1, false
+            t = math_max(t0, t1)
         end
-        if (t > 1) then
-            return p2, false
+        if (t > 0) then
+            sol = t
         end
-        return {x = ax + t * bxax, z = az + t * bzaz}, true
     end
-    function Math:Intercept(src, spos, epos, sspeed, tspeed)
-        local dx = epos.x - spos.x
-        local dz = epos.z - spos.z
-        local magnitude = math_sqrt(dx * dx + dz * dz)
-        local tx = spos.x - src.x
-        local tz = spos.z - src.z
-        local tvx = (dx / magnitude) * tspeed
-        local tvz = (dz / magnitude) * tspeed
-        local a = tvx * tvx + tvz * tvz - sspeed * sspeed
-        local b = 2 * (tvx * tx + tvz * tz)
-        local c = tx * tx + tz * tz
-        local ts
-        if (math_abs(a) < 1e-6) then
-            if (math_abs(b) < 1e-6) then
-                if (math_abs(c) < 1e-6) then
-                    ts = {0, 0}
-                end
+    return sol
+end
+function Math:Polar(p1)
+    local x = p1.x
+    local z = p1.z
+    if (x == 0) then
+        if (z > 0) then
+            return 90
+        end
+        if (z < 0) then
+            return 270
+        end
+        return 0
+    end
+    local theta = math_atan(z / x) * (180.0 / math_pi) --RadianToDegree
+    if (x < 0) then
+        theta = theta + 180
+    end
+    if (theta < 0) then
+        theta = theta + 360
+    end
+    return theta
+end
+function Math:AngleBetween(p1, p2)
+    if (p1 == nil or p2 == nil) then
+        return nil
+    end
+    local theta = self:Polar(p1) - self:Polar(p2)
+    if (theta < 0) then
+        theta = theta + 360
+    end
+    if (theta > 180) then
+        theta = 360 - theta
+    end
+    return theta
+end
+function Math:FindAngle(p1, center, p2)
+    local b = math_pow(center.x - p1.x, 2) + math_pow(center.z - p1.z, 2)
+    local a = math_pow(center.x - p2.x, 2) + math_pow(center.z - p2.z, 2)
+    local c = math_pow(p2.x - p1.x, 2) + math_pow(p2.z - p1.z, 2)
+    local angle = math_acos((a + b - c) / math_sqrt(4 * a * b)) * (180 / math_pi)
+    if (angle > 90) then
+        angle = 180 - angle
+    end
+    return angle
+end
+function Math:CircleCircleIntersection(center1, center2, radius1, radius2)
+    local result = {}
+    local D = self:GetDistance(center1, center2)
+    if D > radius1 + radius2 or D <= math_abs(radius1 - radius2) then
+        return result
+    end
+    local A = (radius1 * radius1 - radius2 * radius2 + D * D) / (2 * D)
+    local H = math_sqrt(radius1 * radius1 - A * A)
+    local Direction = self:Normalized(center2, center1)
+    local PA = self:Extended(center1, Direction, A)
+    local DirectionPerpendicular = self:Perpendicular(Direction)
+    table_insert(result, self:Extended(PA, DirectionPerpendicular, H))
+    table_insert(result, self:Extended(PA, DirectionPerpendicular, -H))
+    return result
+end
+
+Path = {}
+function Path:GetLenght(path)
+    local result = 0
+    for i = 1, #path - 1 do
+        result = result + Math:GetDistance(path[i], path[i + 1])
+    end
+    return result
+end
+function Path:CutPath(path, distance)
+    local result = {}
+    if distance <= 0 then
+        return path
+    end
+    for i = 1, #path - 1 do
+        local a, b = path[i], path[i + 1]
+        local dist = Math:GetDistance(a, b)
+        if dist > distance then
+            table_insert(result, Math:Extended(a, Math:Normalized(b, a), distance))
+            for j = i + 1, #path do
+                table_insert(result, path[j])
+            end
+            break
+        end
+        distance = distance - dist
+    end
+    return #result > 0 and result or {path[#path]}
+end
+function Path:ReversePath(path)
+    local result = {}
+    for i = #path, 1, -1 do
+        table_insert(result, path[i])
+    end
+    return result
+end
+function Path:GetPath(unit)
+    local result = {Math:Get2D(unit.pos)}
+    local path = unit.pathing
+    if path then
+        if path.isDashing then
+            local endPos = path.endPos
+            if endPos and endPos.x then
+                table_insert(result, Math:Get2D(endPos))
             else
-                ts = {-c / b, -c / b}
+                --print("GetPath -> endPos=" .. tostring(endPos))
             end
         else
-            local disc = b * b - 4 * a * c
-            if (disc >= 0) then
-                disc = math_sqrt(disc)
-                local a = 2 * a
-                ts = {(-b - disc) / a, (-b + disc) / a}
-            end
-        end
-        local sol
-        if (ts) then
-            local t0 = ts[1]
-            local t1 = ts[2]
-            local t = math_min(t0, t1)
-            if (t < 0) then
-                t = math_max(t0, t1)
-            end
-            if (t > 0) then
-                sol = t
-            end
-        end
-        return sol
-    end
-    function Math:Polar(p1)
-        local x = p1.x
-        local z = p1.z
-        if (x == 0) then
-            if (z > 0) then
-                return 90
-            end
-            if (z < 0) then
-                return 270
-            end
-            return 0
-        end
-        local theta = math_atan(z / x) * (180.0 / math_pi) --RadianToDegree
-        if (x < 0) then
-            theta = theta + 180
-        end
-        if (theta < 0) then
-            theta = theta + 360
-        end
-        return theta
-    end
-    function Math:AngleBetween(p1, p2)
-        if (p1 == nil or p2 == nil) then
-            return nil
-        end
-        local theta = self:Polar(p1) - self:Polar(p2)
-        if (theta < 0) then
-            theta = theta + 360
-        end
-        if (theta > 180) then
-            theta = 360 - theta
-        end
-        return theta
-    end
-    function Math:FindAngle(p1, center, p2)
-        local b = math_pow(center.x - p1.x, 2) + math_pow(center.z - p1.z, 2)
-        local a = math_pow(center.x - p2.x, 2) + math_pow(center.z - p2.z, 2)
-        local c = math_pow(p2.x - p1.x, 2) + math_pow(p2.z - p1.z, 2)
-        local angle = math_acos((a + b - c) / math_sqrt(4 * a * b)) * (180 / math_pi)
-        if (angle > 90) then
-            angle = 180 - angle
-        end
-        return angle
-    end
-    function Math:CircleCircleIntersection(center1, center2, radius1, radius2)
-        local result = {}
-        local D = self:GetDistance(center1, center2)
-        if D > radius1 + radius2 or D <= math_abs(radius1 - radius2) then
-            return result
-        end
-        local A = (radius1 * radius1 - radius2 * radius2 + D * D) / (2 * D)
-        local H = math_sqrt(radius1 * radius1 - A * A)
-        local Direction = self:Normalized(center2, center1)
-        local PA = self:Extended(center1, Direction, A)
-        local DirectionPerpendicular = self:Perpendicular(Direction)
-        table_insert(result, self:Extended(PA, DirectionPerpendicular, H))
-        table_insert(result, self:Extended(PA, DirectionPerpendicular, -H))
-        return result
-    end
-    
-    Path = {}
-    function Path:GetLenght(path)
-        local result = 0
-        for i = 1, #path - 1 do
-            result = result + Math:GetDistance(path[i], path[i + 1])
-        end
-        return result
-    end
-    function Path:CutPath(path, distance)
-        local result = {}
-        if distance <= 0 then
-            return path
-        end
-        for i = 1, #path - 1 do
-            local a, b = path[i], path[i + 1]
-            local dist = Math:GetDistance(a, b)
-            if dist > distance then
-                table_insert(result, Math:Extended(a, Math:Normalized(b, a), distance))
-                for j = i + 1, #path do
-                    table_insert(result, path[j])
-                end
-                break
-            end
-            distance = distance - dist
-        end
-        return #result > 0 and result or {path[#path]}
-    end
-    function Path:ReversePath(path)
-        local result = {}
-        for i = #path, 1, -1 do
-            table_insert(result, path[i])
-        end
-        return result
-    end
-    function Path:GetPath(unit)
-        local result = {Math:Get2D(unit.pos)}
-        local path = unit.pathing
-        if path then
-            if path.isDashing then
-                local endPos = path.endPos
-                if endPos and endPos.x then
-                    table_insert(result, Math:Get2D(endPos))
-                else
-                    --print("GetPath -> endPos=" .. tostring(endPos))
-                end
-            else
-                local istart = path.pathIndex
-                local iend = path.pathCount
-                if istart and iend and istart >= 0 and iend <= 20 then
-                    for i = istart, iend do
-                        local pos = unit:GetPath(i)
-                        if pos and pos.x then
-                            table_insert(result, Math:Get2D(pos))
-                        else
-                            --print("GetPath -> pos=" .. tostring(pos))
-                        end
+            local istart = path.pathIndex
+            local iend = path.pathCount
+            if istart and iend and istart >= 0 and iend <= 20 then
+                for i = istart, iend do
+                    local pos = unit:GetPath(i)
+                    if pos and pos.x then
+                        table_insert(result, Math:Get2D(pos))
+                    else
+                        --print("GetPath -> pos=" .. tostring(pos))
                     end
-                else
-                    --print("GetPath -> istart=" .. tostring(istart) .. " iend=" .. tostring(iend))
                 end
-            end
-        end
-        return result
-    end
-    function Path:GetPredictedPath(source, speed, movespeed, path)
-        local result = {}
-        local tT = 0
-        for i = 1, #path - 1 do
-            local a = path[i]; table_insert(result, a)
-            local b = path[i + 1]
-            local tB = Math:GetDistance(a, b) / movespeed
-            local direction = Math:Normalized(b, a)
-            a = Math:Extended(a, direction, -(movespeed * tT))
-            local t = Math:Intercept(source, a, b, speed, movespeed)
-            if (t and t >= tT and t <= tT + tB) then
-                table_insert(result, Math:Extended(a, direction, t * movespeed))
-                return result, t
-            end
-            tT = tT + tB
-        end
-        return nil, -1
-    end
-    
-    UnitData =
-    {
-        Visible = {},
-        Waypoints = {},
-    }
-    function UnitData:OnVisible(id, visible)
-        if (self.Visible[id] == nil) then
-            self.Visible[id] = {visible = visible, visibleTick = GetTickCount(), invisibleTick = GetTickCount()}
-        end
-        if visible then
-            if not self.Visible[id].visible then
-                self.Visible[id].visible = true
-                self.Visible[id].visibleTick = GetTickCount()
-            end
-        else
-            if self.Visible[id].visible then
-                self.Visible[id].visible = false
-                self.Visible[id].invisibleTick = GetTickCount()
+            else
+                --print("GetPath -> istart=" .. tostring(istart) .. " iend=" .. tostring(iend))
             end
         end
     end
-    function UnitData:OnWaypoint(id, path, hasMovePath, isDashing, endPos)
-        local timer = GetTickCount()
-        if self.Waypoints[id] == nil then
-            self.Waypoints[id] = {moving = hasMovePath, dashing = isDashing, path = path, tick = timer, stoptick = timer, pos = endPos}
+    return result
+end
+function Path:GetPredictedPath(source, speed, movespeed, path)
+    local result = {}
+    local tT = 0
+    for i = 1, #path - 1 do
+        local a = path[i]; table_insert(result, a)
+        local b = path[i + 1]
+        local tB = Math:GetDistance(a, b) / movespeed
+        local direction = Math:Normalized(b, a)
+        a = Math:Extended(a, direction, -(movespeed * tT))
+        local t = Math:Intercept(source, a, b, speed, movespeed)
+        if (t and t >= tT and t <= tT + tB) then
+            table_insert(result, Math:Extended(a, direction, t * movespeed))
+            return result, t
         end
-        if hasMovePath then
-            if not Math:VectorsEqual(self.Waypoints[id].pos, endPos, 50) then
-                self.Waypoints[id].tick = timer
-            end
-            self.Waypoints[id].pos = endPos
-            self.Waypoints[id].dashing = isDashing
-        elseif self.Waypoints[id].moving then
-            self.Waypoints[id].stoptick = GetTickCount()
-        end
-        self.Waypoints[id].path = path
-        self.Waypoints[id].moving = hasMovePath
+        tT = tT + tB
     end
-    function UnitData:OnTick()
-        local id, visible, path, pathing, hasMovePath, isDashing, endPos
-        for i, unit in ipairs(ObjectManager:GetHeroes()) do
-            id = unit.networkID
-            visible = unit.visible
-            self:OnVisible(id, visible)
-            if visible then
-                pathing = unit.pathing
-                if pathing then
-                    hasMovePath = pathing.hasMovePath
-                    isDashing = pathing.isDashing
-                    endPos = Math:Get2D(pathing.endPos)
-                    path = Path:GetPath(unit)
-                    self:OnWaypoint(id, path, hasMovePath, isDashing, endPos)
-                end
-            end
+    return nil, -1
+end
+
+UnitData =
+{
+    Visible = {},
+    Waypoints = {},
+}
+function UnitData:OnVisible(id, visible)
+    if (self.Visible[id] == nil) then
+        self.Visible[id] = {visible = visible, visibleTick = GetTickCount(), invisibleTick = GetTickCount()}
+    end
+    if visible then
+        if not self.Visible[id].visible then
+            self.Visible[id].visible = true
+            self.Visible[id].visibleTick = GetTickCount()
+        end
+    else
+        if self.Visible[id].visible then
+            self.Visible[id].visible = false
+            self.Visible[id].invisibleTick = GetTickCount()
         end
     end
-    function UnitData:OnPrediction(unit)
-        local id = unit.networkID
-        local visible = unit.visible
+end
+function UnitData:OnWaypoint(id, path, hasMovePath, isDashing, endPos)
+    local timer = GetTickCount()
+    if self.Waypoints[id] == nil then
+        self.Waypoints[id] = {moving = hasMovePath, dashing = isDashing, path = path, tick = timer, stoptick = timer, pos = endPos}
+    end
+    if hasMovePath then
+        if not Math:VectorsEqual(self.Waypoints[id].pos, endPos, 50) then
+            self.Waypoints[id].tick = timer
+        end
+        self.Waypoints[id].pos = endPos
+        self.Waypoints[id].dashing = isDashing
+    elseif self.Waypoints[id].moving then
+        self.Waypoints[id].stoptick = GetTickCount()
+    end
+    self.Waypoints[id].path = path
+    self.Waypoints[id].moving = hasMovePath
+end
+function UnitData:OnTick()
+    local id, visible, path, pathing, hasMovePath, isDashing, endPos
+    for i, unit in ipairs(ObjectManager:GetHeroes()) do
+        id = unit.networkID
+        visible = unit.visible
         self:OnVisible(id, visible)
         if visible then
-            local hasMovePath = unit.pathing.hasMovePath
-            local isDashing = unit.pathing.isDashing
-            local endPos = Math:Get2D(unit.pathing.endPos)
-            self:OnWaypoint(id, Path:GetPath(unit), hasMovePath, isDashing, endPos)
+            pathing = unit.pathing
+            if pathing then
+                hasMovePath = pathing.hasMovePath
+                isDashing = pathing.isDashing
+                endPos = Math:Get2D(pathing.endPos)
+                path = Path:GetPath(unit)
+                self:OnWaypoint(id, path, hasMovePath, isDashing, endPos)
+            end
         end
     end
+end
+function UnitData:OnPrediction(unit)
+    local id = unit.networkID
+    local visible = unit.visible
+    self:OnVisible(id, visible)
+    if visible then
+        local hasMovePath = unit.pathing.hasMovePath
+        local isDashing = unit.pathing.isDashing
+        local endPos = Math:Get2D(unit.pathing.endPos)
+        self:OnWaypoint(id, Path:GetPath(unit), hasMovePath, isDashing, endPos)
+    end
+end
 Callback.Add('Load', function()Callback.Add('Draw', function()UnitData:OnTick()end)end)
 
 ObjectManager = {}
