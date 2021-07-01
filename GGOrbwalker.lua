@@ -1,4 +1,4 @@
-local Version = 2.90
+local Version = 2.91
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -2164,6 +2164,64 @@ do
     Spell:__init()
 end
 
+--[[
+enum class BuffType {
+    Internal = 0,
+    Aura = 1,
+    CombatEnchancer = 2,
+    CombatDehancer = 3,
+    SpellShield = 4,
+    Stun = 5,
+    Invisibility = 6,
+    Silence = 7,
+    Taunt = 8,
+    Berserk = 9,
+    Polymorph = 10,
+    Slow = 11,
+    Snare = 12,
+    Damage = 13,
+    Heal = 14,
+    Haste = 15,
+    SpellImmunity = 16,
+    PhysicalImmunity = 17,
+    Invulnerability = 18,
+    AttackSpeedSlow = 19,
+    NearSight = 20,
+    Fear = 22,
+    Charm = 23,
+    Poison = 24,
+    Suppression = 25,
+    Blind = 26,
+    Counter = 27,
+    Currency = 21,
+    Shred = 28,
+    Flee = 29,
+    Knockup = 30,
+    Knockback = 31,
+    Disarm = 32,
+    Grounded = 33,
+    Drowsy = 34,
+    Asleep = 35,
+    Obscured = 36,
+    ClickProofToEnemies = 37,
+    Unkillable = 38
+};
+--]]
+local function GetBuffTypes(menu)
+    return {
+        [5] = menu.Stun:Value(),
+        [12] = menu.Snare:Value(),
+        [25] = menu.Supress:Value(),
+        [30] = menu.Knockup:Value(),
+        [22] = menu.Fear:Value(),
+        [23] = menu.Charm:Value(),
+        [8] = menu.Taunt:Value(),
+        [31] = menu.Knockback:Value(),
+        [26] = menu.Blind:Value(),
+        [32] = menu.Disarm:Value(),
+    }
+end
+
 -- summoner spell
 SummonerSpell = {}
 do
@@ -2260,18 +2318,7 @@ do
             return false
         end
         local menuDuration = self.MenuCleanse.Duration:Value() * 0.001
-        local menuBuffs = {
-            [5] = self.MenuCleanseBuffs.Stun:Value(),
-            [11] = self.MenuCleanseBuffs.Snare:Value(),
-            [24] = self.MenuCleanseBuffs.Supress:Value(),
-            [29] = self.MenuCleanseBuffs.Knockup:Value(),
-            [21] = self.MenuCleanseBuffs.Fear:Value(),
-            [22] = self.MenuCleanseBuffs.Charm:Value(),
-            [8] = self.MenuCleanseBuffs.Taunt:Value(),
-            [30] = self.MenuCleanseBuffs.Knockback:Value(),
-            [25] = self.MenuCleanseBuffs.Blind:Value(),
-            [31] = self.MenuCleanseBuffs.Disarm:Value(),
-        }
+        local menuBuffs = GetBuffTypes(self.MenuCleanseBuffs)
         local casted = false
         local buffs = Buff:GetBuffs(myHero)
         for i = 1, #buffs do
@@ -2287,7 +2334,7 @@ do
             local ms = myHero.ms
             for i = 1, #buffs do
                 local buff = buffs[i]
-                if buff.type == 10 and buff.duration >= 1 and ms <= 200 then
+                if buff.type == 11 and buff.duration >= 1 and ms <= 200 then
                     casted = true
                     Control.CastSpell(hk)
                     self.CleanseStartTime = GetTickCount()
@@ -2379,18 +2426,7 @@ do
             return false
         end
         local menuDuration = self.MenuQss.Duration:Value() * 0.001
-        local menuBuffs = {
-            [5] = self.MenuQssBuffs.Stun:Value(),
-            [11] = self.MenuQssBuffs.Snare:Value(),
-            [24] = self.MenuQssBuffs.Supress:Value(),
-            [29] = self.MenuQssBuffs.Knockup:Value(),
-            [21] = self.MenuQssBuffs.Fear:Value(),
-            [22] = self.MenuQssBuffs.Charm:Value(),
-            [8] = self.MenuQssBuffs.Taunt:Value(),
-            [30] = self.MenuQssBuffs.Knockback:Value(),
-            [25] = self.MenuQssBuffs.Blind:Value(),
-            [31] = self.MenuQssBuffs.Disarm:Value(),
-        }
+        local menuBuffs = GetBuffTypes(self.MenuQssBuffs)
         local casted = false
         local buffs = Buff:GetBuffs(myHero)
         for i = 1, #buffs do
@@ -2406,7 +2442,7 @@ do
             local ms = myHero.ms
             for i = 1, #buffs do
                 local buff = buffs[i]
-                if buff.type == 10 and buff.duration >= 1 and ms <= 200 then
+                if buff.type == 11 and buff.duration >= 1 and ms <= 200 then
                     casted = true
                     Control.CastSpell(self.Hotkey)
                     self.CleanseStartTime = GetTickCount()
