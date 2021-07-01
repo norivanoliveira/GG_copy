@@ -1,4 +1,4 @@
-local Version = 1.5
+local Version = 1.51
 local Name = "GGPrediction"
 
 Callback.Add('Load', function()
@@ -137,7 +137,7 @@ function Immobile:GetDuration(unit)
         if duration > 0 then
             if duration > ImmobileDuration and self.IMMOBILE_TYPES[buff.type] then
                 ImmobileDuration = duration
-            elseif buff.type == 30 then
+            elseif buff.type == 31 then
                 KnockDuration = duration
             end
         end
