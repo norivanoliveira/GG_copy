@@ -1,4 +1,4 @@
-local Version = 2.91
+local Version = 2.92
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -280,7 +280,7 @@ do
     function ChampionInfo:__init()
         self.AzirSoldiers = {}
     end
-    
+
     function ChampionInfo:OnTick()
         if Object.IsAzir then
             for i = #self.AzirSoldiers, 1, -1 do
@@ -302,7 +302,7 @@ do
             end
         end
     end
-    
+
     function ChampionInfo:IsInAzirSoldierRange(obj)
         local result = false
         for i = 1, #self.AzirSoldiers do
@@ -313,7 +313,7 @@ do
         end
         return result
     end
-    
+
     -- init call
     ChampionInfo:__init()
 end
@@ -334,7 +334,7 @@ do
             self.Flash = self.Menu.Flashlol:Key()
         end
     end
-    
+
     -- create menu
     function FlashHelper:CreateMenu(main)
         self.Menu = main:MenuElement({type = MENU, id = "PMenuFH", name = "Flash Helper", leftIcon = "/Gamsteron_Spell_SummonerFlash.png"})
@@ -342,7 +342,7 @@ do
         self.Menu:MenuElement({id = "Flashlol", name = "Flash LOL HotKey", key = string.byte("P")})
         self.Menu:MenuElement({id = "Flashgos", name = "Flash GOS HotKey", key = string.byte("F")})
     end
-    
+
     -- on tick
     function FlashHelper:OnTick()
         if self.Menu.Flashgos:Value() and self.Menu.Enabled:Value() and self:IsReady() and not myHero.dead and not GameIsChatOpen() and GameIsOnTop() then
@@ -351,7 +351,7 @@ do
             Control.Flash()
         end
     end
-    
+
     -- is ready
     function FlashHelper:IsReady()
         local has_flash = false
@@ -380,7 +380,7 @@ do
         end
         return true
     end
-    
+
     -- init call
     FlashHelper:__init()
 end
@@ -1470,8 +1470,8 @@ do
                 return nil
             end,
         }
-        --11.2.1
-        self.HEROES = {aatrox = {3, true, 0.651}, ahri = {4, false, 0.668}, akali = {4, true, 0.625}, alistar = {1, true, 0.625}, amumu = {1, true, 0.736}, anivia = {4, false, 0.625}, annie = {4, false, 0.579}, aphelios = {5, false, 0.64}, ashe = {5, false, 0.658}, aurelionsol = {4, false, 0.625}, azir = {4, true, 0.625}, bard = {3, false, 0.625}, blitzcrank = {1, true, 0.625}, brand = {4, false, 0.625}, braum = {1, true, 0.644}, caitlyn = {5, false, 0.681}, camille = {3, true, 0.644}, cassiopeia = {4, false, 0.647}, chogath = {1, true, 0.625}, corki = {5, false, 0.638}, darius = {2, true, 0.625}, diana = {4, true, 0.625}, draven = {5, false, 0.679}, drmundo = {1, true, 0.721}, ekko = {4, true, 0.688}, elise = {3, false, 0.625}, evelynn = {4, true, 0.667}, ezreal = {5, false, 0.625}, fiddlesticks = {3, false, 0.625}, fiora = {3, true, 0.69}, fizz = {4, true, 0.658}, galio = {1, true, 0.625}, gangplank = {4, true, 0.658}, garen = {1, true, 0.625}, gnar = {1, false, 0.625}, gragas = {2, true, 0.675}, graves = {4, false, 0.475}, gwen = {4, true, 0.656}, hecarim = {2, true, 0.67}, heimerdinger = {3, false, 0.625}, illaoi = {3, true, 0.571}, irelia = {3, true, 0.656}, ivern = {1, true, 0.644}, janna = {2, false, 0.625}, jarvaniv = {3, true, 0.658}, jax = {3, true, 0.638}, jayce = {4, false, 0.658}, jhin = {5, false, 0.625}, jinx = {5, false, 0.625}, kaisa = {5, false, 0.644}, kalista = {5, false, 0.694}, karma = {4, false, 0.625}, karthus = {4, false, 0.625}, kassadin = {4, true, 0.64}, katarina = {4, true, 0.658}, kayle = {4, false, 0.625}, kayn = {4, true, 0.669}, kennen = {4, false, 0.625}, khazix = {4, true, 0.668}, kindred = {4, false, 0.625}, kled = {2, true, 0.625}, kogmaw = {5, false, 0.665}, leblanc = {4, false, 0.625}, leesin = {3, true, 0.651}, leona = {1, true, 0.625}, lillia = {4, false, 0.625}, lissandra = {4, false, 0.656}, lucian = {5, false, 0.638}, lulu = {3, false, 0.625}, lux = {4, false, 0.669}, malphite = {1, true, 0.736}, malzahar = {3, false, 0.625}, maokai = {2, true, 0.8}, masteryi = {5, true, 0.679}, missfortune = {5, false, 0.656}, monkeyking = {3, true, 0.711}, mordekaiser = {4, true, 0.625}, morgana = {3, false, 0.625}, nami = {3, false, 0.644}, nasus = {2, true, 0.638}, nautilus = {1, true, 0.706}, neeko = {4, false, 0.625}, nidalee = {4, false, 0.638}, nocturne = {4, true, 0.721}, nunu = {2, true, 0.625}, olaf = {2, true, 0.694}, orianna = {4, false, 0.658}, ornn = {2, true, 0.625}, pantheon = {3, true, 0.644}, poppy = {2, true, 0.625}, pyke = {4, true, 0.667}, qiyana = {4, true, 0.625}, quinn = {5, false, 0.668}, rakan = {3, true, 0.635}, rammus = {1, true, 0.656}, reksai = {2, true, 0.667}, rell = {1, true, 0.55}, renekton = {2, true, 0.665}, rengar = {4, true, 0.667}, riven = {4, true, 0.625}, rumble = {4, true, 0.644}, ryze = {4, false, 0.625}, samira = {5, false, 0.658}, sejuani = {2, true, 0.688}, senna = {5, true, 0.625}, seraphine = {3, false, 0.669}, sett = {2, true, 0.625}, shaco = {4, true, 0.694}, shen = {1, true, 0.751}, shyvana = {2, true, 0.658}, singed = {1, true, 0.613}, sion = {1, true, 0.679}, sivir = {5, false, 0.625}, skarner = {2, true, 0.625}, sona = {3, false, 0.644}, soraka = {3, false, 0.625}, swain = {3, false, 0.625}, sylas = {4, true, 0.645}, syndra = {4, false, 0.625}, tahmkench = {1, true, 0.658}, taliyah = {4, false, 0.625}, talon = {4, true, 0.625}, taric = {1, true, 0.625}, teemo = {4, false, 0.69}, thresh = {1, true, 0.625}, tristana = {5, false, 0.656}, trundle = {2, true, 0.67}, tryndamere = {4, true, 0.67}, twistedfate = {4, false, 0.651}, twitch = {5, false, 0.679}, udyr = {2, true, 0.658}, urgot = {2, true, 0.625}, varus = {5, false, 0.658}, vayne = {5, false, 0.658}, veigar = {4, false, 0.625}, velkoz = {4, false, 0.625}, vi = {2, true, 0.644}, viego = {4, true, 0.658}, viktor = {4, false, 0.658}, vladimir = {3, false, 0.658}, volibear = {2, true, 0.625}, warwick = {2, true, 0.638}, xayah = {5, false, 0.625}, xerath = {4, false, 0.625}, xinzhao = {3, true, 0.645}, yasuo = {4, true, 0.697}, yone = {4, true, 0.625}, yorick = {2, true, 0.625}, yuumi = {3, false, 0.625}, zac = {1, true, 0.736}, zed = {4, true, 0.651}, ziggs = {4, false, 0.656}, zilean = {3, false, 0.625}, zoe = {4, false, 0.625}, zyra = {2, false, 0.625}, }
+        --11.15.1
+        self.HEROES = {aatrox = {3, true, 0.651}, ahri = {4, false, 0.668}, akali = {4, true, 0.625}, akshan = {5, false, 0.638}, alistar = {1, true, 0.625}, amumu = {1, true, 0.736}, anivia = {4, false, 0.625}, annie = {4, false, 0.579}, aphelios = {5, false, 0.64}, ashe = {5, false, 0.658}, aurelionsol = {4, false, 0.625}, azir = {4, true, 0.625}, bard = {3, false, 0.625}, blitzcrank = {1, true, 0.625}, brand = {4, false, 0.625}, braum = {1, true, 0.644}, caitlyn = {5, false, 0.681}, camille = {3, true, 0.644}, cassiopeia = {4, false, 0.647}, chogath = {1, true, 0.625}, corki = {5, false, 0.638}, darius = {2, true, 0.625}, diana = {4, true, 0.625}, draven = {5, false, 0.679}, drmundo = {1, true, 0.72}, ekko = {4, true, 0.688}, elise = {3, false, 0.625}, evelynn = {4, true, 0.667}, ezreal = {5, false, 0.625}, fiddlesticks = {3, false, 0.625}, fiora = {3, true, 0.69}, fizz = {4, true, 0.658}, galio = {1, true, 0.625}, gangplank = {4, true, 0.658}, garen = {1, true, 0.625}, gnar = {1, false, 0.625}, gragas = {2, true, 0.675}, graves = {4, false, 0.475}, gwen = {4, true, 0.69}, hecarim = {2, true, 0.67}, heimerdinger = {3, false, 0.625}, illaoi = {3, true, 0.571}, irelia = {3, true, 0.656}, ivern = {1, true, 0.644}, janna = {2, false, 0.625}, jarvaniv = {3, true, 0.658}, jax = {3, true, 0.638}, jayce = {4, false, 0.658}, jhin = {5, false, 0.625}, jinx = {5, false, 0.625}, kaisa = {5, false, 0.644}, kalista = {5, false, 0.694}, karma = {4, false, 0.625}, karthus = {4, false, 0.625}, kassadin = {4, true, 0.64}, katarina = {4, true, 0.658}, kayle = {4, false, 0.625}, kayn = {4, true, 0.669}, kennen = {4, false, 0.625}, khazix = {4, true, 0.668}, kindred = {4, false, 0.625}, kled = {2, true, 0.625}, kogmaw = {5, false, 0.665}, leblanc = {4, false, 0.625}, leesin = {3, true, 0.651}, leona = {1, true, 0.625}, lillia = {4, false, 0.625}, lissandra = {4, false, 0.656}, lucian = {5, false, 0.638}, lulu = {3, false, 0.625}, lux = {4, false, 0.669}, malphite = {1, true, 0.736}, malzahar = {3, false, 0.625}, maokai = {2, true, 0.8}, masteryi = {5, true, 0.679}, missfortune = {5, false, 0.656}, monkeyking = {3, true, 0.711}, mordekaiser = {4, true, 0.625}, morgana = {3, false, 0.625}, nami = {3, false, 0.644}, nasus = {2, true, 0.638}, nautilus = {1, true, 0.706}, neeko = {4, false, 0.625}, nidalee = {4, false, 0.638}, nocturne = {4, true, 0.721}, nunu = {2, true, 0.625}, olaf = {2, true, 0.694}, orianna = {4, false, 0.658}, ornn = {2, true, 0.625}, pantheon = {3, true, 0.644}, poppy = {2, true, 0.625}, pyke = {4, true, 0.667}, qiyana = {4, true, 0.625}, quinn = {5, false, 0.668}, rakan = {3, true, 0.635}, rammus = {1, true, 0.656}, reksai = {2, true, 0.667}, rell = {1, true, 0.55}, renekton = {2, true, 0.665}, rengar = {4, true, 0.667}, riven = {4, true, 0.625}, rumble = {4, true, 0.644}, ryze = {4, false, 0.625}, samira = {5, false, 0.658}, sejuani = {2, true, 0.688}, senna = {5, true, 0.625}, seraphine = {3, false, 0.669}, sett = {2, true, 0.625}, shaco = {4, true, 0.694}, shen = {1, true, 0.751}, shyvana = {2, true, 0.658}, singed = {1, true, 0.613}, sion = {1, true, 0.679}, sivir = {5, false, 0.625}, skarner = {2, true, 0.625}, sona = {3, false, 0.644}, soraka = {3, false, 0.625}, swain = {3, false, 0.625}, sylas = {4, true, 0.645}, syndra = {4, false, 0.625}, tahmkench = {1, true, 0.658}, taliyah = {4, false, 0.625}, talon = {4, true, 0.625}, taric = {1, true, 0.625}, teemo = {4, false, 0.69}, thresh = {1, true, 0.625}, tristana = {5, false, 0.656}, trundle = {2, true, 0.67}, tryndamere = {4, true, 0.67}, twistedfate = {4, false, 0.651}, twitch = {5, false, 0.679}, udyr = {2, true, 0.658}, urgot = {2, true, 0.625}, varus = {5, false, 0.658}, vayne = {5, false, 0.658}, veigar = {4, false, 0.625}, velkoz = {4, false, 0.625}, vi = {2, true, 0.644}, viego = {4, true, 0.658}, viktor = {4, false, 0.658}, vladimir = {3, false, 0.658}, volibear = {2, true, 0.625}, warwick = {2, true, 0.638}, xayah = {5, false, 0.625}, xerath = {4, false, 0.625}, xinzhao = {3, true, 0.645}, yasuo = {4, true, 0.697}, yone = {4, true, 0.625}, yorick = {2, true, 0.625}, yuumi = {3, false, 0.625}, zac = {1, true, 0.736}, zed = {4, true, 0.651}, ziggs = {4, false, 0.656}, zilean = {3, false, 0.625}, zoe = {4, false, 0.625}, zyra = {2, false, 0.625}, }
         self.HeroSpecialMelees =
         {
             ['elise'] = function()
@@ -3059,6 +3059,7 @@ do
         local enemiesaa = {}
         for i = 1, #enemies do
             local enemy = enemies[i]
+            --print(myHero.range)
             local extraRange = enemy.boundingRadius
             if Object.IsCaitlyn and Buff:HasBuff(enemy, 'caitlynyordletrapinternal') then
                 extraRange = extraRange + 425
@@ -3287,7 +3288,7 @@ do
                         self.AttackersDamage[attackerHandle][handle] = Damage:GetAutoAttackDamage(attacker, target)
                     end
                     damage = self.AttackersDamage[attackerHandle][handle]
-                    
+
                     health = health - damage
                 end
             end
@@ -3341,7 +3342,7 @@ do
                         endT = (startT + attack.WindUpTime + flyT + c * attack.AnimationTime) - timer
                         c = c + 1
                         if c > 10 then
-                            print("ERROR LANECLEAR!")
+                            --print("ERROR LANECLEAR!")
                             health = self.TargetsHealth[handle]
                             break
                         end
@@ -3378,7 +3379,7 @@ do
                                 endT = aaData.windUpTime + flyT + c * aaData.animationTime
                                 c = c + 1
                                 if c > 10 then
-                                    print("ERROR LANECLEAR!")
+                                    --print("ERROR LANECLEAR!")
                                     health = self.TargetsHealth[handle]
                                     break
                                 end
@@ -3465,7 +3466,7 @@ do
             while (maxHP > turretHits * turretDamage) do
                 turretHits = turretHits + 1
                 if turretHits > 10 then
-                    print("ERROR TURRETHITS")
+                    --print("ERROR TURRETHITS")
                     break
                 end
             end
@@ -3871,7 +3872,7 @@ do
                 end
                 self.TestCount = self.TestCount + 1
                 if self.TestCount == 5 then
-                    print('5 attacks in time: ' .. tostring(GameTimer() - self.TestStartTime) .. '[sec]')
+                    --print('5 attacks in time: ' .. tostring(GameTimer() - self.TestStartTime) .. '[sec]')
                     self.TestCount = 0
                     self.TestStartTime = 0
                 end
