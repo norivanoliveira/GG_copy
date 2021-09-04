@@ -1,4 +1,4 @@
-local Version = 2.92
+local Version = 2.93
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -2535,6 +2535,18 @@ do
                 self.UndyingBuffs['KarthusDeathDefiedBuff'] = true
                 return
             end
+            if args.charName == 'Shen' then
+            	self.UndyingBuffs['ShenWBuff'] = true
+            	return
+            end
+            if args.charName == 'Gwen' then
+            	self.UndyingBuffs['gwenwuntargetabilitymanager'] = true
+            	return
+        	end
+            if args.charName == 'Samira' then
+            	self.UndyingBuffs['SamiraW'] = true
+            	return
+        	end
         end)
     end
     -- on load
@@ -2597,6 +2609,7 @@ do
         self.UndyingBuffs['chronorevive'] = hp < 15
         self.UndyingBuffs['UndyingRage'] = hp < 15
         self.UndyingBuffs['JaxCounterStrike'] = isAttack
+        self.UndyingBuffs['ShenWBuff'] = isAttack
         for buffName, isActive in pairs(self.UndyingBuffs) do
             if isActive and Buff:HasBuff(unit, buffName) then
                 return true
