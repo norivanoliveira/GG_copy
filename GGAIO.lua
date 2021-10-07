@@ -1,12 +1,5 @@
-local Version = 1.95
+local Version = 1.96
 local Name = 'GGAIO'
-
-Game.CanUseSpell = function(spell)
-    if myHero:GetSpellData(spell).currentCd > 0 then
-        return ONCOOLDOWN
-    end
-    return READY
-end
 
 Callback.Add('Load', function()
     GGUpdate:New({
