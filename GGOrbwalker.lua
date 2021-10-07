@@ -1,12 +1,5 @@
-local Version = 2.95
+local Version = 2.96
 local Name = "GGOrbwalker"
-
-Game.CanUseSpell = function(spell)
-    if myHero:GetSpellData(spell).currentCd > 0 then
-        return ONCOOLDOWN
-    end
-    return READY
-end
 
 _G.GGUpdate = {}
 do
