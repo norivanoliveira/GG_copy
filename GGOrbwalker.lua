@@ -1,4 +1,4 @@
-local Version = 2.96
+local Version = 2.97
 local Name = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -1573,7 +1573,7 @@ do
             ["reksai"] = {Slot = _Q, Key = HK_Q, Name = "RekSaiQ"},
             ["renekton"] = {Slot = _W, Key = HK_W},
             ["rengar"] = {Slot = _Q, Key = HK_Q},
-            ["riven"] = {Slot = _Q, Key = HK_Q},
+            --["riven"] = {Slot = _Q, Key = HK_Q},
             -- RIVEN BUFFS ["riven"] = {'riventricleavesoundone', 'riventricleavesoundtwo', 'riventricleavesoundthree'},
             ["sejuani"] = {Slot = _E, Key = HK_E, ReadyCheck = true, ActiveCheck = true, SpellName = "SejuaniE2"},
             ["shyvana"] = {Slot = _Q, Key = HK_Q},
@@ -1663,7 +1663,7 @@ do
                 self.AttackResetSuccess = true
                 --print("Attack Reset")
                 -- RIVEN
-                if Object.IsRiven then
+                --[[if Object.IsRiven then
                     X = X + 1
                     if X == 1 then
                         T = GetTickCount()
@@ -1690,7 +1690,7 @@ do
                     end)
                     Orbwalker:SetAttack(false)
                     return
-                end
+                end]]
             end
         end
     end
