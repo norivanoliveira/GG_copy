@@ -4024,20 +4024,16 @@ Callback.Add('Load', function()
         _G.Orbwalker.Drawings.Enabled:Value(false)
     end
 end)
-
-_G.GGUpdate = {}
-do
-    function GGUpdate:__init()
-        self.Callbacks = {}
-    end
-    function GGUpdate:DownloadFile(url, path)
+_G.GGUpdate = {
+    Callbacks = {},
+    DownloadFile = function(self, url, path)
         DownloadFileAsync(url, path, function() end)
-    end
-    function GGUpdate:Trim(s)
+    end,
+    Trim = function(self, s)
         local from = s:match"^%s*()"
         return from > #s and "" or s:match(".*%S", from)
-    end
-    function GGUpdate:ReadFile(path)
+    end,
+    ReadFile = function(self, path)
         local result = {}
         local file = io.open(path, "r")
         if file then
@@ -4050,68 +4046,75 @@ do
             file:close()
         end
         return result
-    end
-    function GGUpdate:New(args)
-        local updater = {}
-        function updater:__init()
-            self.Step = 1
-            self.Version = type(args.version) == 'number' and args.version or tonumber(args.version)
-            self.VersionUrl = args.versionUrl
-            self.VersionPath = args.versionPath
-            self.ScriptUrl = args.scriptUrl
-            self.ScriptPath = args.scriptPath
-            self.ScriptName = args.scriptName
-            self.VersionTimer = GetTickCount()
-            self:DownloadVersion()
-        end
-        function updater:DownloadVersion()
-            if not FileExist(self.ScriptPath) then
-                self.Step = 4
-                GGUpdate:DownloadFile(self.ScriptUrl, self.ScriptPath)
-                self.ScriptTimer = GetTickCount()
-                return
-            end
-            GGUpdate:DownloadFile(self.VersionUrl, self.VersionPath)
-        end
-        function updater:OnTick()
-            if self.Step == 0 then
-                return
-            end
-            if self.Step == 1 then
-                if GetTickCount() > self.VersionTimer + 1 then
-                    local response = GGUpdate:ReadFile(self.VersionPath)
-                    if #response > 0 and tonumber(response[1]) > self.Version then
-                        self.Step = 2
-                        self.NewVersion = response[1]
-                        GGUpdate:DownloadFile(self.ScriptUrl, self.ScriptPath)
-                        self.ScriptTimer = GetTickCount()
-                    else
-                        self.Step = 3
+    end,
+    New = function(self, args)
+        local updater = {
+            Step = 1,
+            Version = type(args.version) == 'number' and args.version or tonumber(args.version),
+            VersionUrl = args.versionUrl,
+            VersionPath = args.versionPath,
+            ScriptUrl = args.scriptUrl,
+            ScriptPath = args.scriptPath,
+            ScriptName = args.scriptName,
+            VersionTimer = GetTickCount(),
+            DownloadVersion = function(self)
+                if not FileExist(self.ScriptPath) then
+                    self.Step = 4
+                    GGUpdate:DownloadFile(self.ScriptUrl, self.ScriptPath)
+                    self.ScriptTimer = GetTickCount()
+                    return
+                end
+                GGUpdate:DownloadFile(self.VersionUrl, self.VersionPath)
+            end,
+            OnTick = function(self)
+                if self.Step == 0 then
+                    return
+                end
+                if self.Step == 1 then
+                    if GetTickCount() > self.VersionTimer + 1 then
+                        local response = GGUpdate:ReadFile(self.VersionPath)
+                        if #response > 0 and tonumber(response[1]) > self.Version then
+                            self.Step = 2
+                            self.NewVersion = response[1]
+                            GGUpdate:DownloadFile(self.ScriptUrl, self.ScriptPath)
+                            self.ScriptTimer = GetTickCount()
+                        else
+                            self.Step = 3
+                        end
                     end
                 end
-            end
-            if self.Step == 2 then
-                if GetTickCount() > self.ScriptTimer + 1 then
-                    self.Step = 0
-                    print(self.ScriptName .. ' - new update found! [' .. tostring(self.Version) .. ' -> ' .. self.NewVersion .. '] Please 2xf6!')
+                if self.Step == 2 then
+                    if GetTickCount() > self.ScriptTimer + 1 then
+                        self.Step = 0
+                        print(self.ScriptName .. ' - new update found! [' .. tostring(self.Version) .. ' -> ' .. self.NewVersion .. '] Please 2xf6!')
+                    end
+                    return
                 end
-                return
-            end
-            if self.Step == 3 then
-                self.Step = 0
-                return
-            end
-            if self.Step == 4 then
-                if GetTickCount() > self.ScriptTimer + 1 then
+                if self.Step == 3 then
                     self.Step = 0
-                    print(self.ScriptName .. ' - downloaded! Please 2xf6!')
+                    return
                 end
-            end
-        end
-        updater:__init()
+                if self.Step == 4 then
+                    if GetTickCount() > self.ScriptTimer + 1 then
+                        self.Step = 0
+                        print(self.ScriptName .. ' - downloaded! Please 2xf6!')
+                    end
+                end
+            end,
+        }
+        --updater:DownloadVersion()
         table.insert(self.Callbacks, updater)
     end
-    GGUpdate:__init()
-end
+}
+
+--[[GGUpdate:New({
+    version = Version,
+    scriptName = Name,
+    scriptPath = SCRIPT_PATH .. Name .. ".lua",
+    scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".lua",
+    versionPath = SCRIPT_PATH .. Name .. ".version",
+    versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version"
+})]]
+
 
 --LLOMVPF
