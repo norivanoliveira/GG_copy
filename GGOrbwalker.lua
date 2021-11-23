@@ -1194,83 +1194,83 @@ Data = {
     JungleTeam = 300,
     AllyTeam = myHero.team,
     EnemyTeam = 300 - myHero.team,
-    HeroName = myHero.charName:lower(),
+    HeroName = myHero.charName,
     ChannelingBuffs = {
-        ['caitlyn'] = function()
+        ['Caitlyn'] = function()
             return Buff:HasBuff(myHero, 'CaitlynAceintheHole')
         end,
-        ['fiddlesticks'] = function()
+        ['Fiddlesticks'] = function()
             return Buff:HasBuff(myHero, 'Drain') or Buff:HasBuff(myHero, 'Crowstorm')
         end,
-        ['galio'] = function()
+        ['Galio'] = function()
             return Buff:HasBuff(myHero, 'GalioIdolOfDurand')
         end,
-        ['janna'] = function()
+        ['Janna'] = function()
             return Buff:HasBuff(myHero, 'ReapTheWhirlwind')
         end,
-        ['kaisa'] = function()
+        ['Kaisa'] = function()
             return Buff:HasBuff(myHero, 'KaisaE')
         end,
-        ['karthus'] = function()
+        ['Karthus'] = function()
             return Buff:HasBuff(myHero, 'karthusfallenonecastsound')
         end,
-        ['katarina'] = function()
+        ['Katarina'] = function()
             return Buff:HasBuff(myHero, 'katarinarsound')
         end,
-        ['lucian'] = function()
+        ['Lucian'] = function()
             return Buff:HasBuff(myHero, 'LucianR')
         end,
-        ['malzahar'] = function()
+        ['Malzahar'] = function()
             return Buff:HasBuff(myHero, 'alzaharnethergraspsound')
         end,
-        ['masteryi'] = function()
+        ['MasterYi'] = function()
             return Buff:HasBuff(myHero, 'Meditate')
         end,
-        ['missfortune'] = function()
+        ['MissFortune'] = function()
             return Buff:HasBuff(myHero, 'missfortunebulletsound')
         end,
-        ['nunu'] = function()
+        ['Nunu'] = function()
             return Buff:HasBuff(myHero, 'AbsoluteZero')
         end,
-        ['pantheon'] = function()
+        ['Pantheon'] = function()
             return Buff:HasBuff(myHero, 'pantheonesound') or Buff:HasBuff(myHero, 'PantheonRJump')
         end,
-        ['shen'] = function()
+        ['Shen'] = function()
             return Buff:HasBuff(myHero, 'shenstandunitedlock')
         end,
-        ['twistedfate'] = function()
+        ['TwistedFate'] = function()
             return Buff:HasBuff(myHero, 'Destiny')
         end,
-        ['urgot'] = function()
+        ['Urgot'] = function()
             return Buff:HasBuff(myHero, 'UrgotSwap2')
         end,
-        ['varus'] = function()
+        ['Varus'] = function()
             return Buff:HasBuff(myHero, 'VarusQ')
         end,
-        ['velkoz'] = function()
+        ['Velkoz'] = function()
             return Buff:HasBuff(myHero, 'VelkozR')
         end,
-        ['vi'] = function()
+        ['Vi'] = function()
             return Buff:HasBuff(myHero, 'ViQ')
         end,
-        ['vladimir'] = function()
+        ['Vladimir'] = function()
             return Buff:HasBuff(myHero, 'VladimirE')
         end,
-        ['warwick'] = function()
+        ['Warwick'] = function()
             return Buff:HasBuff(myHero, 'infiniteduresssound')
         end,
-        ['xerath'] = function()
+        ['Xerath'] = function()
             return Buff:HasBuff(myHero, 'XerathArcanopulseChargeUp') or Buff:HasBuff(myHero, 'XerathLocusOfPower2')
         end,
     },
     SpecialWindup = {
-        ['twistedfate'] = function()
+        ['TwistedFate'] = function()
             if Buff:HasBuff(myHero, 'BlueCardPreAttack') or Buff:HasBuff(myHero, 'RedCardPreAttack') or Buff:HasBuff(myHero, 'GoldCardPreAttack') then
                 return 0.125
             end
             return nil
         end,
-        ['jayce'] = function()
+        ['Jayce'] = function()
             if Buff:HasBuff(myHero, 'JayceHyperCharge') then
                 return 0.125
             end
@@ -1278,39 +1278,39 @@ Data = {
         end
     },
     AllowMovement = {
-        ['kaisa'] = function()
+        ['Kaisa'] = function()
             return Buff:HasBuff(myHero, 'KaisaE')
         end,
-        ['lucian'] = function()
+        ['Lucian'] = function()
             return Buff:HasBuff(myHero, 'LucianR')
         end,
-        ['varus'] = function()
+        ['Varus'] = function()
             return Buff:HasBuff(myHero, 'VarusQ')
         end,
-        ['vi'] = function()
+        ['Vi'] = function()
             return Buff:HasBuff(myHero, 'ViQ')
         end,
-        ['vladimir'] = function()
+        ['Vladimir'] = function()
             return Buff:HasBuff(myHero, 'VladimirE')
         end,
-        ['xerath'] = function()
+        ['Xerath'] = function()
             return Buff:HasBuff(myHero, 'XerathArcanopulseChargeUp')
         end,
     },
     DisableAttackBuffs = {
-        ['urgot'] = function()
+        ['Urgot'] = function()
             return Buff:HasBuff(myHero, 'UrgotW')
         end,
-        ['darius'] = function()
+        ['Darius'] = function()
             return Buff:HasBuff(myHero, 'dariusqcast')
         end,
-        ['graves'] = function()
+        ['Graves'] = function()
             if myHero.hudAmmo == 0 then
                 return true
             end
             return false
         end,
-        ['jhin'] = function()
+        ['Jhin'] = function()
             if Buff:HasBuff(myHero, 'JhinPassiveReload') then
                 return true
             end
@@ -1321,58 +1321,58 @@ Data = {
         end,
     },
     SpecialMissileSpeeds = {
-        ['aphelios'] = function()
+        ['Aphelios'] = function()
             if Buff:HasBuff(myHero, 'ApheliosCrescendumManager') then
                 return math.huge
             end
             return 1500
         end,
-        ['caitlyn'] = function()
+        ['Caitlyn'] = function()
             if Buff:HasBuff(myHero, 'caitlynheadshot') then
                 return 3000
             end
             return nil
         end,
-        ['graves'] = function()
+        ['Graves'] = function()
             return 3800
         end,
-        ['illaoi'] = function()
+        ['Illaoi'] = function()
             if Buff:HasBuff(myHero, 'IllaoiW') then
                 return 1600
             end
             return nil
         end,
-        ['jayce'] = function()
+        ['Jayce'] = function()
             if Buff:HasBuff(myHero, 'jaycestancegun') then
                 return 2000
             end
             return nil
         end,
-        ['jhin'] = function()
+        ['Jhin'] = function()
             if Buff:HasBuff(myHero, 'jhinpassiveattackbuff') then
                 return 3000
             end
             return nil
         end,
-        ['jinx'] = function()
+        ['Jinx'] = function()
             if Buff:HasBuff(myHero, 'JinxQ') then
                 return 2000
             end
             return nil
         end,
-        ['poppy'] = function()
+        ['Poppy'] = function()
             if Buff:HasBuff(myHero, 'poppypassivebuff') then
                 return 1600
             end
             return nil
         end,
-        ['twitch'] = function()
+        ['Twitch'] = function()
             if Buff:HasBuff(myHero, 'TwitchFullAutomatic') then
                 return 4000
             end
             return nil
         end,
-        ['kayle'] = function()
+        ['Kayle'] = function()
             if Buff:HasBuff(myHero, 'KayleE') then
                 return 1750
             end
@@ -1606,46 +1606,46 @@ Data = {
         end,
     },
     AttackResets = {
-        ["ashe"] = {Slot = _Q, Key = HK_Q},
-        ["blitzcrank"] = {Slot = _E, Key = HK_E},
-        ["camille"] = {Slot = _Q, Key = HK_Q},
-        ["chogath"] = {Slot = _E, Key = HK_E},
-        ["darius"] = {Slot = _W, Key = HK_W},
-        ["drmundo"] = {Slot = _E, Key = HK_E},
-        ["elise"] = {Slot = _W, Key = HK_W, Name = "EliseSpiderW"},
-        ["fiora"] = {Slot = _E, Key = HK_E},
-        ["garen"] = {Slot = _Q, Key = HK_Q},
-        ["graves"] = {Slot = _E, Key = HK_E, OnCast = true, CanCancel = true},
-        ["gwen"] = {Slot = _E, Key = HK_E, OnCast = true},
-        ["kassadin"] = {Slot = _W, Key = HK_W},
-        ["illaoi"] = {Slot = _W, Key = HK_W},
-        ["jax"] = {Slot = _W, Key = HK_W},
-        ["jayce"] = {Slot = _W, Key = HK_W, Name = "JayceHyperCharge"},
-        ["kayle"] = {Slot = _E, Key = HK_E},
-        ["katarina"] = {Slot = _E, Key = HK_E, CanCancel = true, OnCast = true},
-        ["kindred"] = {Slot = _Q, Key = HK_Q},
-        ["leona"] = {Slot = _Q, Key = HK_Q},
-        ['lucian'] = {Slot = _E, Key = HK_E, OnCast = true, CanCancel = true}, -- Buff = {["lucianpassivebuff"] = true},
-        ["masteryi"] = {Slot = _W, Key = HK_W},
-        ["mordekaiser"] = {Slot = _Q, Key = HK_Q},
-        ["nautilus"] = {Slot = _W, Key = HK_W},
-        ["nidalee"] = {Slot = _Q, Key = HK_Q, Name = "Takedown"},
-        ["nasus"] = {Slot = _Q, Key = HK_Q},
-        ["reksai"] = {Slot = _Q, Key = HK_Q, Name = "RekSaiQ"},
-        ["renekton"] = {Slot = _W, Key = HK_W},
-        ["rengar"] = {Slot = _Q, Key = HK_Q},
+        ["Ashe"] = {Slot = _Q, Key = HK_Q},
+        ["Blitzcrank"] = {Slot = _E, Key = HK_E},
+        ["Camille"] = {Slot = _Q, Key = HK_Q},
+        ["Chogath"] = {Slot = _E, Key = HK_E},
+        ["Darius"] = {Slot = _W, Key = HK_W},
+        ["DrMundo"] = {Slot = _E, Key = HK_E},
+        ["Elise"] = {Slot = _W, Key = HK_W, Name = "EliseSpiderW"},
+        ["Fiora"] = {Slot = _E, Key = HK_E},
+        ["Garen"] = {Slot = _Q, Key = HK_Q},
+        ["Graves"] = {Slot = _E, Key = HK_E, OnCast = true, CanCancel = true},
+        ["Gwen"] = {Slot = _E, Key = HK_E, OnCast = true},
+        ["Kassadin"] = {Slot = _W, Key = HK_W},
+        ["Illaoi"] = {Slot = _W, Key = HK_W},
+        ["Jax"] = {Slot = _W, Key = HK_W},
+        ["Jayce"] = {Slot = _W, Key = HK_W, Name = "JayceHyperCharge"},
+        ["Kayle"] = {Slot = _E, Key = HK_E},
+        ["Katarina"] = {Slot = _E, Key = HK_E, CanCancel = true, OnCast = true},
+        ["Kindred"] = {Slot = _Q, Key = HK_Q},
+        ["Leona"] = {Slot = _Q, Key = HK_Q},
+        ['Lucian'] = {Slot = _E, Key = HK_E, OnCast = true, CanCancel = true}, -- Buff = {["lucianpassivebuff"] = true},
+        ["MasterYi"] = {Slot = _W, Key = HK_W},
+        ["Mordekaiser"] = {Slot = _Q, Key = HK_Q},
+        ["Nautilus"] = {Slot = _W, Key = HK_W},
+        ["Nidalee"] = {Slot = _Q, Key = HK_Q, Name = "Takedown"},
+        ["Nasus"] = {Slot = _Q, Key = HK_Q},
+        ["RekSai"] = {Slot = _Q, Key = HK_Q, Name = "RekSaiQ"},
+        ["Renekton"] = {Slot = _W, Key = HK_W},
+        ["Rengar"] = {Slot = _Q, Key = HK_Q},
         --["riven"] = {Slot = _Q, Key = HK_Q},
         -- RIVEN BUFFS ["riven"] = {'riventricleavesoundone', 'riventricleavesoundtwo', 'riventricleavesoundthree'},
-        ["sejuani"] = {Slot = _E, Key = HK_E, ReadyCheck = true, ActiveCheck = true, SpellName = "SejuaniE2"},
-        ["shyvana"] = {Slot = _Q, Key = HK_Q},
-        ["sivir"] = {Slot = _W, Key = HK_W},
-        ["trundle"] = {Slot = _Q, Key = HK_Q},
-        ["vayne"] = {Slot = _Q, Key = HK_Q, Buff = {["vaynetumblebonus"] = true}, CanCancel = true},
-        ["vi"] = {Slot = _E, Key = HK_E},
-        ["volibear"] = {Slot = _Q, Key = HK_Q},
-        ["monkeyking"] = {Slot = _Q, Key = HK_Q},
-        ["xinzhao"] = {Slot = _Q, Key = HK_Q},
-        ["yorick"] = {Slot = _Q, Key = HK_Q},
+        ["Sejuani"] = {Slot = _E, Key = HK_E, ReadyCheck = true, ActiveCheck = true, SpellName = "SejuaniE2"},
+        ["Shyvana"] = {Slot = _Q, Key = HK_Q},
+        ["Sivir"] = {Slot = _W, Key = HK_W},
+        ["Trundle"] = {Slot = _Q, Key = HK_Q},
+        ["Vayne"] = {Slot = _Q, Key = HK_Q, Buff = {["vaynetumblebonus"] = true}, CanCancel = true},
+        ["Vi"] = {Slot = _E, Key = HK_E},
+        ["Volibear"] = {Slot = _Q, Key = HK_Q},
+        ["MonkeyKing"] = {Slot = _Q, Key = HK_Q},
+        ["XinZhao"] = {Slot = _Q, Key = HK_Q},
+        ["Yorick"] = {Slot = _Q, Key = HK_Q},
     },
     WndMsg = function(self, msg, wParam)
         if self.AttackReset == nil or self.AttackResetCanCancel then
@@ -1860,7 +1860,7 @@ Data = {
         return false
     end,
     GetHeroPriority = function(self, name)
-        local p = self.HEROES[name:lower()]
+        local p = self.HEROES[name]
         return p and p[1] or 5
     end,
     GetHeroData = function(self, obj)
@@ -1875,7 +1875,7 @@ Data = {
         if name == nil then
             return {}
         end
-        if self.HEROES[name:lower()] == nil and not name:lower():find("dummy") then
+        if self.HEROES[name] == nil and not name:lower():find("dummy") then
             return {}
         end
         local Team = obj.team
@@ -2872,8 +2872,8 @@ Target = {
         if self.MenuPriorities[name] then
             return self.MenuPriorities[name]:Value()
         end
-        if Data.HEROES[name:lower()] then
-            return Data.HEROES[name:lower()][1]
+        if Data.HEROES[name] then
+            return Data.HEROES[name][1]
         end
         return 1
     end,
@@ -3704,7 +3704,7 @@ Attack = {
     TestCount = 0,
     TestStartTime = 0,
     IsGraves = myHero.charName == 'Graves',
-    SpecialWindup = Data.SpecialWindup[myHero.charName:lower()],
+    SpecialWindup = Data.SpecialWindup[myHero.charName],
     IsJhin = myHero.charName == 'Jhin',
     BaseAttackSpeed = Data.HEROES[Data.HeroName][3],
     BaseWindupTime = nil,
