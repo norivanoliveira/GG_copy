@@ -1,7 +1,28 @@
-local __version__ = 0
-local __changelog__ = {
-	[1] = "first release",
-}
+local __version__ = 2.98
+local __name__ = 'GGOrbwalker'
+
+if _G.SDK then return end
+
+if not FileExist(COMMON_PATH .. "GGCore.lua") then
+    if not _G.DownloadingGGCore then
+        DownloadFileAsync("https://raw.githubusercontent.com/gamsteron/GG/master/GGCore.lua", COMMON_PATH .. "GGCore.lua", function() end)
+        print('GGCore - downloaded! Please 2xf6!')
+        _G.DownloadingGGCore = true
+    end
+    return
+end
+require('GGCore')
+
+GGUpdate:New({
+    version = __version__,
+    scriptName = __name__,
+    scriptPath = SCRIPT_PATH .. __name__ .. ".lua",
+    scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".lua",
+    versionPath = COMMON_PATH .. "GGVersion.lua",
+    versionType = 0,
+})
+
+
 local ChampionInfo, FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, Cursor, Health, Attack, EvadeSupport
 
 local myHero = _G.myHero
@@ -71,6 +92,19 @@ local SORT_LESS_ATTACK = 11
 
 local ItemSlots = {ITEM_1, ITEM_2, ITEM_3, ITEM_4, ITEM_5, ITEM_6, ITEM_7}
 local ItemKeys = {HK_ITEM_1, HK_ITEM_2, HK_ITEM_3, HK_ITEM_4, HK_ITEM_5, HK_ITEM_6, HK_ITEM_7}
+local TryCatch = function(f, catch_f)
+    local status, exception = pcall(f)
+    if not status then
+        catch_f(exception)
+    end
+end
+
+local ExecutionTime = function(f, end_f)
+    local o = os.clock()
+    f()
+    end_f(os.clock()-o)
+end
+
 local IsInRange = function(v1, v2, range)
     v1 = v1.pos or v1
     v2 = v2.pos or v2
@@ -331,6 +365,9 @@ Cached = {
     TurretsSaved = false,
     WardsSaved = false,
     Reset = function(self)
+        for k in pairs(self.Buffs) do
+            self.Buffs[k] = nil
+        end
         if self.HeroesSaved then
             for i = #self.Heroes, 1, -1 do
                 self.Heroes[i] = nil
@@ -354,9 +391,6 @@ Cached = {
                 self.Wards[i] = nil
             end
             self.WardsSaved = false
-        end
-        for k in pairs(self.Buffs) do
-            self.Buffs[k] = nil
         end
     end,
     Buff = function(self, b)
@@ -1345,8 +1379,166 @@ Data = {
             return nil
         end,
     },
-    --11.15.1
-    HEROES = {aatrox = {3, true, 0.651}, ahri = {4, false, 0.668}, akali = {4, true, 0.625}, akshan = {5, false, 0.638}, alistar = {1, true, 0.625}, amumu = {1, true, 0.736}, anivia = {4, false, 0.625}, annie = {4, false, 0.579}, aphelios = {5, false, 0.64}, ashe = {5, false, 0.658}, aurelionsol = {4, false, 0.625}, azir = {4, true, 0.625}, bard = {3, false, 0.625}, blitzcrank = {1, true, 0.625}, brand = {4, false, 0.625}, braum = {1, true, 0.644}, caitlyn = {5, false, 0.681}, camille = {3, true, 0.644}, cassiopeia = {4, false, 0.647}, chogath = {1, true, 0.625}, corki = {5, false, 0.638}, darius = {2, true, 0.625}, diana = {4, true, 0.625}, draven = {5, false, 0.679}, drmundo = {1, true, 0.72}, ekko = {4, true, 0.688}, elise = {3, false, 0.625}, evelynn = {4, true, 0.667}, ezreal = {5, false, 0.625}, fiddlesticks = {3, false, 0.625}, fiora = {3, true, 0.69}, fizz = {4, true, 0.658}, galio = {1, true, 0.625}, gangplank = {4, true, 0.658}, garen = {1, true, 0.625}, gnar = {1, false, 0.625}, gragas = {2, true, 0.675}, graves = {4, false, 0.475}, gwen = {4, true, 0.69}, hecarim = {2, true, 0.67}, heimerdinger = {3, false, 0.625}, illaoi = {3, true, 0.571}, irelia = {3, true, 0.656}, ivern = {1, true, 0.644}, janna = {2, false, 0.625}, jarvaniv = {3, true, 0.658}, jax = {3, true, 0.638}, jayce = {4, false, 0.658}, jhin = {5, false, 0.625}, jinx = {5, false, 0.625}, kaisa = {5, false, 0.644}, kalista = {5, false, 0.694}, karma = {4, false, 0.625}, karthus = {4, false, 0.625}, kassadin = {4, true, 0.64}, katarina = {4, true, 0.658}, kayle = {4, false, 0.625}, kayn = {4, true, 0.669}, kennen = {4, false, 0.625}, khazix = {4, true, 0.668}, kindred = {4, false, 0.625}, kled = {2, true, 0.625}, kogmaw = {5, false, 0.665}, leblanc = {4, false, 0.625}, leesin = {3, true, 0.651}, leona = {1, true, 0.625}, lillia = {4, false, 0.625}, lissandra = {4, false, 0.656}, lucian = {5, false, 0.638}, lulu = {3, false, 0.625}, lux = {4, false, 0.669}, malphite = {1, true, 0.736}, malzahar = {3, false, 0.625}, maokai = {2, true, 0.8}, masteryi = {5, true, 0.679}, missfortune = {5, false, 0.656}, monkeyking = {3, true, 0.711}, mordekaiser = {4, true, 0.625}, morgana = {3, false, 0.625}, nami = {3, false, 0.644}, nasus = {2, true, 0.638}, nautilus = {1, true, 0.706}, neeko = {4, false, 0.625}, nidalee = {4, false, 0.638}, nocturne = {4, true, 0.721}, nunu = {2, true, 0.625}, olaf = {2, true, 0.694}, orianna = {4, false, 0.658}, ornn = {2, true, 0.625}, pantheon = {3, true, 0.644}, poppy = {2, true, 0.625}, pyke = {4, true, 0.667}, qiyana = {4, true, 0.625}, quinn = {5, false, 0.668}, rakan = {3, true, 0.635}, rammus = {1, true, 0.656}, reksai = {2, true, 0.667}, rell = {1, true, 0.55}, renekton = {2, true, 0.665}, rengar = {4, true, 0.667}, riven = {4, true, 0.625}, rumble = {4, true, 0.644}, ryze = {4, false, 0.625}, samira = {5, false, 0.658}, sejuani = {2, true, 0.688}, senna = {5, true, 0.625}, seraphine = {3, false, 0.669}, sett = {2, true, 0.625}, shaco = {4, true, 0.694}, shen = {1, true, 0.751}, shyvana = {2, true, 0.658}, singed = {1, true, 0.613}, sion = {1, true, 0.679}, sivir = {5, false, 0.625}, skarner = {2, true, 0.625}, sona = {3, false, 0.644}, soraka = {3, false, 0.625}, swain = {3, false, 0.625}, sylas = {4, true, 0.645}, syndra = {4, false, 0.625}, tahmkench = {1, true, 0.658}, taliyah = {4, false, 0.625}, talon = {4, true, 0.625}, taric = {1, true, 0.625}, teemo = {4, false, 0.69}, thresh = {1, true, 0.625}, tristana = {5, false, 0.656}, trundle = {2, true, 0.67}, tryndamere = {4, true, 0.67}, twistedfate = {4, false, 0.651}, twitch = {5, false, 0.679}, udyr = {2, true, 0.658}, urgot = {2, true, 0.625}, varus = {5, false, 0.658}, vex = {5, false, 0.669}, vayne = {5, false, 0.658}, veigar = {4, false, 0.625}, velkoz = {4, false, 0.625}, vi = {2, true, 0.644}, viego = {4, true, 0.658}, viktor = {4, false, 0.658}, vladimir = {3, false, 0.658}, volibear = {2, true, 0.625}, warwick = {2, true, 0.638}, xayah = {5, false, 0.625}, xerath = {4, false, 0.625}, xinzhao = {3, true, 0.645}, yasuo = {4, true, 0.697}, yone = {4, true, 0.625}, yorick = {2, true, 0.625}, yuumi = {3, false, 0.625}, zac = {1, true, 0.736}, zed = {4, true, 0.651}, ziggs = {4, false, 0.656}, zilean = {3, false, 0.625}, zoe = {4, false, 0.625}, zyra = {2, false, 0.625}, },
+    --11.23.1
+    HEROES ={
+        Aatrox={3,true,0.651},
+        Ahri={4,false,0.668},
+        Akali={4,true,0.625},
+        Akshan={5,false,0.638},
+        Alistar={1,true,0.625},
+        Amumu={1,true,0.736},
+        Anivia={4,false,0.625},
+        Annie={4,false,0.579},
+        Aphelios={5,false,0.64},
+        Ashe={5,false,0.658},
+        AurelionSol={4,false,0.625},
+        Azir={4,true,0.625},
+        Bard={3,false,0.625},
+        Blitzcrank={1,true,0.625},
+        Brand={4,false,0.625},
+        Braum={1,true,0.644},
+        Caitlyn={5,false,0.681},
+        Camille={3,true,0.644},
+        Cassiopeia={4,false,0.647},
+        Chogath={1,true,0.625},
+        Corki={5,false,0.638},
+        Darius={2,true,0.625},
+        Diana={4,true,0.625},
+        DrMundo={1,true,0.72},
+        Draven={5,false,0.679},
+        Ekko={4,true,0.688},
+        Elise={3,false,0.625},
+        Evelynn={4,true,0.667},
+        Ezreal={5,false,0.625},
+        Fiddlesticks={3,false,0.625},
+        Fiora={3,true,0.69},
+        Fizz={4,true,0.658},
+        Galio={1,true,0.625},
+        Gangplank={4,true,0.658},
+        Garen={1,true,0.625},
+        Gnar={1,false,0.625},
+        Gragas={2,true,0.675},
+        Graves={4,false,0.475},
+        Gwen={4,true,0.69},
+        Hecarim={2,true,0.67},
+        Heimerdinger={3,false,0.625},
+        Illaoi={3,true,0.571},
+        Irelia={3,true,0.656},
+        Ivern={1,true,0.644},
+        Janna={2,false,0.625},
+        JarvanIV={3,true,0.658},
+        Jax={3,true,0.638},
+        Jayce={4,false,0.658},
+        Jhin={5,false,0.625},
+        Jinx={5,false,0.625},
+        Kaisa={5,false,0.644},
+        Kalista={5,false,0.694},
+        Karma={4,false,0.625},
+        Karthus={4,false,0.625},
+        Kassadin={4,true,0.64},
+        Katarina={4,true,0.658},
+        Kayle={4,false,0.625},
+        Kayn={4,true,0.669},
+        Kennen={4,false,0.625},
+        Khazix={4,true,0.668},
+        Kindred={4,false,0.625},
+        Kled={2,true,0.625},
+        KogMaw={5,false,0.665},
+        Leblanc={4,false,0.625},
+        LeeSin={3,true,0.651},
+        Leona={1,true,0.625},
+        Lillia={4,false,0.625},
+        Lissandra={4,false,0.656},
+        Lucian={5,false,0.638},
+        Lulu={3,false,0.625},
+        Lux={4,false,0.669},
+        Malphite={1,true,0.736},
+        Malzahar={3,false,0.625},
+        Maokai={2,true,0.8},
+        MasterYi={5,true,0.679},
+        MissFortune={5,false,0.656},
+        MonkeyKing={3,true,0.711},
+        Mordekaiser={4,true,0.625},
+        Morgana={3,false,0.625},
+        Nami={3,false,0.644},
+        Nasus={2,true,0.638},
+        Nautilus={1,true,0.706},
+        Neeko={4,false,0.625},
+        Nidalee={4,false,0.638},
+        Nocturne={4,true,0.721},
+        Nunu={2,true,0.625},
+        Olaf={2,true,0.694},
+        Orianna={4,false,0.658},
+        Ornn={2,true,0.625},
+        Pantheon={3,true,0.644},
+        Poppy={2,true,0.625},
+        Pyke={4,true,0.667},
+        Qiyana={4,true,0.688},
+        Quinn={5,false,0.668},
+        Rakan={3,true,0.635},
+        Rammus={1,true,0.656},
+        RekSai={2,true,0.667},
+        Rell={1,true,0.55},
+        Renekton={2,true,0.665},
+        Rengar={4,true,0.667},
+        Riven={4,true,0.625},
+        Rumble={4,true,0.644},
+        Ryze={4,false,0.625},
+        Samira={5,false,0.658},
+        Sejuani={2,true,0.688},
+        Senna={5,true,0.625},
+        Seraphine={3,false,0.669},
+        Sett={2,true,0.625},
+        Shaco={4,true,0.694},
+        Shen={1,true,0.751},
+        Shyvana={2,true,0.658},
+        Singed={1,true,0.613},
+        Sion={1,true,0.679},
+        Sivir={5,false,0.625},
+        Skarner={2,true,0.625},
+        Sona={3,false,0.644},
+        Soraka={3,false,0.625},
+        Swain={3,false,0.625},
+        Sylas={4,true,0.645},
+        Syndra={4,false,0.625},
+        TahmKench={1,true,0.658},
+        Taliyah={4,false,0.625},
+        Talon={4,true,0.625},
+        Taric={1,true,0.625},
+        Teemo={4,false,0.69},
+        Thresh={1,true,0.625},
+        Tristana={5,false,0.656},
+        Trundle={2,true,0.67},
+        Tryndamere={4,true,0.67},
+        TwistedFate={4,false,0.651},
+        Twitch={5,false,0.679},
+        Udyr={2,true,0.658},
+        Urgot={2,true,0.625},
+        Varus={5,false,0.658},
+        Vayne={5,false,0.658},
+        Veigar={4,false,0.625},
+        Velkoz={4,false,0.625},
+        Vex={4,false,0.669},
+        Vi={2,true,0.644},
+        Viego={4,true,0.658},
+        Viktor={4,false,0.658},
+        Vladimir={3,false,0.658},
+        Volibear={2,true,0.625},
+        Warwick={2,true,0.638},
+        Xayah={5,false,0.625},
+        Xerath={4,false,0.625},
+        XinZhao={3,true,0.645},
+        Yasuo={4,true,0.697},
+        Yone={4,true,0.625},
+        Yorick={2,true,0.625},
+        Yuumi={3,false,0.625},
+        Zac={1,true,0.736},
+        Zed={4,true,0.651},
+        Ziggs={4,false,0.656},
+        Zilean={3,false,0.625},
+        Zoe={4,false,0.625},
+        Zyra={2,false,0.625},
+    },
     HeroSpecialMelees = {
         ['elise'] = function()
             return myHero.range < 200
@@ -3959,6 +4151,8 @@ _G.SDK =
     ORBWALKER_MODE_FLEE = ORBWALKER_MODE_FLEE,
 }
 
+--[[tickTest = 2
+drawTest = 2]]
 Callback.Add('Load', function()
     Object:OnLoad()
     local ticks = SDK.OnTick
@@ -3970,6 +4164,10 @@ Callback.Add('Load', function()
             Buff:Print(target)
         end
         Buff:Print(myHero)]]
+        --[[if drawTest ~= 2 then
+            print("DRAW")
+        end
+        drawTest = 1]]
         FlashHelper:OnTick()
         Cached:Reset()
         Cursor:OnTick()
@@ -3979,37 +4177,29 @@ Callback.Add('Load', function()
         for i = 1, #ticks do
             ticks[i]()
         end
-        if not Menu.Main.Drawings.Enabled:Value() then
-            return
+        if Menu.Main.Drawings.Enabled:Value() then
+            Target:OnDraw()
+            Cursor:OnDraw()
+            Orbwalker:OnDraw()
+            Health:OnDraw()
+            for i = 1, #draws do
+                draws[i]()
+            end
         end
-        Target:OnDraw()
-        Cursor:OnDraw()
-        Orbwalker:OnDraw()
-        Health:OnDraw()
-        for i = 1, #draws do
-            draws[i]()
-        end
+        --drawTest = 2
     end)
     Callback.Add("Tick", function()
+        --[[if tickTest ~= 2 then
+            print("TICK")
+        end
+        tickTest = 1]]
         Cached:Reset()
         ChampionInfo:OnTick()
         SummonerSpell:OnTick()
         Item:OnTick()
         Target:OnTick()
         Health:OnTick()
-        --[[if not Updated then
-            local ok = true
-            for i = 1, #GGUpdate.Callbacks do
-                local updater = GGUpdate.Callbacks[i]
-                updater:OnTick()
-                if updater.Step > 0 then
-                    ok = false
-                end
-            end
-            if ok then
-                Updated = true
-            end
-        end]]
+        --tickTest = 2
     end)
     Callback.Add("WndMsg", function(msg, wParam)
         Data:WndMsg(msg, wParam)
@@ -4024,97 +4214,5 @@ Callback.Add('Load', function()
         _G.Orbwalker.Drawings.Enabled:Value(false)
     end
 end)
-_G.GGUpdate = {
-    Callbacks = {},
-    DownloadFile = function(self, url, path)
-        DownloadFileAsync(url, path, function() end)
-    end,
-    Trim = function(self, s)
-        local from = s:match"^%s*()"
-        return from > #s and "" or s:match(".*%S", from)
-    end,
-    ReadFile = function(self, path)
-        local result = {}
-        local file = io.open(path, "r")
-        if file then
-            for line in file:lines() do
-                local str = self:Trim(line)
-                if #str > 0 then
-                    table.insert(result, str)
-                end
-            end
-            file:close()
-        end
-        return result
-    end,
-    New = function(self, args)
-        local updater = {
-            Step = 1,
-            Version = type(args.version) == 'number' and args.version or tonumber(args.version),
-            VersionUrl = args.versionUrl,
-            VersionPath = args.versionPath,
-            ScriptUrl = args.scriptUrl,
-            ScriptPath = args.scriptPath,
-            ScriptName = args.scriptName,
-            VersionTimer = GetTickCount(),
-            DownloadVersion = function(self)
-                if not FileExist(self.ScriptPath) then
-                    self.Step = 4
-                    GGUpdate:DownloadFile(self.ScriptUrl, self.ScriptPath)
-                    self.ScriptTimer = GetTickCount()
-                    return
-                end
-                GGUpdate:DownloadFile(self.VersionUrl, self.VersionPath)
-            end,
-            OnTick = function(self)
-                if self.Step == 0 then
-                    return
-                end
-                if self.Step == 1 then
-                    if GetTickCount() > self.VersionTimer + 1 then
-                        local response = GGUpdate:ReadFile(self.VersionPath)
-                        if #response > 0 and tonumber(response[1]) > self.Version then
-                            self.Step = 2
-                            self.NewVersion = response[1]
-                            GGUpdate:DownloadFile(self.ScriptUrl, self.ScriptPath)
-                            self.ScriptTimer = GetTickCount()
-                        else
-                            self.Step = 3
-                        end
-                    end
-                end
-                if self.Step == 2 then
-                    if GetTickCount() > self.ScriptTimer + 1 then
-                        self.Step = 0
-                        print(self.ScriptName .. ' - new update found! [' .. tostring(self.Version) .. ' -> ' .. self.NewVersion .. '] Please 2xf6!')
-                    end
-                    return
-                end
-                if self.Step == 3 then
-                    self.Step = 0
-                    return
-                end
-                if self.Step == 4 then
-                    if GetTickCount() > self.ScriptTimer + 1 then
-                        self.Step = 0
-                        print(self.ScriptName .. ' - downloaded! Please 2xf6!')
-                    end
-                end
-            end,
-        }
-        --updater:DownloadVersion()
-        table.insert(self.Callbacks, updater)
-    end
-}
-
---[[GGUpdate:New({
-    version = Version,
-    scriptName = Name,
-    scriptPath = SCRIPT_PATH .. Name .. ".lua",
-    scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".lua",
-    versionPath = SCRIPT_PATH .. Name .. ".version",
-    versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version"
-})]]
-
 
 --LLOMVPF
