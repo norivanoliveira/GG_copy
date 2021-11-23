@@ -1540,19 +1540,19 @@ Data = {
         Zyra={2,false,0.625},
     },
     HeroSpecialMelees = {
-        ['elise'] = function()
+        ['Elise'] = function()
             return myHero.range < 200
         end,
-        ['gnar'] = function()
+        ['Gnar'] = function()
             return myHero.range < 200
         end,
-        ['jayce'] = function()
+        ['Jayce'] = function()
             return myHero.range < 200
         end,
-        ['kayle'] = function()
+        ['Kayle'] = function()
             return myHero.range < 200
         end,
-        ['nidalee'] = function()
+        ['Nidalee'] = function()
             return myHero.range < 200
         end,
     },
@@ -1598,7 +1598,7 @@ Data = {
         ["HA_OrderMinionSuper"] = 170,
     },
     ExtraAttackRanges = {
-        ["caitlyn"] = function(target)
+        ["Caitlyn"] = function(target)
             if target and Buff:HasBuff(target, "caitlynyordletrapinternal") then
                 return 650
             end
