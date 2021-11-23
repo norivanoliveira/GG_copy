@@ -1,1 +1,1 @@
-return{GGAIO=1.98,GGOrbwalker=2.98,GGPrediction=1.52,GGLibrary=1,}
+return{GGAIO=1.98,GGOrbwalker=2.98,GGPrediction=1.52,GGCore=1,GGData=1,}
