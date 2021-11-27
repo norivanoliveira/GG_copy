@@ -1,4 +1,4 @@
-local __version__ = 2.98
+local __version__ = 2.99
 local __name__ = 'GGOrbwalker'
 
 if _G.SDK then return end
@@ -12,6 +12,16 @@ if not FileExist(COMMON_PATH .. "GGCore.lua") then
     return
 end
 require('GGCore')
+
+if not FileExist(COMMON_PATH .. "GGData.lua") then
+    if not _G.DownloadingGGData then
+        DownloadFileAsync("https://raw.githubusercontent.com/gamsteron/GG/master/GGData.lua", COMMON_PATH .. "GGData.lua", function() end)
+        print('GGData - downloaded! Please 2xf6!')
+        _G.DownloadingGGData = true
+    end
+    return
+end
+require('GGData')
 
 GGUpdate:New({
     version = __version__,
