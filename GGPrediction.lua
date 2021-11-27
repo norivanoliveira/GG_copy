@@ -57,7 +57,7 @@ local math_acos = assert(math.acos)
 local table_remove = assert(table.remove)
 local table_insert = assert(table.insert)
 local Game, Vector, Draw, Callback = _G.Game, _G.Vector, _G.Draw, _G.Callback
-local Settings, Immobile, Math, Path, UnitData, ObjectManager, Collision
+local Settings, Immobile, Math, Path, UnitData, ObjectManager
 local COLLISION_MINION = 0
 local COLLISION_ALLYHERO = 1
 local COLLISION_ENEMYHERO = 2
@@ -633,9 +633,7 @@ function ObjectManager:GetAllyHeroes()
 	return _AllyHeroes
 end
 
-Collision = {}
-
-function Collision:GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
+local function GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
 	source = Math:Extended(source, Math:Normalized(source, castPos), 75)
 	castPos = Math:Extended(castPos, Math:Normalized(castPos, source), 75)
 	local isWall, collisionObjects, collisionCount = false, {}, 0
@@ -831,7 +829,7 @@ function SpellPrediction:HighHitChance(spelltime, attacktime)
 end
 
 function SpellPrediction:IsCollision()
-	local isWall, collisionObjects, collisionCount = Collision:GetCollision(
+	local isWall, collisionObjects, collisionCount = GetCollision(
 		self.Source,
 		self.CastPosition,
 		self.Speed,
@@ -997,7 +995,7 @@ function GGPrediction:GetPrediction(target, source, speed, delay, radius)
 end
 
 function GGPrediction:GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
-	return Collision:GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
+	return GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
 end
 
 function GGPrediction:SpellPrediction(args)
