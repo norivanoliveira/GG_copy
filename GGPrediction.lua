@@ -1,1 +1,912 @@
-local b=1.52 local c="GGPrediction"if _G.GGPrediction then return end if not FileExist(COMMON_PATH.."GGCore.lua")then if not _G.DownloadingGGCore then DownloadFileAsync("https://raw.githubusercontent.com/gamsteron/GG/master/GGCore.lua",COMMON_PATH.."GGCore.lua",function()end)print('GGCore - downloaded! Please 2xf6!')_G.DownloadingGGCore=true end return end require('GGCore')GGUpdate:New({version=b,scriptName=c,scriptPath=COMMON_PATH..c..".lua",scriptUrl="https://raw.githubusercontent.com/gamsteron/GG/master/"..c..".lua",versionPath=COMMON_PATH.."GGVersion.lua",versionType=0,})_G.GGPrediction=true _G.DownloadingGGPrediction=true local d=math.huge local e=math.pi local f=assert(math.sqrt)local g=assert(math.abs)local h=assert(math.min)local i=assert(math.max)local j=assert(math.pow)local k=assert(math.atan)local l=assert(math.acos)local m=assert(table.remove)local n=assert(table.insert)local o,p,q,r=_G.Game,_G.Vector,_G.Draw,_G.Callback local s,t,u,v,w,x,y,z local A=0 local B=1 local C=2 local D=3 local E=0 local F=1 local G=2 local H=3 local I=4 local J=0 local K=1 local L=2 local M=MenuElement({name="GG Prediction",id="GGPrediction",type=_G.MENU})s={MaxRange=M:MenuElement({id="PredMaxRange"..myHero.charName,name="Pred Max Range %",value=100,min=70,max=100,step=1}),Latency=M:MenuElement({id="Latency",name="Ping/Latency",value=50,min=0,max=200,step=5}),ExtraDelay=M:MenuElement({id="ExtraDelay",name="Extra Delay",value=60,min=0,max=100,step=5}),VersionA=M:MenuElement({name='',type=_G.SPACE,id='VersionSpaceA'}),VersionB=M:MenuElement({name='Version  '..b,type=_G.SPACE,id='VersionSpaceB'}),}function s:GetMaxRange()local N=self.MaxRange:Value()*0.01 return N end function s:GetLatency()local N=self.Latency:Value()*0.001 return N end function s:GetExtraDelay()local N=self.ExtraDelay:Value()*0.001 return N end t={IMMOBILE_TYPES={[5]=true,[8]=true,[12]=true,[22]=true,[23]=true,[25]=true,[30]=true,},}function t:GetDuration(N)local O=0 local P=0 local Q=0 local R=0 if N.pathing.hasMovePath then return Q,O,P,R end local S=SDK.BuffManager:GetBuffs(N)for U=1,#S do local V=S[U]local W=V.duration if W>0 then if W>Q and self.IMMOBILE_TYPES[V.type]then Q=W elseif V.type==31 then R=W end end end local T=N.activeSpell if T and T.valid then if T.isAutoAttack then P=T.castEndTime elseif T.windup>0.1 then O=T.castEndTime end end return Q,O,P,R end u={}function u:Get2D(N)N=N.pos==nil and N or N.pos return{x=N.x,z=N.z==nil and N.y or N.z}end function u:Get3D(N)local O=p(N.x,0,N.z)return O end function u:GetDistance(N,O)local P=O.x-N.x local Q=O.z-N.z return f(P*P+Q*Q)end function u:IsInRange(N,O,P)local Q=N.x-O.x local R=N.z-O.z if(Q*Q+R*R<=P*P)then return true end return false end function u:VectorsEqual(N,O,P)P=P or 5 if(self:GetDistance(N,O)<P)then return true end return false end function u:Normalized(N,O)local P=N.x-O.x local Q=N.z-O.z local R=f(P*P+Q*Q)local S=nil if(R>0)then local T=1.0/R S={x=(P*T),z=(Q*T)}end return S end function u:Extended(N,O,P)if(O==nil)then return N end return{x=N.x+O.x*P,z=N.z+O.z*P}end function u:Perpendicular(N)if(N==nil)then return nil end return{x=-N.z,z=N.x}end function u:Intersection(N,O,P,Q)local R={Intersects=false,Point={x=0,z=0}}local S=N.z-P.z local T=Q.x-P.x local U=N.x-P.x local V=Q.z-P.z local W=O.x-N.x local X=O.z-N.z local Y=W*V-X*T local Z=S*T-U*V if(Y==0)then if(Z==0)then if N.x>=P.x and N.x<=Q.x then return{Intersects=true,Point=N}end if P.x>=N.x and P.x<=O.x then return{Intersects=true,Point=P}end return R end return R end local ab=Z/Y if(ab<0 or ab>1)then return R end local bb=(S*W-U*X)/Y if(bb<0 or bb>1)then return R end local cb={x=N.x+ab*W,z=N.z+ab*X}return{Intersects=true,Point=cb}end function u:ClosestPointOnLineSegment(N,O,P)local Q=N.x local R=N.z local S=O.x local T=O.z local U=P.x local V=P.z local W=U-S local X=V-T local Y=((Q-S)*W+(R-T)*X)/(W*W+X*X)if(Y<0)then return O,false end if(Y>1)then return P,false end return{x=S+Y*W,z=T+Y*X},true end function u:Intercept(N,O,P,Q,R)local S=P.x-O.x local T=P.z-O.z local U=f(S*S+T*T)local V=O.x-N.x local W=O.z-N.z local X=(S/U)*R local Y=(T/U)*R local Z=X*X+Y*Y-Q*Q local ab=2*(X*V+Y*W)local bb=V*V+W*W local cb if(g(Z)<1e-6)then if(g(ab)<1e-6)then if(g(bb)<1e-6)then cb={0,0}end else cb={-bb/ab,-bb/ab}end else local eb=ab*ab-4*Z*bb if(eb>=0)then eb=f(eb)local fb=2*Z cb={(-ab-eb)/fb,(-ab+eb)/fb}end end local db if(cb)then local eb=cb[1]local fb=cb[2]local gb=h(eb,fb)if(gb<0)then gb=i(eb,fb)end if(gb>0)then db=gb end end return db end function u:Polar(N)local O=N.x local P=N.z if(O==0)then if(P>0)then return 90 end if(P<0)then return 270 end return 0 end local Q=k(P/O)*(180.0/e)if(O<0)then Q=Q+180 end if(Q<0)then Q=Q+360 end return Q end function u:AngleBetween(N,O)if(N==nil or O==nil)then return nil end local P=self:Polar(N)-self:Polar(O)if(P<0)then P=P+360 end if(P>180)then P=360-P end return P end function u:FindAngle(N,O,P)local Q=j(O.x-N.x,2)+j(O.z-N.z,2)local R=j(O.x-P.x,2)+j(O.z-P.z,2)local S=j(P.x-N.x,2)+j(P.z-N.z,2)local T=l((R+Q-S)/f(4*R*Q))*(180/e)if(T>90)then T=180-T end return T end function u:CircleCircleIntersection(N,O,P,Q)local R={}local S=self:GetDistance(N,O)if S>P+Q or S<=g(P-Q)then return R end local T=(P*P-Q*Q+S*S)/(2*S)local U=f(P*P-T*T)local V=self:Normalized(O,N)local W=self:Extended(N,V,T)local X=self:Perpendicular(V)n(R,self:Extended(W,X,U))n(R,self:Extended(W,X,-U))return R end v={}function v:GetLenght(N)local O=0 for P=1,#N-1 do O=O+u:GetDistance(N[P],N[P+1])end return O end function v:CutPath(N,O)local P={}if O<=0 then return N end for Q=1,#N-1 do local R,S=N[Q],N[Q+1]local T=u:GetDistance(R,S)if T>O then n(P,u:Extended(R,u:Normalized(S,R),O))for U=Q+1,#N do n(P,N[U])end break end O=O-T end return#P>0 and P or{N[#N]}end function v:ReversePath(N)local O={}for P=#N,1,-1 do n(O,N[P])end return O end function v:GetPath(N)local O={u:Get2D(N.pos)}local P=N.pathing if P then if P.isDashing then local Q=P.endPos if Q and Q.x then n(O,u:Get2D(Q))else end else local Q=P.pathIndex local R=P.pathCount if Q and R and Q>=0 and R<=20 then for S=Q,R do local T=N:GetPath(S)if T and T.x then n(O,u:Get2D(T))else end end else end end end return O end function v:GetPredictedPath(N,O,P,Q)local R={}local S=0 for T=1,#Q-1 do local U=Q[T]n(R,U)local V=Q[T+1]local W=u:GetDistance(U,V)/P local X=u:Normalized(V,U)U=u:Extended(U,X,-(P*S))local Y=u:Intercept(N,U,V,O,P)if(Y and Y>=S and Y<=S+W)then n(R,u:Extended(U,X,Y*P))return R,Y end S=S+W end return nil,-1 end w={Visible={},Waypoints={},}function w:OnVisible(N,O)if(self.Visible[N]==nil)then self.Visible[N]={visible=O,visibleTick=GetTickCount(),invisibleTick=GetTickCount()}end if O then if not self.Visible[N].visible then self.Visible[N].visible=true self.Visible[N].visibleTick=GetTickCount()end else if self.Visible[N].visible then self.Visible[N].visible=false self.Visible[N].invisibleTick=GetTickCount()end end end function w:OnWaypoint(N,O,P,Q,R)local S=GetTickCount()if self.Waypoints[N]==nil then self.Waypoints[N]={moving=P,dashing=Q,path=O,tick=S,stoptick=S,pos=R}end if P then if not u:VectorsEqual(self.Waypoints[N].pos,R,50)then self.Waypoints[N].tick=S end self.Waypoints[N].pos=R self.Waypoints[N].dashing=Q elseif self.Waypoints[N].moving then self.Waypoints[N].stoptick=GetTickCount()end self.Waypoints[N].path=O self.Waypoints[N].moving=P end function w:OnTick()local N,O,P,Q,R,S,T for U,V in ipairs(x:GetHeroes())do N=V.networkID O=V.visible self:OnVisible(N,O)if O then Q=V.pathing if Q then R=Q.hasMovePath S=Q.isDashing T=u:Get2D(Q.endPos)P=v:GetPath(V)self:OnWaypoint(N,P,R,S,T)end end end end function w:OnPrediction(N)local O=N.networkID local P=N.visible self:OnVisible(O,P)if P then local Q=N.pathing.hasMovePath local R=N.pathing.isDashing local S=u:Get2D(N.pathing.endPos)self:OnWaypoint(O,v:GetPath(N),Q,R,S)end end r.Add('Load',function()r.Add('Draw',function()w:OnTick()end)end)x={}function x:IsValid(N)if N and N.valid and N.visible and not N.dead and N.isTargetable then return true end return false end function x:GetHeroes()local N={}local O,P P=o.HeroCount()for Q=1,P do O=o.Hero(Q)if O and O.valid and not O.dead then n(N,O)end end return N end function x:GetEnemyHeroes()local N={}local O=o.HeroCount()for P=1,O do local Q=o.Hero(P)if self:IsValid(Q)and Q.isEnemy then n(N,Q)end end return N end function x:GetAllyHeroes()local N={}local O=o.HeroCount()for P=1,O do local Q=o.Hero(P)if self:IsValid(Q)and Q.isAlly then n(N,Q)end end return N end y={}function y:GetCollision(N,O,P,Q,R,S,T)N=u:Extended(N,u:Normalized(N,O),75)O=u:Extended(O,u:Normalized(O,N),75)local U,V,W=false,{},0 local X={}for Y,Z in pairs(S)do if(Z==A)then for ab=1,o.MinionCount()do local bb=o.Minion(ab)if(bb.networkID~=T and x:IsValid(bb)and bb.isEnemy and u:GetDistance(N,u:Get2D(bb.pos))<2000)then n(X,bb)end end elseif(Z==B)then for ab,bb in pairs(x:GetAllyHeroes())do if(bb.networkID~=T and u:GetDistance(N,u:Get2D(bb.pos))<2000)then n(X,bb)end end elseif(Z==C)then for ab,bb in pairs(x:GetEnemyHeroes())do if(bb.networkID~=T and u:GetDistance(N,u:Get2D(bb.pos))<2000)then n(X,bb)end end end end for Y,Z in pairs(X)do local ab=false local bb=u:Get2D(Z.pos)local cb,db=u:ClosestPointOnLineSegment(bb,N,O)if db and u:IsInRange(bb,cb,R+15+Z.boundingRadius)then ab=true elseif Z.pathing.hasMovePath then bb=u:Get2D(Z:GetPrediction(P,Q))cb,db=u:ClosestPointOnLineSegment(bb,N,O)if db and u:IsInRange(bb,cb,R+15+Z.boundingRadius)then ab=true end end if ab then n(V,Z)W=W+1 end end return U,V,W end z={}function z:GetPrediction(N,O,P,Q,R,S)local T,U=N.networkID,N.ms if not S then local bb=N.pathing.hasMovePath if not bb then return u:Get2D(N.pos)end local cb=v:GetPath(N)if#cb<=1 then return u:Get2D(N.pos)end local db=Q+s:GetLatency()+s:GetExtraDelay()local eb=v:CutPath(cb,U*db)if P==d then return eb[1]end local fb,gb=v:GetPredictedPath(O,P,U,cb)if fb then return fb[#fb]end return cb[#cb]end w:OnPrediction(N)local V=w.Visible[T]if V.visible then if GetTickCount()<V.visibleTick+0.5 then return nil,nil,-1 end elseif GetTickCount()>V.invisibleTick+1 then return nil,nil,-1 end local W=w.Waypoints[T]if W.moving and#W.path<=1 then return nil,nil,-1 end if not W.moving then local bb=u:Get2D(N.pos)return bb,bb,Q+u:GetDistance(bb,O)/P end if W.dashing then local bb=W.pos return bb,bb,Q+u:GetDistance(bb,O)/P end local X=Q+s:GetLatency()+s:GetExtraDelay()if P==d then local bb=v:CutPath(W.path,U*X)local cb=v:CutPath(W.path,(U*X)-R)return bb[1],cb[1],Q end local Y,Z=v:GetPredictedPath(O,P,U,v:CutPath(W.path,U*X))if Y then local bb=v:CutPath(v:ReversePath(Y),R)return Y[#Y],bb[1],Q+u:GetDistance(Y[#Y],O)/P end local ab=W.path[#W.path]return ab,ab,Q+u:GetDistance(ab,O)/P end function z:SpellPrediction(N)local O={}do O.Collision,O.MaxCollision,O.CollisionTypes=false,0,{0,3}if(N.Collision~=nil)then O.Collision=N.Collision end if(N.MaxCollision~=nil)then O.MaxCollision=N.MaxCollision end if(N.CollisionTypes~=nil)then O.CollisionTypes=N.CollisionTypes end O.Type,O.Speed,O.Range,O.Delay,O.Radius,O.UseBoundingRadius=J,d,d,0,1,false if(N.Type~=nil)then O.Type=N.Type end if(N.Speed~=nil)then O.Speed=N.Speed end if(N.Range~=nil)then O.Range=N.Range end if(N.Delay~=nil)then O.Delay=N.Delay end if(N.Radius~=nil)then O.Radius=N.Radius end if(N.UseBoundingRadius or(N.UseBoundingRadius==nil and O.Type==J))then O.UseBoundingRadius=true end end function O:ResetOutput()self.HitChance=0 self.CastPosition=nil self.UnitPosition=nil self.TimeToHit=0 self.CollionableObjects={}end function O:GetOutput()self.TargetIsHero=self.Target.type==Obj_AI_Hero self.RealRadius=self.UseBoundingRadius and self.Radius+self.Target.boundingRadius or self.Radius self.UnitPosition,self.CastPosition,self.TimeToHit=z:GetPrediction(self.Target,self.Source,self.Speed,self.Delay,self.RealRadius,self.TargetIsHero)end function O:HighHitChance(P,Q)local R,S,T,U=w.Waypoints[self.Target.networkID],self.Target.pathing,GetTickCount(),o.Timer()if not self.Target.visible then return false end if R.moving then if T<R.tick+150 then return true end if T>R.tick+1000 and v:GetLenght(R.path)>1000 then return true end return false end if T-R.stoptick<50 then return true end if T-R.stoptick>1000 then return true end if Q-0.05>U then return true end if P-0.05>U then return true end return false end function O:IsCollision()local P,Q,R=y:GetCollision(self.Source,self.CastPosition,self.Speed,self.Delay,self.Radius,self.CollisionTypes,self.Target.networkID)if P or R>self.MaxCollision then self.CollionableObjects=Q return true end return false end function O:IsInRange()self.MyHeroPos=u:Get2D(myHero.pos)if u:IsInRange(self.Type==K and self.CastPosition or self.UnitPosition,self.MyHeroPos,self.Range)then self.IsOnScreen=u:Get3D(self.CastPosition):To2D().onScreen if not self.IsOnScreen and self.Type==K then return false end return true end return false end function O:CanHit(P)P=P or G if self.UnitPosition==nil or self.CastPosition==nil then self.HitChance=0 return false end self.HitChance=G if self.TargetIsHero then local R,S,T,U=t:GetDuration(self.Target)if U~=0 then self.HitChance=0 return false end if R>0 then if self.TimeToHit+0.02<R+self.RealRadius/self.Target.ms then self.HitChance=I end end if self.HitChance==G and self:HighHitChance(S,T)then self.HitChance=H end end if self.HitChance<P then return false end if self.Range~=d and not self:IsInRange()then return false end if self.Collision and self:IsCollision()then return false end if not u:VectorsEqual(self.PosTo,u:Get2D(self.Target.posTo),50)then return false end if os.clock()-self.StartTime>0.005 then return false end if not self.IsOnScreen then self.CastPosition=u:Extended(self.MyHeroPos,u:Normalized(self.CastPosition,self.MyHeroPos),800)end local Q=self.Target.pos.y self.CastPosition.y=Q self.UnitPosition.y=Q return true end function O:GetPrediction(P,Q)self.Target=P self.Source=u:Get2D(Q)self.PosTo=u:Get2D(P.posTo)self.StartTime=os.clock()self:ResetOutput()self:GetOutput()end function O:GetAOEPrediction(P)local Q={}local R=x:GetEnemyHeroes()for U=1,#R do local V=R[U]if not SDK.ObjectManager:IsHeroImmortal(V)then self:GetPrediction(V,P)if self:CanHit(G)then n(Q,{V,self.HitChance,self.TimeToHit,self.CastPosition,self.UnitPosition})end end end local S={}local T=self.Type==K for U=1,#Q do local V=Q[U]local W=1 local X=0 local Y=V[4]for Z=1,#Q do if U~=Z then local ab local bb=Q[Z][5]if T then ab=u:GetDistance(Y,bb)else local cb,db=u:ClosestPointOnLineSegment(bb,self.Source,Y)ab=u:GetDistance(cb,bb)end if ab<self.RealRadius then W=W+1 X=X+ab end end end n(S,{Count=W,Distance=X,Unit=V[1],HitChance=V[2],TimeToHit=V[3],CastPosition=Y})end return S end return O end _G.GGPrediction={COLLISION_MINION=A,COLLISION_ALLYHERO=B,COLLISION_ENEMYHERO=C,COLLISION_YASUOWALL=D,HITCHANCE_IMPOSSIBLE=E,HITCHANCE_COLLISION=F,HITCHANCE_NORMAL=G,HITCHANCE_HIGH=H,HITCHANCE_IMMOBILE=I,SPELLTYPE_LINE=J,SPELLTYPE_CIRCLE=K,SPELLTYPE_CONE=L,}function GGPrediction:GetPrediction(N,O,P,Q,R)return z:GetPrediction(N,u:Get2D(O),P,Q,R,N.type==Obj_AI_Hero)end function GGPrediction:GetCollision(N,O,P,Q,R,S,T)return y:GetCollision(N,O,P,Q,R,S,T)end function GGPrediction:SpellPrediction(N)return z:SpellPrediction(N)end function GGPrediction:ClosestPointOnLineSegment(N,O,P)return u:ClosestPointOnLineSegment(N,O,P)end function GGPrediction:IsInRange(N,O,P)return u:IsInRange(N,O,P)end function GGPrediction:GetImmobileDuration(N)return t:GetDuration(N)end function GGPrediction:FindAngle(N,O,P)return u:FindAngle(N,O,P)end function GGPrediction:GetDistance(N,O)return u:GetDistance(N,O)end function GGPrediction:IsInRange(N,O,P)return u:IsInRange(N,O,P)end function GGPrediction:CircleCircleIntersection(N,O,P,Q)return u:CircleCircleIntersection(N,O,P,Q)end
+local __version__ = 1.53
+local __name__ = "GGPrediction"
+
+if _G.GGPrediction then return end
+
+if not FileExist(COMMON_PATH .. "GGCore.lua") then
+    if not _G.DownloadingGGCore then
+        DownloadFileAsync("https://raw.githubusercontent.com/gamsteron/GG/master/GGCore.lua", COMMON_PATH .. "GGCore.lua", function() end)
+        print('GGCore - downloaded! Please 2xf6!')
+        _G.DownloadingGGCore = true
+    end
+    return
+end
+require('GGCore')
+
+if not FileExist(COMMON_PATH .. "GGData.lua") then
+    if not _G.DownloadingGGData then
+        DownloadFileAsync("https://raw.githubusercontent.com/gamsteron/GG/master/GGData.lua", COMMON_PATH .. "GGData.lua", function() end)
+        print('GGData - downloaded! Please 2xf6!')
+        _G.DownloadingGGData = true
+    end
+    return
+end
+require('GGData')
+
+GGUpdate:New({
+    version = __version__,
+    scriptName = __name__,
+    scriptPath = COMMON_PATH .. __name__ .. ".lua",
+    scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".lua",
+    versionPath = COMMON_PATH .. "GGVersion.lua",
+    versionType = 0,
+})
+
+_G.GGPrediction = true
+_G.DownloadingGGPrediction = true
+local math_huge = math.huge
+local math_pi = math.pi
+local math_sqrt = assert(math.sqrt)
+local math_abs = assert(math.abs)
+local math_min = assert(math.min)
+local math_max = assert(math.max)
+local math_pow = assert(math.pow)
+local math_atan = assert(math.atan)
+local math_acos = assert(math.acos)
+local table_remove = assert(table.remove)
+local table_insert = assert(table.insert)
+local Game, Vector, Draw, Callback = _G.Game, _G.Vector, _G.Draw, _G.Callback
+local Menu, Immobile, Math, Path, UnitData, ObjectManager, Collision, Prediction
+local COLLISION_MINION = 0
+local COLLISION_ALLYHERO = 1
+local COLLISION_ENEMYHERO = 2
+local COLLISION_YASUOWALL = 3
+local HITCHANCE_IMPOSSIBLE = 0
+local HITCHANCE_COLLISION = 1
+local HITCHANCE_NORMAL = 2
+local HITCHANCE_HIGH = 3
+local HITCHANCE_IMMOBILE = 4
+local SPELLTYPE_LINE = 0
+local SPELLTYPE_CIRCLE = 1
+local SPELLTYPE_CONE = 2
+local __menu = MenuElement({name = "GG Prediction", id = "GGPrediction", type = _G.MENU})
+Menu =
+{
+    MaxRange = __menu:MenuElement({id = "PredMaxRange" .. myHero.charName, name = "Pred Max Range %", value = 100, min = 70, max = 100, step = 1}),
+    Latency = __menu:MenuElement({id = "Latency", name = "Ping/Latency", value = 50, min = 0, max = 200, step = 5}),
+    ExtraDelay = __menu:MenuElement({id = "ExtraDelay", name = "Extra Delay", value = 60, min = 0, max = 100, step = 5}),
+    VersionA = __menu:MenuElement({name = '', type = _G.SPACE, id = 'VersionSpaceA'}),
+    VersionB = __menu:MenuElement({name = 'Version  ' .. __version__, type = _G.SPACE, id = 'VersionSpaceB'}),
+}
+function Menu:GetMaxRange()
+    local result = self.MaxRange:Value() * 0.01
+    return result
+end
+function Menu:GetLatency()
+    local result = self.Latency:Value() * 0.001
+    return result
+end
+function Menu:GetExtraDelay()
+    local result = self.ExtraDelay:Value() * 0.001
+    return result
+end
+--[[
+enum class BuffType {
+    Internal = 0,
+    Aura = 1,
+    CombatEnchancer = 2,
+    CombatDehancer = 3,
+    SpellShield = 4,
+    Stun = 5,
+    Invisibility = 6,
+    Silence = 7,
+    Taunt = 8,
+    Berserk = 9,
+    Polymorph = 10,
+    Slow = 11,
+    Snare = 12,
+    Damage = 13,
+    Heal = 14,
+    Haste = 15,
+    SpellImmunity = 16,
+    PhysicalImmunity = 17,
+    Invulnerability = 18,
+    AttackSpeedSlow = 19,
+    NearSight = 20,
+    Fear = 22,
+    Charm = 23,
+    Poison = 24,
+    Suppression = 25,
+    Blind = 26,
+    Counter = 27,
+    Currency = 21,
+    Shred = 28,
+    Flee = 29,
+    Knockup = 30,
+    Knockback = 31,
+    Disarm = 32,
+    Grounded = 33,
+    Drowsy = 34,
+    Asleep = 35,
+    Obscured = 36,
+    ClickProofToEnemies = 37,
+    Unkillable = 38
+};
+--]]
+
+Immobile =
+{
+    IMMOBILE_TYPES =
+    {
+        [5] = true,
+        [8] = true,
+        [12] = true,
+        [22] = true,
+        [23] = true,
+        [25] = true,
+        [30] = true,
+        --[35] = true -> asleep zoe e, new move clicks??
+    },
+}
+function Immobile:GetDuration(unit)
+    local SpellCastTime = 0
+    local AttackCastTime = 0
+    local ImmobileDuration = 0
+    local KnockDuration = 0
+    if unit.pathing.hasMovePath then
+        return ImmobileDuration, SpellCastTime, AttackCastTime, KnockDuration
+    end
+    local buffs = SDK.BuffManager:GetBuffs(unit)
+    for i = 1, #buffs do
+        local buff = buffs[i]
+        local duration = buff.duration
+        if duration > 0 then
+            if duration > ImmobileDuration and self.IMMOBILE_TYPES[buff.type] then
+                ImmobileDuration = duration
+            elseif buff.type == 31 then
+                KnockDuration = duration
+            end
+        end
+    end
+    local spell = unit.activeSpell
+    if spell and spell.valid then
+        if spell.isAutoAttack then
+            AttackCastTime = spell.castEndTime
+        elseif spell.windup > 0.1 then
+            SpellCastTime = spell.castEndTime
+        end
+    end
+    return ImmobileDuration, SpellCastTime, AttackCastTime, KnockDuration
+end
+
+Math = {}
+function Math:Get2D(p)
+    p = p.pos == nil and p or p.pos
+    return {x = p.x, z = p.z == nil and p.y or p.z}
+end
+function Math:Get3D(p)
+    local result = Vector(p.x, 0, p.z)
+    return result
+end
+function Math:GetDistance(p1, p2)
+    local dx = p2.x - p1.x
+    local dz = p2.z - p1.z
+    return math_sqrt(dx * dx + dz * dz)
+end
+function Math:IsInRange(p1, p2, range)
+    local dx = p1.x - p2.x
+    local dz = p1.z - p2.z
+    if (dx * dx + dz * dz <= range * range) then
+        return true
+    end
+    return false
+end
+function Math:VectorsEqual(p1, p2, num)
+    num = num or 5
+    if (self:GetDistance(p1, p2) < num) then
+        return true
+    end
+    return false
+end
+function Math:Normalized(p1, p2)
+    local dx = p1.x - p2.x
+    local dz = p1.z - p2.z
+    local length = math_sqrt(dx * dx + dz * dz)
+    local sol = nil
+    if (length > 0) then
+        local inv = 1.0 / length
+        sol = {x = (dx * inv), z = (dz * inv)}
+    end
+    return sol
+end
+function Math:Extended(vec, dir, range)
+    if (dir == nil) then
+        return vec
+    end
+    return {x = vec.x + dir.x * range, z = vec.z + dir.z * range}
+end
+function Math:Perpendicular(dir)
+    if (dir == nil) then
+        return nil
+    end
+    return {x = -dir.z, z = dir.x}
+end
+function Math:Intersection(s1, e1, s2, e2)
+    local IntersectionResult = {Intersects = false, Point = {x = 0, z = 0}}
+    local deltaACz = s1.z - s2.z
+    local deltaDCx = e2.x - s2.x
+    local deltaACx = s1.x - s2.x
+    local deltaDCz = e2.z - s2.z
+    local deltaBAx = e1.x - s1.x
+    local deltaBAz = e1.z - s1.z
+    local denominator = deltaBAx * deltaDCz - deltaBAz * deltaDCx
+    local numerator = deltaACz * deltaDCx - deltaACx * deltaDCz
+    if (denominator == 0) then
+        if (numerator == 0) then
+            if s1.x >= s2.x and s1.x <= e2.x then
+                return {Intersects = true, Point = s1}
+            end
+            if s2.x >= s1.x and s2.x <= e1.x then
+                return {Intersects = true, Point = s2}
+            end
+            return IntersectionResult
+        end
+        return IntersectionResult
+    end
+    local r = numerator / denominator
+    if (r < 0 or r > 1) then
+        return IntersectionResult
+    end
+    local s = (deltaACz * deltaBAx - deltaACx * deltaBAz) / denominator
+    if (s < 0 or s > 1) then
+        return IntersectionResult
+    end
+    local point = {x = s1.x + r * deltaBAx, z = s1.z + r * deltaBAz}
+    return {Intersects = true, Point = point}
+end
+function Math:ClosestPointOnLineSegment(p, p1, p2)
+    local px = p.x
+    local pz = p.z
+    local ax = p1.x
+    local az = p1.z
+    local bx = p2.x
+    local bz = p2.z
+    local bxax = bx - ax
+    local bzaz = bz - az
+    local t = ((px - ax) * bxax + (pz - az) * bzaz) / (bxax * bxax + bzaz * bzaz)
+    if (t < 0) then
+        return p1, false
+    end
+    if (t > 1) then
+        return p2, false
+    end
+    return {x = ax + t * bxax, z = az + t * bzaz}, true
+end
+function Math:Intercept(src, spos, epos, sspeed, tspeed)
+    local dx = epos.x - spos.x
+    local dz = epos.z - spos.z
+    local magnitude = math_sqrt(dx * dx + dz * dz)
+    local tx = spos.x - src.x
+    local tz = spos.z - src.z
+    local tvx = (dx / magnitude) * tspeed
+    local tvz = (dz / magnitude) * tspeed
+    local a = tvx * tvx + tvz * tvz - sspeed * sspeed
+    local b = 2 * (tvx * tx + tvz * tz)
+    local c = tx * tx + tz * tz
+    local ts
+    if (math_abs(a) < 1e-6) then
+        if (math_abs(b) < 1e-6) then
+            if (math_abs(c) < 1e-6) then
+                ts = {0, 0}
+            end
+        else
+            ts = {-c / b, -c / b}
+        end
+    else
+        local disc = b * b - 4 * a * c
+        if (disc >= 0) then
+            disc = math_sqrt(disc)
+            local a = 2 * a
+            ts = {(-b - disc) / a, (-b + disc) / a}
+        end
+    end
+    local sol
+    if (ts) then
+        local t0 = ts[1]
+        local t1 = ts[2]
+        local t = math_min(t0, t1)
+        if (t < 0) then
+            t = math_max(t0, t1)
+        end
+        if (t > 0) then
+            sol = t
+        end
+    end
+    return sol
+end
+function Math:Polar(p1)
+    local x = p1.x
+    local z = p1.z
+    if (x == 0) then
+        if (z > 0) then
+            return 90
+        end
+        if (z < 0) then
+            return 270
+        end
+        return 0
+    end
+    local theta = math_atan(z / x) * (180.0 / math_pi) --RadianToDegree
+    if (x < 0) then
+        theta = theta + 180
+    end
+    if (theta < 0) then
+        theta = theta + 360
+    end
+    return theta
+end
+function Math:AngleBetween(p1, p2)
+    if (p1 == nil or p2 == nil) then
+        return nil
+    end
+    local theta = self:Polar(p1) - self:Polar(p2)
+    if (theta < 0) then
+        theta = theta + 360
+    end
+    if (theta > 180) then
+        theta = 360 - theta
+    end
+    return theta
+end
+function Math:FindAngle(p1, center, p2)
+    local b = math_pow(center.x - p1.x, 2) + math_pow(center.z - p1.z, 2)
+    local a = math_pow(center.x - p2.x, 2) + math_pow(center.z - p2.z, 2)
+    local c = math_pow(p2.x - p1.x, 2) + math_pow(p2.z - p1.z, 2)
+    local angle = math_acos((a + b - c) / math_sqrt(4 * a * b)) * (180 / math_pi)
+    if (angle > 90) then
+        angle = 180 - angle
+    end
+    return angle
+end
+function Math:CircleCircleIntersection(center1, center2, radius1, radius2)
+    local result = {}
+    local D = self:GetDistance(center1, center2)
+    if D > radius1 + radius2 or D <= math_abs(radius1 - radius2) then
+        return result
+    end
+    local A = (radius1 * radius1 - radius2 * radius2 + D * D) / (2 * D)
+    local H = math_sqrt(radius1 * radius1 - A * A)
+    local Direction = self:Normalized(center2, center1)
+    local PA = self:Extended(center1, Direction, A)
+    local DirectionPerpendicular = self:Perpendicular(Direction)
+    table_insert(result, self:Extended(PA, DirectionPerpendicular, H))
+    table_insert(result, self:Extended(PA, DirectionPerpendicular, -H))
+    return result
+end
+Path = {}
+function Path:GetLenght(path)
+    local result = 0
+    for i = 1, #path - 1 do
+        result = result + Math:GetDistance(path[i], path[i + 1])
+    end
+    return result
+end
+function Path:CutPath(path, distance)
+    local result = {}
+    if distance <= 0 then
+        return path
+    end
+    for i = 1, #path - 1 do
+        local a, b = path[i], path[i + 1]
+        local dist = Math:GetDistance(a, b)
+        if dist > distance then
+            table_insert(result, Math:Extended(a, Math:Normalized(b, a), distance))
+            for j = i + 1, #path do
+                table_insert(result, path[j])
+            end
+            break
+        end
+        distance = distance - dist
+    end
+    return #result > 0 and result or {path[#path]}
+end
+function Path:ReversePath(path)
+    local result = {}
+    for i = #path, 1, -1 do
+        table_insert(result, path[i])
+    end
+    return result
+end
+function Path:GetPath(unit)
+    local result = {Math:Get2D(unit.pos)}
+    local path = unit.pathing
+    if path then
+        if path.isDashing then
+            local endPos = path.endPos
+            if endPos and endPos.x then
+                table_insert(result, Math:Get2D(endPos))
+            else
+                --print("GetPath -> endPos=" .. tostring(endPos))
+            end
+        else
+            local istart = path.pathIndex
+            local iend = path.pathCount
+            if istart and iend and istart >= 0 and iend <= 20 then
+                for i = istart, iend do
+                    local pos = unit:GetPath(i)
+                    if pos and pos.x then
+                        table_insert(result, Math:Get2D(pos))
+                    else
+                        --print("GetPath -> pos=" .. tostring(pos))
+                    end
+                end
+            else
+                --print("GetPath -> istart=" .. tostring(istart) .. " iend=" .. tostring(iend))
+            end
+        end
+    end
+    return result
+end
+function Path:GetPredictedPath(source, speed, movespeed, path)
+    local result = {}
+    local tT = 0
+    for i = 1, #path - 1 do
+        local a = path[i]; table_insert(result, a)
+        local b = path[i + 1]
+        local tB = Math:GetDistance(a, b) / movespeed
+        local direction = Math:Normalized(b, a)
+        a = Math:Extended(a, direction, -(movespeed * tT))
+        local t = Math:Intercept(source, a, b, speed, movespeed)
+        if (t and t >= tT and t <= tT + tB) then
+            table_insert(result, Math:Extended(a, direction, t * movespeed))
+            return result, t
+        end
+        tT = tT + tB
+    end
+    return nil, -1
+end
+UnitData =
+{
+    Visible = {},
+    Waypoints = {},
+}
+function UnitData:OnVisible(id, visible)
+    if (self.Visible[id] == nil) then
+        self.Visible[id] = {visible = visible, visibleTick = GetTickCount(), invisibleTick = GetTickCount()}
+    end
+    if visible then
+        if not self.Visible[id].visible then
+            self.Visible[id].visible = true
+            self.Visible[id].visibleTick = GetTickCount()
+        end
+    else
+        if self.Visible[id].visible then
+            self.Visible[id].visible = false
+            self.Visible[id].invisibleTick = GetTickCount()
+        end
+    end
+end
+function UnitData:OnWaypoint(id, path, hasMovePath, isDashing, endPos)
+    local timer = GetTickCount()
+    if self.Waypoints[id] == nil then
+        self.Waypoints[id] = {moving = hasMovePath, dashing = isDashing, path = path, tick = timer, stoptick = timer, pos = endPos}
+    end
+    if hasMovePath then
+        if not Math:VectorsEqual(self.Waypoints[id].pos, endPos, 50) then
+            self.Waypoints[id].tick = timer
+        end
+        self.Waypoints[id].pos = endPos
+        self.Waypoints[id].dashing = isDashing
+    elseif self.Waypoints[id].moving then
+        self.Waypoints[id].stoptick = GetTickCount()
+    end
+    self.Waypoints[id].path = path
+    self.Waypoints[id].moving = hasMovePath
+end
+function UnitData:OnTick()
+    local id, visible, path, pathing, hasMovePath, isDashing, endPos
+    for i, unit in ipairs(ObjectManager:GetHeroes()) do
+        id = unit.networkID
+        visible = unit.visible
+        self:OnVisible(id, visible)
+        if visible then
+            pathing = unit.pathing
+            if pathing then
+                hasMovePath = pathing.hasMovePath
+                isDashing = pathing.isDashing
+                endPos = Math:Get2D(pathing.endPos)
+                path = Path:GetPath(unit)
+                self:OnWaypoint(id, path, hasMovePath, isDashing, endPos)
+            end
+        end
+    end
+end
+function UnitData:OnPrediction(unit)
+    local id = unit.networkID
+    local visible = unit.visible
+    self:OnVisible(id, visible)
+    if visible then
+        local hasMovePath = unit.pathing.hasMovePath
+        local isDashing = unit.pathing.isDashing
+        local endPos = Math:Get2D(unit.pathing.endPos)
+        self:OnWaypoint(id, Path:GetPath(unit), hasMovePath, isDashing, endPos)
+    end
+end
+Callback.Add('Load', function()Callback.Add('Draw', function()UnitData:OnTick()end)end)
+ObjectManager = {}
+function ObjectManager:IsValid(unit)
+    if unit and unit.valid and unit.visible and not unit.dead and unit.isTargetable then
+        return true
+    end
+    return false
+end
+function ObjectManager:GetHeroes()
+    local _Heroes = {}
+    local hero, count
+    count = Game.HeroCount()
+    for i = 1, count do
+        hero = Game.Hero(i)
+        if hero and hero.valid and not hero.dead then
+            table_insert(_Heroes, hero)
+        end
+    end
+    return _Heroes
+end
+function ObjectManager:GetEnemyHeroes()
+    local _EnemyHeroes = {}
+    local count = Game.HeroCount()
+    for i = 1, count do
+        local hero = Game.Hero(i)
+        if self:IsValid(hero) and hero.isEnemy then
+            table_insert(_EnemyHeroes, hero)
+        end
+    end
+    return _EnemyHeroes
+end
+function ObjectManager:GetAllyHeroes()
+    local _AllyHeroes = {}
+    local count = Game.HeroCount()
+    for i = 1, count do
+        local hero = Game.Hero(i)
+        if self:IsValid(hero) and hero.isAlly then
+            table_insert(_AllyHeroes, hero)
+        end
+    end
+    return _AllyHeroes
+end
+Collision = {}
+function Collision:GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
+    source = Math:Extended(source, Math:Normalized(source, castPos), 75)
+    castPos = Math:Extended(castPos, Math:Normalized(castPos, source), 75)
+    local isWall, collisionObjects, collisionCount = false, {}, 0
+    local objects = {}
+    for i, colType in pairs(collisionTypes) do
+        if (colType == COLLISION_MINION) then
+            for k = 1, Game.MinionCount() do
+                local unit = Game.Minion(k)
+                if (unit.networkID ~= skipID and ObjectManager:IsValid(unit) and unit.isEnemy and Math:GetDistance(source, Math:Get2D(unit.pos)) < 2000) then
+                    table_insert(objects, unit)
+                end
+            end
+        elseif (colType == COLLISION_ALLYHERO) then
+            for k, unit in pairs(ObjectManager:GetAllyHeroes()) do
+                if (unit.networkID ~= skipID and Math:GetDistance(source, Math:Get2D(unit.pos)) < 2000) then
+                    table_insert(objects, unit)
+                end
+            end
+        elseif (colType == COLLISION_ENEMYHERO) then
+            for k, unit in pairs(ObjectManager:GetEnemyHeroes()) do
+                if (unit.networkID ~= skipID and Math:GetDistance(source, Math:Get2D(unit.pos)) < 2000) then
+                    table_insert(objects, unit)
+                end
+            end
+        end
+    end
+    for i, object in pairs(objects) do
+        local isCol = false
+        local objectPos = Math:Get2D(object.pos)
+        local pointLine, isOnSegment = Math:ClosestPointOnLineSegment(objectPos, source, castPos)
+        if isOnSegment and Math:IsInRange(objectPos, pointLine, radius + 15 + object.boundingRadius) then
+            isCol = true
+        elseif object.pathing.hasMovePath then
+            objectPos = Math:Get2D(object:GetPrediction(speed, delay))
+            pointLine, isOnSegment = Math:ClosestPointOnLineSegment(objectPos, source, castPos)
+            if isOnSegment and Math:IsInRange(objectPos, pointLine, radius + 15 + object.boundingRadius) then
+                isCol = true
+            end
+        end
+        if isCol then
+            table_insert(collisionObjects, object)
+            collisionCount = collisionCount + 1
+        end
+    end
+    return isWall, collisionObjects, collisionCount
+end
+Prediction = {}
+function Prediction:GetPrediction(target, source, speed, delay, radius, isHero, heroInfo)
+    local id, ms = target.networkID, target.ms
+    if not isHero then
+        local hasMovePath = target.pathing.hasMovePath
+        if not hasMovePath then
+            return Math:Get2D(target.pos)
+        end
+        local path = Path:GetPath(target)
+        if #path <= 1 then
+            return Math:Get2D(target.pos)
+        end
+        local delay2 = delay + Menu:GetLatency() + Menu:GetExtraDelay()
+        local path2 = Path:CutPath(path, ms * delay2)
+        if speed == math_huge then
+            return path2[1]
+        end
+        local path3, time = Path:GetPredictedPath(source, speed, ms, path)
+        if path3 then
+            return path3[#path3]
+        end
+        return path[#path]
+    end
+    UnitData:OnPrediction(target)
+    local vis = UnitData.Visible[id]
+    if vis.visible then
+        if GetTickCount() < vis.visibleTick + 0.5 then
+            return nil, nil, -1
+        end
+    elseif GetTickCount() > vis.invisibleTick + 1 then
+        return nil, nil, -1
+    end
+    local wp = UnitData.Waypoints[id]
+    if wp.moving and #wp.path <= 1 then
+        return nil, nil, -1
+    end
+    if not heroInfo.isPredictable then
+        return nil, nil, -1
+    end
+    if not wp.moving then
+        local pos = Math:Get2D(target.pos)
+        return pos, pos, delay + Math:GetDistance(pos, source) / speed
+    end
+    if wp.dashing then
+        if not heroInfo:IsDashing() then
+            return nil, nil, -1
+        end
+        local pos = wp.pos
+        return pos, pos, delay + Math:GetDistance(pos, source) / speed
+    end
+    if heroInfo:IsDashing() then
+        return nil, nil, -1
+    end
+    local customDash = heroInfo:GetCustomDash()
+    if customDash then
+        local targetPos = Math:Get2D(target.pos)
+        local totalMoveTime = delay + Math:GetDistance(targetPos, source) / speed
+        local totalDistance = totalMoveTime * ms
+        local pos = Math:Get2D(target.pos + (customDash.dashPos - target.pos):Normalized() * totalDistance)
+        return pos, pos, totalMoveTime
+    end
+    local delay2 = delay + Menu:GetLatency() + Menu:GetExtraDelay()
+    if speed == math_huge then
+        local path = Path:CutPath(wp.path, ms * delay2)
+        local path2 = Path:CutPath(wp.path, (ms * delay2) - radius)
+        return path[1], path2[1], delay
+    end
+    local path, time = Path:GetPredictedPath(source, speed, ms, Path:CutPath(wp.path, ms * delay2))
+    if path then
+        local path2 = Path:CutPath(Path:ReversePath(path), radius)
+        return path[#path], path2[1], delay + Math:GetDistance(path[#path], source) / speed
+    end
+    local p = wp.path[#wp.path]
+    return p, p, delay + Math:GetDistance(p, source) / speed
+end
+function Prediction:SpellPrediction(args)
+    local c = {}
+    do-- __init()
+        c.Collision, c.MaxCollision, c.CollisionTypes = false, 0, {0, 3}
+        if (args.Collision ~= nil) then c.Collision = args.Collision end
+        if (args.MaxCollision ~= nil) then c.MaxCollision = args.MaxCollision end
+        if (args.CollisionTypes ~= nil) then c.CollisionTypes = args.CollisionTypes end
+        c.Type, c.Speed, c.Range, c.Delay, c.Radius, c.UseBoundingRadius = SPELLTYPE_LINE, math_huge, math_huge, 0, 1, false
+        if (args.Type ~= nil) then c.Type = args.Type end
+        if (args.Speed ~= nil) then c.Speed = args.Speed end
+        if (args.Range ~= nil) then c.Range = args.Range end
+        if (args.Delay ~= nil) then c.Delay = args.Delay end
+        if (args.Radius ~= nil) then c.Radius = args.Radius end
+        if (args.UseBoundingRadius or (args.UseBoundingRadius == nil and c.Type == SPELLTYPE_LINE)) then c.UseBoundingRadius = true end
+    end
+    function c:ResetOutput()
+        self.HitChance = 0
+        self.CastPosition = nil
+        self.UnitPosition = nil
+        self.TimeToHit = 0
+        self.CollionableObjects = {}
+    end
+    function c:GetOutput()
+        self.HeroInfo = HeroInfo(self.Target)
+        self.TargetIsHero = self.Target.type == Obj_AI_Hero
+        self.RealRadius = self.UseBoundingRadius and self.Radius + self.Target.boundingRadius or self.Radius
+        self.UnitPosition, self.CastPosition, self.TimeToHit = Prediction:GetPrediction(self.Target, self.Source, self.Speed, self.Delay, self.RealRadius, self.TargetIsHero, self.HeroInfo)
+    end
+    function c:HighHitChance(spelltime, attacktime)
+        local wp, path, tick, timer = UnitData.Waypoints[self.Target.networkID], self.Target.pathing, GetTickCount(), Game.Timer()
+        if not self.Target.visible then
+            return false
+        end
+        if wp.moving then
+            if tick < wp.tick + 150 then
+                return true
+            end
+            if tick > wp.tick + 1000 and Path:GetLenght(wp.path) > 1000 then
+                return true
+            end
+            return false
+        end
+        if tick - wp.stoptick < 50 then
+            return true
+        end
+        if tick - wp.stoptick > 1000 then
+            return true
+        end
+        if attacktime - 0.05 > timer then
+            return true
+        end
+        if spelltime - 0.05 > timer then
+            return true
+        end
+        return false
+    end
+    function c:IsCollision()
+        local isWall, collisionObjects, collisionCount = Collision:GetCollision(self.Source, self.CastPosition, self.Speed, self.Delay, self.Radius, self.CollisionTypes, self.Target.networkID)
+        if isWall or collisionCount > self.MaxCollision then
+            self.CollionableObjects = collisionObjects
+            return true
+        end
+        return false
+    end
+    function c:IsInRange()
+        self.MyHeroPos = Math:Get2D(myHero.pos)
+        if Math:IsInRange(self.Type == SPELLTYPE_CIRCLE and self.CastPosition or self.UnitPosition, self.MyHeroPos, self.Range) then
+            self.IsOnScreen = Math:Get3D(self.CastPosition):To2D().onScreen
+            if not self.IsOnScreen and self.Type == SPELLTYPE_CIRCLE then
+                return false
+            end
+            return true
+        end
+        return false
+    end
+    function c:CanHit(hitChance)
+        hitChance = hitChance or HITCHANCE_NORMAL
+        if self.UnitPosition == nil or self.CastPosition == nil then
+            self.HitChance = 0
+            return false
+        end
+        --[[if self.Type ~= SPELLTYPE_CIRCLE and self.TimeToHit > 0.7 and Math:FindAngle(self.CastPosition, self.Target.pos, myHero.pos) > 90 - self.TimeToHit * 30 then
+            return false
+        end]]
+        self.HitChance = HITCHANCE_NORMAL
+        if self.TargetIsHero then
+            local duration, spelltime, attacktime, knockduration = Immobile:GetDuration(self.Target)
+            if knockduration ~= 0 then
+                self.HitChance = 0
+                return false
+            end
+            if duration > 0 then
+                if self.TimeToHit + 0.02 < duration + self.RealRadius / self.Target.ms then
+                    self.HitChance = HITCHANCE_IMMOBILE
+                end
+            end
+            if self.HitChance == HITCHANCE_NORMAL and self:HighHitChance(spelltime, attacktime) then
+                self.HitChance = HITCHANCE_HIGH
+            end
+        end
+        if self.HitChance < hitChance then
+            return false
+        end
+        if self.Range ~= math_huge and not self:IsInRange() then
+            return false
+        end
+        if self.Collision and self:IsCollision() then
+            return false
+        end
+        if not Math:VectorsEqual(self.PosTo, Math:Get2D(self.Target.posTo), 50) then
+            return false
+        end
+        if os.clock() - self.StartTime > 0.005 then
+            --print("PREDICTION TIMER")
+            return false
+        end
+        if not self.IsOnScreen then
+            self.CastPosition = Math:Extended(self.MyHeroPos, Math:Normalized(self.CastPosition, self.MyHeroPos), 800)
+        end
+        local y = self.Target.pos.y
+        self.CastPosition.y = y
+        self.UnitPosition.y = y
+        return true
+    end
+    function c:GetPrediction(target, source)
+        self.Target = target
+        self.Source = Math:Get2D(source)
+        self.PosTo = Math:Get2D(target.posTo)
+        self.StartTime = os.clock()
+        self:ResetOutput()
+        self:GetOutput()
+    end
+    function c:GetAOEPrediction(source)
+        local aoetargets = {}
+        local enemies = ObjectManager:GetEnemyHeroes()
+        for i = 1, #enemies do
+            local enemy = enemies[i]
+            if not SDK.ObjectManager:IsHeroImmortal(enemy) then
+                self:GetPrediction(enemy, source)
+                if self:CanHit(HITCHANCE_NORMAL) then
+                    table_insert(aoetargets, {enemy, self.HitChance, self.TimeToHit, self.CastPosition, self.UnitPosition})
+                end
+            end
+        end
+        local result = {}
+        local isCircle = self.Type == SPELLTYPE_CIRCLE
+        for i = 1, #aoetargets do
+            local aoetarget = aoetargets[i]
+            local count = 1
+            local distance = 0
+            local castpos = aoetarget[4]
+            for j = 1, #aoetargets do
+                if i ~= j then
+                    local d
+                    local unitpos = aoetargets[j][5]
+                    if isCircle then
+                        d = Math:GetDistance(castpos, unitpos)
+                    else
+                        local pointLine, isOnSegment = Math:ClosestPointOnLineSegment(unitpos, self.Source, castpos)
+                        d = Math:GetDistance(pointLine, unitpos)
+                    end
+                    if d < self.RealRadius then
+                        count = count + 1
+                        distance = distance + d
+                    end
+                end
+            end
+            table_insert(result, {Count = count, Distance = distance, Unit = aoetarget[1], HitChance = aoetarget[2], TimeToHit = aoetarget[3], CastPosition = castpos})
+        end
+        return result
+    end
+    return c
+end
+--[[
+    GGPrediction - Global Class, API
+]]
+_G.GGPrediction =
+{
+    COLLISION_MINION = COLLISION_MINION,
+    COLLISION_ALLYHERO = COLLISION_ALLYHERO,
+    COLLISION_ENEMYHERO = COLLISION_ENEMYHERO,
+    COLLISION_YASUOWALL = COLLISION_YASUOWALL,
+    HITCHANCE_IMPOSSIBLE = HITCHANCE_IMPOSSIBLE,
+    HITCHANCE_COLLISION = HITCHANCE_COLLISION,
+    HITCHANCE_NORMAL = HITCHANCE_NORMAL,
+    HITCHANCE_HIGH = HITCHANCE_HIGH,
+    HITCHANCE_IMMOBILE = HITCHANCE_IMMOBILE,
+    SPELLTYPE_LINE = SPELLTYPE_LINE,
+    SPELLTYPE_CIRCLE = SPELLTYPE_CIRCLE,
+    SPELLTYPE_CONE = SPELLTYPE_CONE,
+}
+function GGPrediction:GetPrediction(target, source, speed, delay, radius)
+    return Prediction:GetPrediction(target, Math:Get2D(source), speed, delay, radius, target.type == Obj_AI_Hero)
+end
+function GGPrediction:GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
+    return Collision:GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
+end
+function GGPrediction:SpellPrediction(args)
+    return Prediction:SpellPrediction(args)
+end
+function GGPrediction:ClosestPointOnLineSegment(p, p1, p2)
+    return Math:ClosestPointOnLineSegment(p, p1, p2)
+end
+function GGPrediction:IsInRange(p1, p2, range)
+    return Math:IsInRange(p1, p2, range)
+end
+function GGPrediction:GetImmobileDuration(unit)
+    return Immobile:GetDuration(unit)
+end
+function GGPrediction:FindAngle(p1, center, p2)
+    return Math:FindAngle(p1, center, p2)
+end
+function GGPrediction:GetDistance(p1, p2)
+    return Math:GetDistance(p1, p2)
+end
+function GGPrediction:IsInRange(p1, p2, range)
+    return Math:IsInRange(p1, p2, range)
+end
+function GGPrediction:CircleCircleIntersection(center1, center2, radius1, radius2)
+    return Math:CircleCircleIntersection(center1, center2, radius1, radius2)
+end
+
+--LLOMVPF
