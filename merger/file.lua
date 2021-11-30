@@ -1,6 +1,6 @@
 local TryCatch = TryCatch
-return {
 
+return {
 	Exists = function(file)
 		local f = io.open(file, "r")
 		if f then

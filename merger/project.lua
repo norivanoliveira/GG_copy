@@ -1,19 +1,18 @@
 local working_dir, Path, Projects = working_dir, Path, Projects
-return function(_name, _path, _minify, _finish_file)
+
+return function(_name, _path, _minify, _gos_path, _dependencies)
 	local name = _name
 	local path = _path
 	local minify = _minify
-	local finish_file = _finish_file
+	local dependencies = _dependencies
+	local finish_file = _gos_path == 0 and Path.LOLEXT("Scripts") or Path.LOLEXT("Scripts/Common")
 
 	local __args__ = {
 		Minify = minify,
 		BackupPath = Path.Backup(".backup/" .. path),
 		ComponentsPath = Path.Components(path),
 
-		Dependencies = {
-			working_dir .. "GG/Headers.lua",
-			working_dir .. "GG/Methods.lua",
-		},
+		Dependencies = dependencies,
 		Components = Projects[name],
 
 		FinishFiles = {

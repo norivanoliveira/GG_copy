@@ -1,4 +1,5 @@
 local File, Directory, TryCatch = File, Directory, TryCatch
+
 return function(args)
 	local __minify__ = args.Minify
 

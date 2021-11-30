@@ -1,6 +1,6 @@
 local os, working_dir, gos_ext_dir = os, working_dir, gos_ext_dir
-return {
 
+return {
 	Backup = function(fileName)
 		return working_dir .. fileName .. "/" .. os.date("%d.%m.%Y") .. "/" .. os.date("%H %M %S") .. "/"
 	end,

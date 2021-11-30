@@ -27,19 +27,24 @@ Path = require("path")
 Directory = require("directory")
 Projects = require("projects")
 
+local d = {
+	working_dir .. "GG/Headers.lua",
+	working_dir .. "GG/Methods.lua",
+}
+
 local Project = require("project")
 
-Project("GGAIO", "GG/AIO", true, Path.LOLEXT("Scripts")):Merge()
+Project("GGAIO", "GG/AIO", true, 0, d).Merge()
 
-Project("GGOrbwalker", "GG/Orbwalker", true, Path.LOLEXT("Scripts")):Merge()
+Project("GGOrbwalker", "GG/Orbwalker", true, 0, d).Merge()
 
-Project("GGPrediction", "GG/Prediction", true, Path.LOLEXT("Scripts/Common")):Merge()
+Project("GGPrediction", "GG/Prediction", true, 1, d).Merge()
 
-Project("GGCore", "GG/Core", true, Path.LOLEXT("Scripts/Common")):Merge()
+Project("GGCore", "GG/Core", true, 1, d).Merge()
 
-Project("GGData", "GG/Data", true, Path.LOLEXT("Scripts/Common")):Merge()
+Project("GGData", "GG/Data", true, 1, d).Merge()
 
---Project("GG", "GG" true, Path.LOLEXT("Scripts")):Merge()
+--Project("GG", "GG" true, 0, d).Merge()
 
 print("Finish!")
 
