@@ -18,8 +18,9 @@ return function(_name, _path, _minify, _finish_file)
 
 		FinishFiles = {
 			working_dir .. "/.new." .. name .. ".lua",
-			finish_file and finish_file .. "/" .. name .. ".lua",
 		},
+
+		GosFinishFile = finish_file and finish_file .. "/" .. name .. ".lua",
 	}
 
 	return {

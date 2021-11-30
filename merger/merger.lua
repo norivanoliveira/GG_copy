@@ -1,4 +1,4 @@
-local File, Directory = File, Directory
+local File, Directory, TryCatch = File, Directory, TryCatch
 return function(args)
 	local __minify__ = args.Minify
 
@@ -8,6 +8,7 @@ return function(args)
 	local __components_dir__ = args.ComponentsPath
 
 	local __finish_files__ = args.FinishFiles
+	local __gos_finish_file__ = args.GosFinishFile
 
 	local function GetComponent(_path, _suffix)
 		local content = File.ReadAll(_path)
@@ -43,20 +44,19 @@ return function(args)
 	end
 
 	Directory.Create(__backup_dir__ .. "/")
-	File.WriteAll(__backup_dir__ .. "/.old." .. File.NameExtension(__finish_files__[2]), FinishContent)
+	File.WriteAll(__backup_dir__ .. "/.old." .. File.NameExtension(__gos_finish_file__), FinishContent)
 
 	for _, finishFile in pairs(__finish_files__) do
 		Directory.Create(File.Path(finishFile))
 		File.WriteAll(finishFile, FinishContent)
 	end
+	File.WriteAll(__gos_finish_file__, FinishContent)
 
 	if __minify__ then
 		TryCatch(function()
 			FinishContent = require("minify")(FinishContent)
-			for i = 2, #__finish_files__ do
-				local f = __finish_files__[i]
-				File.WriteAll(File.Path(f) .. File.Name(f) .. ".Minified" .. File.Extension(f), FinishContent)
-			end
+			local f = __gos_finish_file__
+			File.WriteAll(File.Path(f) .. File.Name(f) .. ".Minified" .. File.Extension(f), FinishContent)
 		end, function(err)
 			print(__components_dir__)
 			print(err)
