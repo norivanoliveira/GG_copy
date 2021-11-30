@@ -1,4 +1,5 @@
-local unpack, Files = unpack, Directory.Files
+---@diagnostic disable: deprecated
+local unpack, Files, working_dir = unpack, Directory.Files, working_dir
 
 return {
 
