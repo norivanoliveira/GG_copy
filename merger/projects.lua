@@ -1,4 +1,4 @@
----@diagnostic disable: deprecated
+---@diagnostic disable: deprecated, undefined-global
 local unpack, Files, working_dir = unpack, Directory.Files, working_dir
 
 return {
