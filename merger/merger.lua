@@ -18,7 +18,6 @@ File = {
 			f:close()
 			return content
 		end
-		assert(true, print("ERROR File.ReadAll"))
 		return false
 	end,
 
@@ -57,7 +56,12 @@ Directory = {
 	end,
 
 	Exists = function(directory)
-		local isok, errstr, errcode = os.rename(directory, directory)
+		local isok, errstr, errcode = true, false, false
+		TryCatch(function()
+			isok, errstr, errcode = os.rename(directory, directory)
+		end, function(err)
+			print(err)
+		end)
 		if isok == nil then
 			if errcode == 13 then
 				-- Permission denied, but it exists
@@ -69,29 +73,42 @@ Directory = {
 	end,
 }
 
+local function GetComponent(path, suffix)
+	local content = File.ReadAll(path)
+	if content then
+		return {
+			Suffix = suffix,
+			Content = File.ReadAll(path) .. "\n",
+		}
+	end
+end
+
 return function(args)
 	local __minify__ = args.Minify
 
+	local __dependencies__ = args.Dependencies
 	local __components__ = args.Components
-	local __backup_path__ = args.BackupPath
-	local __components_path__ = args.ComponentsPath
+	local __backup_dir__ = args.BackupPath
+	local __components_dir__ = args.ComponentsPath
 
 	local __finish_files__ = args.FinishFiles
 
-	Directory.Create(__backup_path__)
-	Directory.Create(__components_path__)
+	Directory.Create(__backup_dir__)
+	Directory.Create(__components_dir__)
 
 	local Result = {}
-	for _, component in pairs(__components__) do
-		Result[#Result + 1] = {
-			Path = component,
-			Content = File.ReadAll(__components_path__ .. component) .. "\n",
-		}
+	for i, component in pairs(__dependencies__) do
+		Result[#Result + 1] = GetComponent(component)
+	end
+	for i, component in pairs(__components__) do
+		Result[#Result + 1] = GetComponent(__components_dir__ .. component, component)
 	end
 
 	for _, item in pairs(Result) do
-		Directory.Create(File.Path(__backup_path__ .. "src/" .. item.Path))
-		File.WriteAll(__backup_path__ .. "src/" .. item.Path, item.Content)
+		if item.Suffix then
+			Directory.Create(File.Path(__backup_dir__ .. "/" .. item.Suffix))
+			File.WriteAll(__backup_dir__ .. "/" .. item.Suffix, item.Content)
+		end
 	end
 
 	local FinishContent = ""
@@ -99,8 +116,8 @@ return function(args)
 		FinishContent = FinishContent .. item.Content
 	end
 
-	Directory.Create(__backup_path__ .. "bin/")
-	File.WriteAll(__backup_path__ .. "bin/" .. File.NameExtension(__finish_files__[1]), FinishContent)
+	Directory.Create(__backup_dir__ .. "/")
+	File.WriteAll(__backup_dir__ .. "/.old." .. File.NameExtension(__finish_files__[2]), FinishContent)
 
 	for _, finishFile in pairs(__finish_files__) do
 		Directory.Create(File.Path(finishFile))
@@ -115,7 +132,7 @@ return function(args)
 				File.WriteAll(File.Path(f) .. File.Name(f) .. ".Minified" .. File.Extension(f), FinishContent)
 			end
 		end, function(err)
-			print(__components_path__)
+			print(__components_dir__)
 			print(err)
 		end)
 	end
