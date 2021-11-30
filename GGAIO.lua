@@ -1,4 +1,6 @@
-local Version = 1.94
+local LoadSimpleScripts = true
+
+local Version = 1.945--+ simple scripts mf, ahri, ashe etc
 local Name = 'GGAIO'
 
 do
@@ -3854,6 +3856,555 @@ if Champion == nil and myHero.charName == 'Taric' then
         end
     end
 end
+
+if not LoadSimpleScript and Champion == nil then
+    print(myHero.charName .. " not supported !")
+    return
+end
+
+if Champion == nil and myHero.charName == 'Ahri' then
+    Menu:Info('Aram - WEQ Spam')
+    
+    local QPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 100, Range = 900, Speed = 1550, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
+    local EPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 60, Range = 1000, Speed = 1500, Collision = true, Type = GGPrediction.SPELLTYPE_LINE})
+
+    local selectedTarget = nil
+    local targetTimer = 0
+
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return true
+        end,
+        CanMoveCb = function()
+            return true
+        end,
+    }
+
+    local function IsValid(unit, range)
+        if unit and unit.valid and unit.visible and unit.alive and unit.isTargetable and (range == nil or unit.distance < range) then
+            return true
+        end
+        return false
+    end
+
+    function Champion:OnTick()
+        if Game.IsChatOpen() or myHero.dead then
+            return
+        end
+        if GG_Spell:IsReady(_W, {q = 0, w = 0.5, e = 0, r = 0}) then
+            local t = GG_Target:GetTarget(700, DAMAGE_TYPE_MAGICAL)
+            if t ~= nil then
+                CastSpell(HK_W)
+                return
+            end
+        end
+        if GG_Orbwalker:CanMove() then
+            if GG_Spell:IsReady(_E, {q = 0.5, w = 0, e = 0.5, r = 0}) then
+                local t = GG_Target:GetTarget(EPrediction.Range, DAMAGE_TYPE_MAGICAL)
+                if t ~= nil then
+                    if CastSpell(HK_E, t, EPrediction, 2 + 1) then
+                        targetTimer = os.clock()
+                        selectedTarget = t
+                        return
+                    end
+                end
+            end
+            if GG_Spell:IsReady(_Q, {q = 0.5, w = 0, e = 0.3, r = 0}) then
+                local t = GG_Target:GetTarget(QPrediction.Range, DAMAGE_TYPE_MAGICAL)
+                if os.clock() < targetTimer + 2 and IsValid(selectedTarget, 900) then
+                    t = selectedTarget
+                end
+                if t ~= nil and IsValid(t, 900) then
+                    CastSpell(HK_Q, t, QPrediction, 2 + 1)
+                    return
+                end
+            end
+
+        end
+    end
+end
+
+if Champion == nil and myHero.charName == "Ashe" then
+	Menu:Info("Aram - QW Spam")
+
+	-- champion
+	Champion = {
+		CanAttackCb = function()
+			return true
+		end,
+		CanMoveCb = function()
+			return true
+		end,
+		OnPostAttack = function()
+			if GG_Spell:IsReady(_Q, { q = 0.5, w = 0, e = 0, r = 0 }) then
+				CastSpell(HK_Q)
+			end
+		end,
+	}
+
+	function Champion:OnTick()
+		if Game.IsChatOpen() or myHero.dead then
+			return
+		end
+		if GG_Orbwalker:CanMove() then
+			if self.AttackTarget then
+				if GG_Spell:IsReady(_Q, { q = 0.5, w = 0, e = 0, r = 0 }) then
+					CastSpell(HK_Q)
+					return
+				end
+			end
+			if GG_Spell:IsReady(_W, { q = 0, w = 0.5, e = 0, r = 0 }) then
+				local WTarget = GG_Target:GetTarget(1000, DAMAGE_TYPE_PHYSICAL)
+				if WTarget ~= nil then
+					CastSpell(HK_W, WTarget)
+				end
+			end
+		end
+	end
+end
+
+if Champion == nil and myHero.charName == 'Brand' then
+    Menu:Info('Aram - EWQ Spam')
+
+    local QPrediction = GGPrediction:SpellPrediction({Type = GGPrediction.SPELLTYPE_LINE, Delay = 0.25, Radius = 60, Range = 1050, Speed = 1600, Collision = true, MaxCollision = 0, CollisionTypes = {GGPrediction.COLLISION_MINION, GGPrediction.COLLISION_YASUOWALL}})
+    local WPrediction = GGPrediction:SpellPrediction({Type = GGPrediction.SPELLTYPE_CIRCLE, Delay = 0.85, Radius = 250, Range = 900, Speed = math.huge, Collision = false, MaxCollision = 0, CollisionTypes = {GGPrediction.COLLISION_MINION, GGPrediction.COLLISION_YASUOWALL}})
+
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return true
+        end,
+        CanMoveCb = function()
+            return true
+        end,
+    }
+
+    function Champion:OnTick()
+        if Game.IsChatOpen() or myHero.dead then
+            return
+        end
+        if GG_Spell:IsReady(_E, {q = 0, w = 0, e = 0.5, r = 0}) then
+            local ETarget = GG_Target:GetTarget(650, DAMAGE_TYPE_MAGICAL)
+            if ETarget ~= nil then
+                CastSpell(HK_E, ETarget)
+            end
+        end
+        if GG_Spell:IsReady(_W, {q = 0, w = 0.5, e = 0, r = 0}) then
+            local WTarget = GG_Target:GetTarget(WPrediction.Range - 15, DAMAGE_TYPE_MAGICAL)
+            if WTarget ~= nil then
+                CastSpell(HK_W, WTarget, WPrediction, 2 + 1)
+            end
+        end
+        if GG_Spell:IsReady(_Q, {q = 0.5, w = 0, e = 0, r = 0}) then
+            local QTarget = GG_Target:GetTarget(QPrediction.Range, DAMAGE_TYPE_MAGICAL)
+            if QTarget ~= nil then
+                CastSpell(HK_Q, QTarget, QPrediction, 2 + 1)
+            end
+        end
+    end
+end
+
+if Champion == nil and myHero.charName == 'Karthus' then
+    Menu:Info('Aram - Q Spam')
+
+    local QPrediction = GGPrediction:SpellPrediction({Delay = 0.25 + 0.759, Radius = 80, Range = 875, Speed = math.huge, Collision = false, Type = GGPrediction.SPELLTYPE_CIRCLE})
+
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO]
+        end,
+        CanMoveCb = function()
+            return true
+        end,
+    }
+
+    function Champion:OnTick()
+        if Game.IsChatOpen() then
+            return
+        end
+        --print(myHero:GetSpellData(_Q).cd)
+        if myHero:GetSpellData(_Q).currentCd == 0 and GG_Spell:IsReady(_Q, {q = 0.2, w = 0, e = 0, r = 0}) then
+            local t = GG_Target:GetTarget(QPrediction.Range, DAMAGE_TYPE_MAGICAL)
+            if t ~= nil then
+                CastSpell(HK_Q, t, QPrediction, 2 + 1)
+                return
+            end
+        end
+    end
+end
+
+if Champion == nil and myHero.charName == "Kayle" then
+	Menu:Info("Aram - EQW Spam")
+
+	-- champion
+	Champion = {
+		CanAttackCb = function()
+			return true
+		end,
+		CanMoveCb = function()
+			return true
+		end,
+		OnPostAttack = function()
+			if Game.CanUseSpell(_E) == 0 then
+				CastSpell(HK_E)
+			end
+		end,
+	}
+
+	function Champion:OnTick()
+		if GG_Orbwalker:CanMove() then
+			if Champion.AttackTarget then
+				if Game.CanUseSpell(_E) == 0 then
+					CastSpell(HK_E)
+				end
+				if Game.CanUseSpell(_Q) == 0 then
+					CastSpell(HK_Q, Champion.AttackTarget)
+					return
+				end
+			end
+			if 100 * myHero.health / myHero.maxHealth < 95 and Game.CanUseSpell(_W) == 0 then
+				CastSpell(HK_W, myHero)
+			end
+		end
+	end
+end
+
+if Champion == nil and myHero.charName == 'Kindred' then
+    Menu:Info('Aram - EQ Spam')
+
+    local QPrediction = GGPrediction:SpellPrediction({Type = GGPrediction.SPELLTYPE_LINE, Delay = 0.25, Radius = 60, Range = 1100, Speed = 2075, Collision = false, MaxCollision = 0, CollisionTypes = {GGPrediction.COLLISION_MINION, GGPrediction.COLLISION_YASUOWALL}})
+
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return true
+        end,
+        CanMoveCb = function()
+            return true
+        end,
+    }
+
+    function Champion:OnTick()
+        if Game.IsChatOpen() or myHero.dead then
+            return
+        end
+        if GG_Orbwalker:CanMove() then
+            if self.AttackTarget then
+                if GG_Spell:IsReady(_E, {q = 0, w = 0, e = 0.5, r = 0}) then
+                    CastSpell(HK_E, self.AttackTarget)
+                end
+                if GG_Spell:IsReady(_Q, {q = 0.5, w = 0, e = 0, r = 0}) then
+                    CastSpell(HK_Q)
+                end
+            end
+        end
+    end
+end
+
+if Champion == nil and myHero.charName == 'MissFortune' then
+    Menu:Info('Aram - WQE Spam')
+
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return true
+        end,
+        CanMoveCb = function()
+            return true
+        end,
+    }
+
+    -- tick
+    function Champion:OnTick()
+        if Game.IsChatOpen() or myHero.dead then
+            return
+        end
+        if self.AttackTarget then
+            if GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and GG_Spell:IsReady(_W, {q = 0, w = 0.33, e = 0, r = 0}) then
+                CastSpell(HK_W)
+            end
+            if GG_Orbwalker:CanMove() then
+                if GG_Spell:IsReady(_Q, {q = 0.33, w = 0, e = 0, r = 0}) then
+                    CastSpell(HK_Q, self.AttackTarget)
+                    return
+                end
+                if GG_Spell:IsReady(_E, {q = 0, w = 0, e = 0.5, r = 0}) then
+                    CastSpell(HK_E, self.AttackTarget)
+                    return
+                end
+            end
+        end
+    end
+end
+
+if Champion == nil and myHero.charName == "Nasus" then
+	Menu:Info("Aram - E Spam")
+
+	-- champion
+	Champion = {
+		CanAttackCb = function()
+			return true
+		end,
+		CanMoveCb = function()
+			return true
+		end,
+	}
+
+	function Champion:OnTick()
+		if Game.IsChatOpen() or myHero.dead then
+			return
+		end
+		if GG_Spell:IsReady(_E, { q = 0, w = 0, e = 0.5, r = 0 }) then
+			local t = GG_Target:GetTarget(650, DAMAGE_TYPE_MAGICAL)
+			if t ~= nil then
+				CastSpell(HK_E, t)
+				return
+			end
+		end
+	end
+end
+
+if Champion == nil and myHero.charName == "Nidalee" then
+	Menu:Info("Aram - Q Spam")
+
+	local QPrediction = GGPrediction:SpellPrediction({
+		Delay = 0.25,
+		Radius = 40,
+		Range = 1500,
+		Speed = 1300,
+		Collision = true,
+		Type = GGPrediction.SPELLTYPE_LINE,
+	})
+
+	-- champion
+	Champion = {
+		CanAttackCb = function()
+			return true
+		end,
+		CanMoveCb = function()
+			return true
+		end,
+	}
+
+	function Champion:OnTick()
+		if Game.IsChatOpen() or myHero.dead then
+			return
+		end
+		if GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and GG_Orbwalker:CanMove() then
+			if GG_Spell:IsReady(_Q, { q = 0.2, w = 0, e = 0, r = 0 }) then
+				local t = GG_Target:GetTarget(QPrediction.Range, DAMAGE_TYPE_MAGICAL)
+				if t ~= nil then
+					CastSpell(HK_Q, t, QPrediction, 2 + 1)
+					return
+				end
+			end
+		end
+	end
+end
+
+if Champion == nil and myHero.charName == 'Ryze' then
+    Menu:Info('Aram - QEQW Spam')
+
+    local QPrediction = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 55, Range = 1000, Speed = 1700, Collision = false, Type = GGPrediction.SPELLTYPE_LINE})
+    local QPrediction2 = GGPrediction:SpellPrediction({Delay = 0.25, Radius = 55, Range = 1000, Speed = 1700, Collision = true, Type = GGPrediction.SPELLTYPE_LINE})
+
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return true
+        end,
+        CanMoveCb = function()
+            return true
+        end,
+    }
+
+    function Champion:OnTick()
+        if Game.IsChatOpen() or myHero.dead then
+            return
+        end
+        if GG_Spell:IsReady(_Q, {q = 0.5, w = 0, e = 0, r = 0}) then
+            local t = GG_Target:GetTarget(QPrediction2.Range, DAMAGE_TYPE_MAGICAL)
+            if t ~= nil then
+                CastSpell(HK_Q, t, QPrediction2, 2 + 1)
+                return
+            end
+        end
+        if GG_Spell:IsReady(_E, {q = 0, w = 0, e = 0.5, r = 0}) then
+            local t = GG_Target:GetTarget(550 + 80, DAMAGE_TYPE_MAGICAL)
+            if t ~= nil then
+                CastSpell(HK_E, t)
+                return
+            end
+        end
+        if GG_Spell:IsReady(_Q, {q = 0.2, w = 0, e = 0, r = 0}) then
+            local t = GG_Target:GetTarget(QPrediction.Range, DAMAGE_TYPE_MAGICAL)
+            if t ~= nil then
+                CastSpell(HK_Q, t, QPrediction, 2 + 1)
+                return
+            end
+        end
+        if GG_Spell:IsReady(_W, {q = 0, w = 0.5, e = 0, r = 0}) then
+            local t = GG_Target:GetTarget(550 + 80, DAMAGE_TYPE_MAGICAL)
+            if t ~= nil then
+                CastSpell(HK_W, t)
+                return
+            end
+        end
+    end
+end
+
+if Champion == nil and myHero.charName == 'Sivir' then
+    Menu:Info('Aram - WQ Spam')
+
+    local QPrediction = GGPrediction:SpellPrediction({Type = GGPrediction.SPELLTYPE_LINE, Delay = 0.25, Radius = 90, Range = 1100, Speed = 1350, Collision = false, MaxCollision = 0, CollisionTypes = {GGPrediction.COLLISION_MINION, GGPrediction.COLLISION_YASUOWALL}})
+
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return GG_Spell:CanTakeAction({q = 0.33, w = 0, e = 0, r = 0})
+        end,
+        CanMoveCb = function()
+            return GG_Spell:CanTakeAction({q = 0.23, w = 0, e = 0, r = 0})
+        end,
+        OnPostAttack = function()
+            CastSpell(HK_W)
+        end,
+    }
+
+    function Champion:OnTick()
+        if Game.IsChatOpen() or myHero.dead then
+            return
+        end
+        if GG_Orbwalker:CanMove() then
+            if self.AttackTarget then
+                if GG_Spell:IsReady(_W, {q = 0, w = 0.5, e = 0, r = 0}) then
+                    CastSpell(HK_W)
+                end
+            end
+            if GG_Spell:IsReady(_Q, {q = 0.5, w = 0.15, e = 0, r = 0}) then
+                local QTarget = GG_Target:GetTarget(1100, DAMAGE_TYPE_PHYSICAL)
+                if QTarget ~= nil then
+                    CastSpell(HK_Q, QTarget, QPrediction, 2 + 1)
+                end
+            end
+        end
+    end
+end
+
+if Champion == nil and myHero.charName == "Sona" then
+	Menu:Info("Aram - Q Spam")
+
+	-- champion
+	Champion = {
+		CanAttackCb = function()
+			return true
+		end,
+		CanMoveCb = function()
+			return true
+		end,
+	}
+
+	function Champion:OnTick()
+		if Game.IsChatOpen() or myHero.dead then
+			return
+		end
+		if GG_Spell:IsReady(_Q, { q = 0.2, w = 0, e = 0, r = 0 }) then
+			local t = GG_Target:GetTarget(800, DAMAGE_TYPE_MAGICAL)
+			if t ~= nil then
+				CastSpell(HK_Q)
+				return
+			end
+		end
+	end
+end
+
+if Champion == nil and myHero.charName == "Tristana" then
+	Menu:Info("Aram - QE Spam")
+
+	-- champion
+	Champion = {
+		CanAttackCb = function()
+			return true
+		end,
+		CanMoveCb = function()
+			return true
+		end,
+		OnAttack = function()
+			if GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Game.CanUseSpell(_Q) == 0 then
+				CastSpell(HK_Q)
+			end
+		end,
+		OnPostAttack = function()
+			if GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Game.CanUseSpell(_Q) == 0 then
+				CastSpell(HK_Q)
+			end
+		end,
+	}
+
+	-- tick
+	function Champion:OnTick()
+		if Game.IsChatOpen() or myHero.dead then
+			return
+		end
+		if self.AttackTarget and GG_Orbwalker:CanMove() then
+			if GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] and Game.CanUseSpell(_Q) == 0 then
+				CastSpell(HK_Q)
+			end
+			if GG_Spell:IsReady(_E, { q = 0, w = 0.75, e = 0.33, r = 0.5 }) then
+				CastSpell(HK_E, self.AttackTarget)
+			end
+		end
+	end
+end
+
+if Champion == nil and myHero.charName == 'Xayah' then
+    Menu:Info('Aram - WQ Spam')
+
+    local QPrediction = GGPrediction:SpellPrediction({Type = GGPrediction.SPELLTYPE_LINE, Delay = 0.25, Radius = 60, Range = 1000, Speed = 2075, Collision = false, MaxCollision = 0, CollisionTypes = {GGPrediction.COLLISION_MINION, GGPrediction.COLLISION_YASUOWALL}})
+
+    -- champion
+    Champion =
+    {
+        CanAttackCb = function()
+            return true
+        end,
+        CanMoveCb = function()
+            return true
+        end,
+    }
+
+    function Champion:OnTick()
+        if Game.IsChatOpen() or myHero.dead then
+            return
+        end
+        if GG_Orbwalker:CanMove() then
+            if self.AttackTarget then
+                if GG_Spell:IsReady(_W, {q = 0, w = 0.5, e = 0, r = 0}) then
+                    CastSpell(HK_W)
+                    return
+                end
+            end
+            if GG_Spell:IsReady(_Q, {q = 0.5, w = 0, e = 0, r = 0}) then
+                local QTarget = GG_Target:GetTarget(1100, DAMAGE_TYPE_PHYSICAL)
+                if QTarget ~= nil then
+                    CastSpell(HK_Q, QTarget, QPrediction, 2 + 1)
+                end
+            end
+        end
+    end
+end
+
+
+
 --[[
 if Champion == nil and myHero.charName == 'Karthus' then
     -- Q
