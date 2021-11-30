@@ -179,8 +179,6 @@ local Projects = {
 
 	--[[GG = function()
 		local components = {
-			"Headers.lua",
-			"Methods.lua",
 			"GGCore.lua",
 			"GGData.lua",
 			"GGPrediction.lua",
