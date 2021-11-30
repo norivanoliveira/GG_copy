@@ -1,3 +1,6 @@
+local love = love
+local unpack = unpack
+
 print = require("print").add
 
 function string:CountCharacter(c)
@@ -44,28 +47,31 @@ local Directory = {
 		local files = {}
 		local f = assert(io.popen('dir /b "' .. directory .. '"'))
 		for line in f:lines() do
-			table.insert(files, prefix ~= nil and prefix .. line or line)
+			table.insert(files, prefix and prefix .. line or line)
 		end
 		f:close()
 		return files
 	end,
 }
 
-local function GetMergeArgs(name, minify, components, finish_file)
+local function GetMergeArgs(name, path, minify, components, finish_file)
 	print(name)
 
 	return {
 
 		Minify = minify,
-		BackupPath = Path.Backup(name .. "/backup"),
-		ComponentsPath = Path.Components(name .. "/src"),
+		BackupPath = Path.Backup(".backup/" .. path),
+		ComponentsPath = Path.Components(path),
 
+		Dependencies = {
+			working_dir .. "GG/Headers.lua",
+			working_dir .. "GG/Methods.lua",
+		},
 		Components = components,
 
 		FinishFiles = {
-			working_dir .. name .. ".lua",
-			working_dir .. name .. "/bin/" .. name .. ".lua",
-			finish_file,
+			working_dir .. "/.new." .. name .. ".lua",
+			finish_file and finish_file .. "/" .. name .. ".lua",
 		},
 	}
 end
@@ -79,10 +85,10 @@ local Projects = {
 			"Methods.lua",
 			"Menu.lua",
 			"Main.lua",
-			unpack(Directory.Files(working_dir .. "GGAIO/src/Champions/", "Champions/")),
+			unpack(Directory.Files(working_dir .. "GG/AIO/Champions/", "Champions/")),
 		}
 
-		local args = GetMergeArgs("GGAIO", true, components, Path.LOLEXT("Scripts/GGAIO.lua"))
+		local args = GetMergeArgs("GGAIO", "GG/AIO", true, components, Path.LOLEXT("Scripts"))
 
 		require("merger")(args)
 	end,
@@ -91,7 +97,6 @@ local Projects = {
 		local components = {
 			"Updater.lua",
 			"Headers.lua",
-			"Functions.lua",
 			"ChampionInfo.lua",
 			"FlashHelper.lua",
 			"Cached.lua",
@@ -116,7 +121,7 @@ local Projects = {
 			"Main.lua",
 		}
 
-		local args = GetMergeArgs("GGOrbwalker", true, components, Path.LOLEXT("Scripts/GGOrbwalker.lua"))
+		local args = GetMergeArgs("GGOrbwalker", "GG/Orbwalker", true, components, Path.LOLEXT("Scripts"))
 
 		require("merger")(args)
 	end,
@@ -136,7 +141,7 @@ local Projects = {
 			"Main.lua",
 		}
 
-		local args = GetMergeArgs("GGPrediction", true, components, Path.LOLEXT("Scripts/Common/GGPrediction.lua"))
+		local args = GetMergeArgs("GGPrediction", "GG/Prediction", true, components, Path.LOLEXT("Scripts/Common"))
 
 		require("merger")(args)
 	end,
@@ -150,7 +155,7 @@ local Projects = {
 			"Main.lua",
 		}
 
-		local args = GetMergeArgs("GGCore", true, components, Path.LOLEXT("Scripts/Common/GGCore.lua"))
+		local args = GetMergeArgs("GGCore", "GG/Core", true, components, Path.LOLEXT("Scripts/Common"))
 
 		require("merger")(args)
 	end,
@@ -167,10 +172,26 @@ local Projects = {
 			"Main.lua",
 		}
 
-		local args = GetMergeArgs("GGData", true, components, Path.LOLEXT("Scripts/Common/GGData.lua"))
+		local args = GetMergeArgs("GGData", "GG/Data", true, components, Path.LOLEXT("Scripts/Common"))
 
 		require("merger")(args)
 	end,
+
+	--[[GG = function()
+		local components = {
+			"Headers.lua",
+			"Methods.lua",
+			"GGCore.lua",
+			"GGData.lua",
+			"GGPrediction.lua",
+			"GGOrbwalker.lua",
+			"GGAIO.lua",
+		}
+
+		local args = GetMergeArgs("GG", "GG" true, components, Path.LOLEXT("Scripts"))
+
+		require("merger")(args)
+	end,]]
 }
 
 Projects.GGAIO()
@@ -178,6 +199,7 @@ Projects.GGOrbwalker()
 Projects.GGPrediction()
 Projects.GGCore()
 Projects.GGData()
+--Projects.GG()
 
 print("Finish!")
 
