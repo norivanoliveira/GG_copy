@@ -1,13 +1,15 @@
 @echo off
 
-set love="%~dp0"../../.vscode/love2d
-::echo %love%
+set project_name=Merger
 
-set project="%~dp0\."
-::echo %project%
+set love_exe_path=%~dp0..\.vscode\love2d
+::echo %lua_exe_path%
 
-cd %love%
+set project_entry_path=%~dp0%project_name%
+::echo %project_entry_path%
 
-@lovec %project%
+cd %love_exe_path%
+
+@lovec "%project_entry_path%"
 
 ::pause
