@@ -1,88 +1,4 @@
-local File, Directory
-
-File = {
-
-	Exists = function(file)
-		local f = io.open(file, "r")
-		if f then
-			f:close()
-			return true
-		end
-		return false
-	end,
-
-	ReadAll = function(file)
-		local f = io.open(file, "r")
-		if f then
-			local content = f:read("*all")
-			f:close()
-			return content
-		end
-		return false
-	end,
-
-	WriteAll = function(file, text)
-		local f = io.open(file, "w")
-		f:write(text)
-		f:close()
-	end,
-
-	Path = function(file)
-		return file:match("(.*[/\\])")
-	end,
-
-	Name = function(file)
-		return file:match("[^/]*.$"):match("(.+)%..+$")
-	end,
-
-	Extension = function(file)
-		return file:match("^.+(%..+)$")
-	end,
-
-	NameExtension = function(file)
-		return file:match("[^/]*.$")
-	end,
-}
-
-Directory = {
-
-	Create = function(directory)
-		if not Directory.Exists(directory) then
-			os.execute('mkdir "' .. directory .. '"')
-			while not Directory.Exists(directory) do
-				print("creating directory...")
-			end
-		end
-	end,
-
-	Exists = function(directory)
-		local isok, errstr, errcode = true, false, false
-		TryCatch(function()
-			isok, errstr, errcode = os.rename(directory, directory)
-		end, function(err)
-			print(err)
-		end)
-		if isok == nil then
-			if errcode == 13 then
-				-- Permission denied, but it exists
-				return true
-			end
-			return false
-		end
-		return true
-	end,
-}
-
-local function GetComponent(path, suffix)
-	local content = File.ReadAll(path)
-	if content then
-		return {
-			Suffix = suffix,
-			Content = File.ReadAll(path) .. "\n",
-		}
-	end
-end
-
+local File, Directory = File, Directory
 return function(args)
 	local __minify__ = args.Minify
 
@@ -92,6 +8,16 @@ return function(args)
 	local __components_dir__ = args.ComponentsPath
 
 	local __finish_files__ = args.FinishFiles
+
+	local function GetComponent(_path, _suffix)
+		local content = File.ReadAll(_path)
+		if content then
+			return {
+				Suffix = _suffix,
+				Content = File.ReadAll(_path) .. "\n",
+			}
+		end
+	end
 
 	Directory.Create(__backup_dir__)
 	Directory.Create(__components_dir__)
@@ -106,8 +32,8 @@ return function(args)
 
 	for _, item in pairs(Result) do
 		if item.Suffix then
-			Directory.Create(File.Path(__backup_dir__ .. "/" .. item.Suffix))
-			File.WriteAll(__backup_dir__ .. "/" .. item.Suffix, item.Content)
+			Directory.Create(File.Path(__backup_dir__ .. item.Suffix))
+			File.WriteAll(__backup_dir__ .. item.Suffix, item.Content)
 		end
 	end
 
