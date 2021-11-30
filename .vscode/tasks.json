@@ -1,0 +1,75 @@
+{
+    // See https://go.microsoft.com/fwlink/?LinkId=733558
+    // for the documentation about the tasks.json format
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "LOVE_TASK",
+            "type": "shell",
+            "command": "C:/Users/Martin/Desktop/'GOS PROJECTS'/_Love2D/run.bat",
+            "presentation": {
+                "reveal": "never",
+                "clear": true,
+                "close": true,
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true,
+            },
+        },
+        {
+            "label": "LUA_TASK",
+            "type": "shell",
+            "command": "C:/Users/Martin/Desktop/'GOS PROJECTS'/_Lua52/run.bat",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false,
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true,
+            },
+        },
+        {
+            "label": "PYTHON_TASK",
+            "type": "shell",
+            "command": "C:/Users/Martin/Desktop/'GOS PROJECTS'/_Python/run.bat",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": true,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false,
+            },
+            "group": {
+                "kind": "build",
+                "isDefault": true,
+            },
+        },
+    ]
+}
+
+/*keybindings.json
+[
+  {
+    "key": "ctrl+numpad7",
+    "command": "workbench.action.tasks.runTask",
+    "args": "LOVE_TASK"
+  },
+  {
+    "key": "ctrl+numpad8",
+    "command": "workbench.action.tasks.runTask",
+    "args": "LUA_TASK"
+  },
+  {
+    "key": "ctrl+numpad9",
+    "command": "workbench.action.tasks.runTask",
+    "args": "PYTHON_TASK"
+  },
+]
+*/
