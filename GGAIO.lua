@@ -1,5 +1,5 @@
 local LoadSimpleScripts = true
-local Version = 1.951
+local Version = 1.952
 local Name = "GGAIO"
 
 local Menu, Utils, Champion
@@ -7074,6 +7074,7 @@ if Champion ~= nil then
 		self.IsHarass = GG_Orbwalker.Modes[ORBWALKER_MODE_HARASS]
 		self.IsLaneClear = GG_Orbwalker.Modes[ORBWALKER_MODE_LANECLEAR]
 		self.IsLastHit = GG_Orbwalker.Modes[ORBWALKER_MODE_LASTHIT]
+		self.IsFlee = GG_Orbwalker.Modes[ORBWALKER_MODE_FLEE]
 		self.AttackTarget = nil
 		self.CanAttackTarget = false
 		self.IsAttacking = GG_Orbwalker:IsAutoAttacking()
