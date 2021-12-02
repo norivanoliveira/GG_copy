@@ -1,5 +1,5 @@
 local LoadSimpleScripts = true
-local Version = 1.95
+local Version = 1.951
 local Name = "GGAIO"
 
 local Menu, Utils, Champion
@@ -2324,7 +2324,7 @@ if Champion == nil and myHero.charName == "Orianna" then
 
 		Menu.Harass:Menu("Q", "Q")
 		Menu.Harass.Q:OnOff("QHarassOn", "Enabled (true)", true)
-		Menu.Harass.Q:Slider("QHarassHitchance", "Q HitChacne (Default value = High)", 3, { "Low", "Medium", "High" })
+		Menu.Harass.Q:List("QHarassHitchance", "Q HitChacne (Default value = High)", 3, { "Low", "Medium", "High" })
 		Menu.Harass:Menu("W", "W")
 		Menu.Harass.W:OnOff("WHarassOn", "Enabled (false)", false)
 		Menu.Harass.W:Slider("WHarassMana", "Use W if Mana Percent > x% (70)", 70, 1, 100, 1)
