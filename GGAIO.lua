@@ -1,5 +1,5 @@
 local LoadSimpleScripts = true
-local Version = 1.952
+local Version = 1.953
 local Name = "GGAIO"
 
 local Menu, Utils, Champion
@@ -51,6 +51,8 @@ local Draw = Draw
 local table = table
 local pairs = pairs
 local GetTickCount = GetTickCount
+
+local LastChatOpenTimer = 0
 
 local function IsInRange(v1, v2, range)
 	v1 = v1.pos or v1
@@ -106,7 +108,7 @@ do
 		Draw.Text(text, 50, posX + 50, posY - 15, color)
 	end
 	-- cached distance
-	Utils.CachedDistance = {}
+	--Utils.CachedDistance = {}
 	-- get enemy heroes
 	function Utils:GetEnemyHeroes(range, bbox)
 		local result = {}
@@ -114,11 +116,11 @@ do
 			return result
 		end
 		for i, unit in ipairs(Champion.EnemyHeroes) do
-			if self.CachedDistance[i] == nil then
+			--[[if self.CachedDistance[i] == nil then
 				self.CachedDistance[i] = unit.distance
-			end
+			end]]
 			local extrarange = bbox and unit.boundingRadius or 0
-			if self.CachedDistance[i] < range + extrarange then
+			if --[[self.CachedDistance[i]] unit.distance < range + extrarange then
 				table_insert(result, unit)
 			end
 		end
@@ -151,11 +153,11 @@ do
 			return result
 		end
 		for i, unit in ipairs(Champion.EnemyHeroes) do
-			if self.CachedDistance[i] == nil then
+			--[[if self.CachedDistance[i] == nil then
 				self.CachedDistance[i] = unit.distance
-			end
+			end]]
 			local extrarange = bbox and unit.boundingRadius or 0
-			if self.CachedDistance[i] < range + extrarange and self:InsidePolygon(polygon, unit) then
+			if --[[self.CachedDistance[i]] unit.distance < range + extrarange and self:InsidePolygon(polygon, unit) then
 				table_insert(result, unit)
 			end
 		end
@@ -4027,6 +4029,9 @@ if Champion == nil and myHero.charName == "Ezreal" then
 	end
 	-- tick
 	function Champion:OnTick()
+		if Game.IsChatOpen() then
+			LastChatOpenTimer = os.clock()
+		end
 		self:ELogic()
 		if self.IsAttacking or self.CanAttackTarget or self.AttackTarget then
 			return
@@ -7094,7 +7099,7 @@ if Champion ~= nil then
 		self.ManaPercent = 100 * myHero.mana / myHero.maxMana
 		self.AllyHeroes = GG_Object:GetAllyHeroes(2000)
 		self.EnemyHeroes = GG_Object:GetEnemyHeroes(false, false, true)
-		Utils.CachedDistance = {}
+		--Utils.CachedDistance = {}
 	end
 	Callback.Add("Load", function()
 		GG_Target = _G.SDK.TargetSelector
