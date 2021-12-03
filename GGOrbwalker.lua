@@ -1,4 +1,4 @@
-local __version__ = 2.91
+local __version__ = 2.911
 local __name__ = 'GGOrbwalker'
 
 if _G.SDK then return end
@@ -766,7 +766,7 @@ Buff = {
         local pos2D = target.pos:To2D()
         local posX = pos2D.x - 50
         local posY = pos2D.y
-        Draw.Text(result, posX + 50, posY - 15)
+        Draw.Text(result, 22, posX + 50, posY - 15)
     end,
 }
 
@@ -1593,7 +1593,7 @@ Data = {
     },
     ExtraAttackRanges = {
         ["Caitlyn"] = function(target)
-            if target and Buff:GetBuffDuration(target, "caitlynwsight") > 0.75 then
+            if target and (Buff:GetBuffDuration(target, "caitlynwsight") > 0.75 or Buff:HasBuff(target, "eternals_caitlyneheadshottracker")) then--Buff:GetBuffDuration(enemy, "eternals_caitlyneheadshottracker") > 0.75
                 return 425
             end
             return 0
@@ -2881,7 +2881,7 @@ Target = {
             local enemy = enemies[i]
             --print(myHero.range)
             local extraRange = enemy.boundingRadius
-            if Object.IsCaitlyn and Buff:GetBuffDuration(enemy, "caitlynwsight") > 0.75 then
+            if Object.IsCaitlyn and (Buff:GetBuffDuration(enemy, "caitlynwsight") > 0.75 or Buff:HasBuff(enemy, "eternals_caitlyneheadshottracker")) then
                 extraRange = extraRange + 425
             end
             if Object.IsAzir and ChampionInfo:IsInAzirSoldierRange(enemy) then
@@ -4146,26 +4146,30 @@ Callback.Add('Load', function()
     local draws = SDK.OnDraw
     local wndmsgs = SDK.OnWndMsg
     Callback.Add("Draw", function()
-        --Buff:Print(myHero)
         --[[local target = Target:GetTarget(2000)
         if target then
-            if Buff:GetBuffDuration(target, "caitlynwsight") > 0.75 then
-                --print('caitlynwsight')
+            if Buff:GetBuffDuration(target, "caitlynwsight") > 0.75 or Buff:HasBuff(target, "eternals_caitlyneheadshottracker") then
+                print('caitlynwsight  ' .. os.clock())
             end
             --print(target.distance .. ' ' .. tostring(myHero.range + myHero.boundingRadius + target.boundingRadius))
             Buff:Print(target)
         end
-        Buff:Print(myHero)
+        Buff:Print(myHero)]]
+
+        --[[
         if Buff:HasBuff(myHero, 'caitlynpassivedriver') then
             print('myHero caitlynpassivedriver')
         end]]
+
         --[[if drawTest ~= 2 then
             print("DRAW")
         end
         drawTest = 1]]
+
         if GameIsChatOpen() then
             LastChatOpenTimer = GetTickCount()
         end
+
         FlashHelper:OnTick()
         Cached:Reset()
         Cursor:OnTick()
