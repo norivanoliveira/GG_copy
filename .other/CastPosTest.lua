@@ -64,7 +64,7 @@ Callback.Add("Load", function()
 	})
 
 	Callback.Add("Tick", function()
-		print(myHero.pos.y)
+		--print(myHero.pos.y)
 		TestPos:OnUpdate()
 	end)
 end)
