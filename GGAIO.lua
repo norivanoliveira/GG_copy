@@ -999,6 +999,7 @@ do
 				)
 			then
 				local y = self.Target.pos.y
+				y = y > 100 and 100 or y
 				self.CastPosition.y = y
 				self.UnitPosition.y = y
 				local castPos3D = Math:Get3D(self.CastPosition)
