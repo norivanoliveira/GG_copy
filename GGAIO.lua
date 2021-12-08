@@ -1,5 +1,5 @@
 local LoadSimpleScripts = true
-local Version = 1.953
+local Version = 1.954
 local Name = "GGAIO"
 
 local Menu, Utils, Champion
@@ -375,7 +375,7 @@ do
 		return { x = p.x, z = p.z == nil and p.y or p.z }
 	end
 	function Math:Get3D(p)
-		local result = Vector(p.x, 0, p.z)
+		local result = Vector(p.x, p.y, p.z)
 		return result
 	end
 	function Math:GetDistance(p1, p2)
@@ -998,9 +998,16 @@ do
 					self.Range
 				)
 			then
-				self.IsOnScreen = Math:Get3D(self.CastPosition):To2D().onScreen
-				if not self.IsOnScreen and self.Type == SPELLTYPE_CIRCLE then
-					return false
+				local y = self.Target.pos.y
+				self.CastPosition.y = y
+				self.UnitPosition.y = y
+				local castPos3D = Math:Get3D(self.CastPosition)
+				self.IsOnScreen = castPos3D:To2D().onScreen
+				if not self.IsOnScreen then
+					if self.Type == SPELLTYPE_CIRCLE then
+						return false
+					end
+					self.CastPosition = myHero.pos:Extended(castPos3D, 800)
 				end
 				return true
 			end
@@ -1047,16 +1054,6 @@ do
 				--print("PREDICTION TIMER")
 				return false
 			end
-			if not self.IsOnScreen then
-				self.CastPosition = Math:Extended(
-					self.MyHeroPos,
-					Math:Normalized(self.CastPosition, self.MyHeroPos),
-					800
-				)
-			end
-			--[[local y = self.Target.pos.y
-            self.CastPosition.y = y
-            self.UnitPosition.y = y]]
 			return true
 		end
 		function c:GetPrediction(target, source)
@@ -1169,6 +1166,7 @@ do
 end
 
 local SupportedChampions = {
+	["Viktor"] = true,
 	["Orianna"] = true,
 	["Twitch"] = true,
 	["Morgana"] = true,
@@ -1213,7 +1211,7 @@ local SimpleScripts = {
 	["Xayah"] = true,
 }
 
-local UpdatedMenuChamps = { ["Orianna"] = true }
+local UpdatedMenuChamps = { ["Orianna"] = true, ["Viktor"] = true, }
 
 if not SupportedChampions[myHero.charName] then
 	print("GGAIO - " .. myHero.charName .. " -> not supported!")
@@ -6873,10 +6871,13 @@ if Champion == nil and myHero.charName == "Ryze" then
 	-- champion
 	Champion = {
 		CanAttackCb = function()
-			return true
+			if GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO] then
+				return false
+			end
+			return GG_Spell:CanTakeAction({ q = 0.33, w = 0.33, e = 0.33, r = 0 })
 		end,
 		CanMoveCb = function()
-			return true
+			return GG_Spell:CanTakeAction({ q = 0.23, w = 0.23, e = 0.23, r = 0 })
 		end,
 	}
 
@@ -6884,31 +6885,27 @@ if Champion == nil and myHero.charName == "Ryze" then
 		if Game.IsChatOpen() or myHero.dead then
 			return
 		end
-		if GG_Spell:IsReady(_Q, { q = 0.5, w = 0, e = 0, r = 0 }) then
+		if GG_Spell:IsReady(_Q, { q = 0.5, w = 0.23, e = 0.23, r = 0 }) then
 			local t = GG_Target:GetTarget(QPrediction2.Range, DAMAGE_TYPE_MAGICAL)
-			if t ~= nil then
-				Utils:Cast(HK_Q, t, QPrediction2, 2 + 1)
+			if t and Utils:Cast(HK_Q, t, QPrediction2, 1 + 1) then
 				return
 			end
 		end
-		if GG_Spell:IsReady(_E, { q = 0, w = 0, e = 0.5, r = 0 }) then
-			local t = GG_Target:GetTarget(550 + 80, DAMAGE_TYPE_MAGICAL)
-			if t ~= nil then
-				Utils:Cast(HK_E, t)
+		if GG_Spell:IsReady(_E, { q = 0.23, w = 0.23, e = 0.5, r = 0 }) then
+			local t = GG_Target:GetTarget(550 + myHero.boundingRadius, DAMAGE_TYPE_MAGICAL)
+			if t and Utils:Cast(HK_E, t) then
 				return
 			end
 		end
-		if GG_Spell:IsReady(_Q, { q = 0.2, w = 0, e = 0, r = 0 }) then
+		if GG_Spell:IsReady(_Q, { q = 0.5, w = 0.23, e = 0.23, r = 0 }) then
 			local t = GG_Target:GetTarget(QPrediction.Range, DAMAGE_TYPE_MAGICAL)
-			if t ~= nil then
-				Utils:Cast(HK_Q, t, QPrediction, 2 + 1)
+			if t and Utils:Cast(HK_Q, t, QPrediction, 1 + 1) then
 				return
 			end
 		end
-		if GG_Spell:IsReady(_W, { q = 0, w = 0.5, e = 0, r = 0 }) then
-			local t = GG_Target:GetTarget(550 + 80, DAMAGE_TYPE_MAGICAL)
-			if t ~= nil then
-				Utils:Cast(HK_W, t)
+		if GG_Spell:IsReady(_W, { q = 0.23, w = 0.5, e = 0.23, r = 0 }) then
+			local t = GG_Target:GetTarget(550 + myHero.boundingRadius, DAMAGE_TYPE_MAGICAL)
+			if t and Utils:Cast(HK_W, t) then
 				return
 			end
 		end
