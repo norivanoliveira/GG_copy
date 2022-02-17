@@ -254,24 +254,169 @@ local LastChatOpenTimer = 0
 
 ChampionInfo = {
 
+	GwenMistObject = nil,
+	GwenMistPos = nil,
+	GwenMistEndTime = 0,
+
 	AzirSoldiers = {},
 
-	OnTick = function(self)
-		if Object.IsAzir then
-			for i = #self.AzirSoldiers, 1, -1 do
-				local soldier = self.AzirSoldiers[i]
-				if soldier and (soldier.health == 0 or soldier.name ~= "AzirSoldier") then
-					table_remove(self.AzirSoldiers, i)
+	OnLoad = function(self) end,
+
+	DrawObjects = function(self)
+		local text = {}
+		local mePos = myHero.pos
+		for i = 1, Game.ObjectCount() do
+			local obj = Game.Object(i)
+			if obj then
+				local pos = obj.pos
+				if pos and GetDistance(mePos, pos) < 1300 then
+					Draw.Circle(pos, 10)
+					local pos2D = pos:To2D()
+					local contains = false
+					for j = 1, #text do
+						local t = text[j]
+						if GetDistance(pos2D, t[1]) < 50 then
+							contains = true
+							t[2] = t[2] .. tostring(obj.handle) .. " " .. obj.name .. "\n"
+							break
+						end
+					end
+					if not contains then
+						table.insert(text, { pos2D, tostring(obj.handle) .. " " .. obj.name .. "\n" })
+					end
 				end
 			end
-			local activeSpell = myHero.activeSpell
-			if activeSpell and activeSpell.valid then
-				if activeSpell.name == "AzirWSpawnSoldier" then
-					for i = 1, GameObjectCount() do
-						local obj = GameObject(i)
-						if obj and GetDistance(myHero.pos, obj.pos) <= 1000 and obj.name == "AzirSoldier" then
-							table_insert(self.AzirSoldiers, obj)
+		end
+		for i = 1, #text do
+			Draw.Text(text[i][2], text[i][1])
+		end
+	end,
+
+	DrawObject = function(self, obj)
+		local text = {}
+		local mePos = myHero.pos
+		if obj then
+			local pos = obj.pos
+			if pos and GetDistance(mePos, pos) < 1300 then
+				Draw.Circle(pos, 10)
+				local pos2D = pos:To2D()
+				local contains = false
+				for j = 1, #text do
+					local t = text[j]
+					if GetDistance(pos2D, t[1]) < 50 then
+						contains = true
+						t[2] = t[2] .. tostring(obj.handle) .. " " .. obj.name .. "\n"
+						break
+					end
+				end
+				if not contains then
+					table.insert(text, { pos2D, tostring(obj.handle) .. " " .. obj.name .. "\n" })
+				end
+			end
+		end
+		for i = 1, #text do
+			Draw.Text(text[i][2], text[i][1])
+		end
+	end,
+
+	GwenDebug = function(self)
+		local enemy = nil
+		local enemies = Object:GetEnemyHeroes()
+		for i = 1, #enemies do
+			if GetDistance(enemies[i].pos, myHero.pos) < 1000 then
+				enemy = enemies[i]
+				break
+			end
+		end
+		if Buff:HasBuff(myHero, "gwenwuntargetabilitymanager") then
+			if not self:IsGwenMistValid() then
+				self:DetectGwenMist(myHero)
+			end
+			self:DrawObject(self.GwenMistObject)
+			--print(GetDistance(enemy.pos, self.GwenMistObject.pos))
+			--self:DrawObjects()
+		elseif enemy then
+			--print(GetDistance(enemy.pos, myHero.pos))
+		end
+		if enemy then
+			--print("Gwen is targetable to dummyTarget?: " .. tostring(self:CustomIsTargetable(myHero, enemy)))
+		end
+	end,
+
+	OnTick = function(self)
+		--self:GwenDebug()
+		if Object.IsAzir then
+			self:DetectAzirSoldiers()
+		end
+	end,
+
+	CustomIsTargetable = function(self, enemy, ally)
+		ally = ally or myHero
+		if Buff:HasBuff(enemy, "gwenwuntargetabilitymanager") then
+			if not self:IsGwenMistValid() then
+				self:DetectGwenMist(enemy)
+			end
+			--print(GetDistance(self.GwenMistObject.pos, ally.pos))
+			if GetDistance(self.GwenMistObject.pos, ally.pos) >= 425 then
+				return false
+			end
+		end
+		return true
+	end,
+
+	IsGwenMistValid = function(self)
+		if os.clock() >= self.GwenMistEndTime then
+			self.GwenMistObject = nil
+			self.GwenMistPos = nil
+		end
+		if self.GwenMistObject then
+			local name = self.GwenMistObject.name
+			if name and name:find("_W_MistArea") then
+				local pos = self.GwenMistObject.pos
+				if pos and GetDistance(self.GwenMistPos, pos) < 1200 then
+					return true
+				end
+			end
+		end
+		return false
+	end,
+
+	DetectGwenMist = function(self, unit)
+		local unitPos = unit.pos
+		local count = Game.ObjectCount()
+		if count and count > 0 and count < 100000 then
+			for i = 1, count do
+				local o = Game.Object(i)
+				if o then
+					local pos = o.pos
+					if pos and GetDistance(unitPos, pos) < 600 then
+						local name = o.name
+						if name and name:find("_W_MistArea") then
+							self.GwenMistObject = o
+							self.GwenMistPos = o.pos
+							self.GwenMistEndTime = os.clock() + Buff:GetBuffDuration(unit, "gwenwuntargetabilitymanager")
+							break
 						end
+					end
+				end
+			end
+		end
+	end,
+
+	DetectAzirSoldiers = function(self)
+		for i = #self.AzirSoldiers, 1, -1 do
+			local soldier = self.AzirSoldiers[i]
+			if soldier and (soldier.health == 0 or soldier.name ~= "AzirSoldier") then
+				table_remove(self.AzirSoldiers, i)
+			end
+		end
+		local activeSpell = myHero.activeSpell
+		if activeSpell and activeSpell.valid then
+			if activeSpell.name == "AzirWSpawnSoldier" then
+				for i = 1, GameObjectCount() do
+					local obj = GameObject(i)
+					if obj and GetDistance(myHero.pos, obj.pos) <= 1000 and obj.name == "AzirSoldier" then
+						table_insert(self.AzirSoldiers, obj)
 					end
 				end
 			end
@@ -3098,6 +3243,7 @@ Target = {
 		if
 			self.MenuCheckSelected:Value()
 			and Object:IsValid(self.Selected)
+			and ChampionInfo:CustomIsTargetable(self.Selected)
 			and not Object:IsHeroImmortal(self.Selected, isAttack)
 		then
 			if type(a) == "number" then
@@ -3122,6 +3268,11 @@ Target = {
 		end
 		if type(a) == "number" then
 			a = Object:GetEnemyHeroes(a, false, true, isAttack)
+		end
+		for i = #a, 1, -1 do
+			if not ChampionInfo:CustomIsTargetable(a[i]) then
+				table_remove(a, i)
+			end
 		end
 		if self.CurrentSortMode == SORT_MOST_STACK then
 			local stackA = {}
@@ -4420,7 +4571,7 @@ Orbwalker = {
 	end,
 
 	GetTarget = function(self)
-		if Object:IsValid(self.ForceTarget) and not Object:IsHeroImmortal(self.ForceTarget, true) then
+		if Object:IsValid(self.ForceTarget) and ChampionInfo:CustomIsTargetable(self.ForceTarget) and not Object:IsHeroImmortal(self.ForceTarget, true) then
 			return self.ForceTarget
 		end
 		if self.Modes[ORBWALKER_MODE_COMBO] then
@@ -4460,6 +4611,9 @@ Orbwalker = {
 					self.OnPreAttackCb[i](args)
 				end
 				if args.Process then
+					if args.Target and not ChampionInfo:CustomIsTargetable(args.Target) then
+						args.Target = Target:GetComboTarget()
+					end
 					if args.Target then
 						self.LastTarget = args.Target
 						local targetpos = args.Target.pos
@@ -4577,6 +4731,8 @@ _G.SDK = {
 --[[tickTest = 2
 drawTest = 2]]
 Callback.Add("Load", function()
+	ChampionInfo:OnLoad()
+
 	Object:OnLoad()
 
 	local ticks = SDK.OnTick
@@ -4584,25 +4740,28 @@ Callback.Add("Load", function()
 	local wndmsgs = SDK.OnWndMsg
 
 	Callback.Add("Draw", function()
+		--Buff:Print(myHero)
 		--[[local target = Target:GetTarget(2000)
-        if target then
-            if Buff:GetBuffDuration(target, "caitlynwsight") > 0.75 or Buff:HasBuff(target, "eternals_caitlyneheadshottracker") then
-                print('caitlynwsight  ' .. os.clock())
-            end
-            --print(target.distance .. ' ' .. tostring(myHero.range + myHero.boundingRadius + target.boundingRadius))
-            Buff:Print(target)
-        end
-        Buff:Print(myHero)]]
+		if target then
+			if
+				Buff:GetBuffDuration(target, "caitlynwsight") > 0.75
+				or Buff:HasBuff(target, "eternals_caitlyneheadshottracker")
+			then
+				print("caitlynwsight  " .. os.clock())
+			end
+			--print(target.distance .. ' ' .. tostring(myHero.range + myHero.boundingRadius + target.boundingRadius))
+			Buff:Print(target)
+		end
+		Buff:Print(myHero)
 
-		--[[
-        if Buff:HasBuff(myHero, 'caitlynpassivedriver') then
-            print('myHero caitlynpassivedriver')
-        end]]
+		if Buff:HasBuff(myHero, "caitlynpassivedriver") then
+			print("myHero caitlynpassivedriver")
+		end
 
-		--[[if drawTest ~= 2 then
-            print("DRAW")
-        end
-        drawTest = 1]]
+		if drawTest ~= 2 then
+			print("DRAW")
+		end
+		drawTest = 1]]
 
 		if GameIsChatOpen() then
 			LastChatOpenTimer = GetTickCount()
@@ -4631,12 +4790,12 @@ Callback.Add("Load", function()
 
 	Callback.Add("Tick", function()
 		--[[if tickTest ~= 2 then
-            print("TICK")
-        end
-        tickTest = 1]]
-		--[[if Item:HasItem(myHero, 3031) then
-            print('ok ' .. os.clock())
-        end]]
+			print("TICK")
+		end
+		tickTest = 1
+		if Item:HasItem(myHero, 3031) then
+			print("ok " .. os.clock())
+		end]]
 		--print(myHero.critChance)
 		if GameIsChatOpen() then
 			LastChatOpenTimer = GetTickCount()
