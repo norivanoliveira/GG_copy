@@ -1,4 +1,4 @@
-local __version__ = 2.991
+local __version__ = 2.992
 local __name__ = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -1687,7 +1687,18 @@ Data = {
 		end,
 	},
 
+	DisableAttackSpells = {
+		["Renata"] = function(spell)
+			local name = spell.name
+			return (name == "RenataQ" or name == "RenataE" or name == "RenataR")
+				and spell.castEndTime - Game.Timer() > 0.05
+		end,
+	},
+
 	DisableAttackBuffs = {
+		["Renata"] = function()
+			return Buff:HasBuff(myHero, "renataqselfroot") or Buff:HasBuff(myHero, "RenataQRecast")
+		end,
 		["Urgot"] = function()
 			return Buff:HasBuff(myHero, "UrgotW")
 		end,
@@ -1771,7 +1782,7 @@ Data = {
 		end,
 	},
 
-	--12.2.1
+	--12.4.1
 	HEROES = {
 		Aatrox = { 3, true, 0.651 },
 		Ahri = { 4, false, 0.668 },
@@ -1814,7 +1825,7 @@ Data = {
 		Gwen = { 4, true, 0.69 },
 		Hecarim = { 2, true, 0.67 },
 		Heimerdinger = { 3, false, 0.625 },
-		Illaoi = { 3, true, 0.571 },
+		Illaoi = { 3, true, 0.625 },
 		Irelia = { 3, true, 0.656 },
 		Ivern = { 1, true, 0.644 },
 		Janna = { 2, false, 0.625 },
@@ -1871,6 +1882,7 @@ Data = {
 		Rammus = { 1, true, 0.656 },
 		RekSai = { 2, true, 0.667 },
 		Rell = { 1, true, 0.55 },
+		Renata = { 2, false, 0.625 },
 		Renekton = { 2, true, 0.665 },
 		Rengar = { 4, true, 0.667 },
 		Riven = { 4, true, 0.625 },
@@ -2277,6 +2289,12 @@ Data = {
 		if self.CanDisableAttack and self.CanDisableAttack() then
 			return false
 		end
+		if self.CanDisableAttackSpell then
+			local spell = myHero.activeSpell
+			if spell and spell.valid and self.CanDisableAttackSpell(spell) then
+				return false
+			end
+		end
 		if Buff:HasBuffTypes(myHero, { [25] = true, [31] = true }) then
 			return false
 		end
@@ -2355,6 +2373,7 @@ Data = {
 
 Data.IsChanneling = Data.ChannelingBuffs[Data.HeroName]
 Data.CanDisableMove = Data.AllowMovement[Data.HeroName]
+Data.CanDisableAttackSpell = Data.DisableAttackSpells[Data.HeroName]
 Data.CanDisableAttack = Data.DisableAttackBuffs[Data.HeroName]
 Data.SpecialMissileSpeed = Data.SpecialMissileSpeeds[Data.HeroName]
 Data.IsHeroMelee = Data.HEROES[Data.HeroName][2]
@@ -4850,7 +4869,12 @@ Callback.Add("Load", function()
 	local wndmsgs = SDK.OnWndMsg
 
 	Callback.Add("Draw", function()
-		--Buff:Print(myHero)
+		--[[local as = myHero.activeSpell
+		if as and as.valid then
+			print(as.name)
+			print(as.castEndTime - Game.Timer())
+		end
+		Buff:Print(myHero)]]
 		--[[local target = Target:GetTarget(2000)
 		if target then
 			if
