@@ -394,7 +394,8 @@ ChampionInfo = {
 						if name and name:find("_W_MistArea") then
 							self.GwenMistObject = o
 							self.GwenMistPos = o.pos
-							self.GwenMistEndTime = os.clock() + Buff:GetBuffDuration(unit, "gwenwuntargetabilitymanager")
+							self.GwenMistEndTime = os.clock()
+								+ Buff:GetBuffDuration(unit, "gwenwuntargetabilitymanager")
 							break
 						end
 					end
@@ -3155,10 +3156,6 @@ Object:OnEnemyHeroLoad(function(args)
 		Object.UndyingBuffs["ShenWBuff"] = true
 		return
 	end
-	if args.charName == "Gwen" then
-		Object.UndyingBuffs["gwenwuntargetabilitymanager"] = true
-		return
-	end
 	if args.charName == "Samira" then
 		Object.UndyingBuffs["SamiraW"] = true
 		return
@@ -4571,7 +4568,11 @@ Orbwalker = {
 	end,
 
 	GetTarget = function(self)
-		if Object:IsValid(self.ForceTarget) and ChampionInfo:CustomIsTargetable(self.ForceTarget) and not Object:IsHeroImmortal(self.ForceTarget, true) then
+		if
+			Object:IsValid(self.ForceTarget)
+			and ChampionInfo:CustomIsTargetable(self.ForceTarget)
+			and not Object:IsHeroImmortal(self.ForceTarget, true)
+		then
 			return self.ForceTarget
 		end
 		if self.Modes[ORBWALKER_MODE_COMBO] then
