@@ -102,12 +102,12 @@ do
 end
 
 GGUpdate:New({
-	version = Version,
-	scriptName = Name,
-	scriptPath = SCRIPT_PATH .. Name .. ".lua",
-	scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".lua",
-	versionPath = SCRIPT_PATH .. Name .. ".version",
-	versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version",
+	version = __version__,
+	scriptName = __name__,
+	scriptPath = SCRIPT_PATH .. __name__ .. ".lua",
+	scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".lua",
+	versionPath = SCRIPT_PATH .. __name__ .. ".version",
+	versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".version",
 })
 
 if _G.SDK then
