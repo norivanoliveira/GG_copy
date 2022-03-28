@@ -1,6 +1,17 @@
 local Version = 1.51
 local Name = "GGPrediction"
 
+Callback.Add("Load", function()
+	GGUpdate:New({
+		version = Version,
+		scriptName = Name,
+		scriptPath = COMMON_PATH .. Name .. ".lua",
+		scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".lua",
+		versionPath = COMMON_PATH .. Name .. ".version",
+		versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version",
+	})
+end)
+
 if _G.GGPrediction then
 	return
 end
@@ -30,8 +41,10 @@ local HITCHANCE_IMMOBILE = 4
 local SPELLTYPE_LINE = 0
 local SPELLTYPE_CIRCLE = 1
 local SPELLTYPE_CONE = 2
+
 -- stylua: ignore start
 local __menu = MenuElement({name = "GG Prediction", id = "GGPrediction", type = _G.MENU})
+
 Menu =
 {
     MaxRange = __menu:MenuElement({id = "PredMaxRange" .. myHero.charName, name = "Pred Max Range %", value = 100, min = 70, max = 100, step = 1}),
@@ -41,19 +54,21 @@ Menu =
     VersionB = __menu:MenuElement({name = 'Version  ' .. Version, type = _G.SPACE, id = 'VersionSpaceB'}),
 }
 -- stylua: ignore end
+
 function Menu:GetMaxRange()
 	local result = self.MaxRange:Value() * 0.01
 	return result
 end
+
 function Menu:GetLatency()
 	local result = self.Latency:Value() * 0.001
 	return result
 end
+
 function Menu:GetExtraDelay()
 	local result = self.ExtraDelay:Value() * 0.001
 	return result
 end
-
 --[[
 enum class BuffType {
     Internal = 0,
@@ -141,7 +156,6 @@ function Immobile:GetDuration(unit)
 	end
 	return ImmobileDuration, SpellCastTime, AttackCastTime, KnockDuration
 end
-
 Math = {}
 
 function Math:Get2D(p)
@@ -361,7 +375,6 @@ function Math:CircleCircleIntersection(center1, center2, radius1, radius2)
 	table_insert(result, self:Extended(PA, DirectionPerpendicular, -H))
 	return result
 end
-
 Path = {}
 
 function Path:GetLenght(path)
@@ -450,7 +463,6 @@ function Path:GetPredictedPath(source, speed, movespeed, path)
 	end
 	return nil, -1
 end
-
 UnitData = {
 	Visible = {},
 	Waypoints = {},
@@ -534,7 +546,6 @@ Callback.Add("Load", function()
 		UnitData:OnTick()
 	end)
 end)
-
 ObjectManager = {}
 
 function ObjectManager:IsValid(unit)
@@ -580,7 +591,6 @@ function ObjectManager:GetAllyHeroes()
 	end
 	return _AllyHeroes
 end
-
 Collision = {}
 
 function Collision:GetCollision(source, castPos, speed, delay, radius, collisionTypes, skipID)
@@ -635,7 +645,6 @@ function Collision:GetCollision(source, castPos, speed, delay, radius, collision
 	end
 	return isWall, collisionObjects, collisionCount
 end
-
 Prediction = {}
 
 function Prediction:GetPrediction(target, source, speed, delay, radius, isHero)
@@ -921,7 +930,6 @@ function Prediction:SpellPrediction(args)
 	end
 	return c
 end
-
 --[[
 	GGPrediction - Global Class, API
 ]]
