@@ -1,4 +1,4 @@
-local __version__ = 2.992
+local __version__ = 2.993
 local __name__ = "GGOrbwalker"
 
 _G.GGUpdate = {}
