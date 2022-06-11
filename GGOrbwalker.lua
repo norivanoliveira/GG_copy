@@ -1,4 +1,4 @@
-local __version__ = 2.993
+local __version__ = 2.994
 local __name__ = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -1142,13 +1142,7 @@ Damage = {
 			if Buff:GetBuffCount(args.From, "dianapassivemarker") == 2 then
 				local level = args.From.levelData.lvl
 				args.RawMagical = args.RawMagical
-					+ math_max(
-						15 + 5 * level,
-						-10 + 10 * level,
-						-60 + 15 * level,
-						-125 + 20 * level,
-						-200 + 25 * level
-					)
+					+ math_max(15 + 5 * level, -10 + 10 * level, -60 + 15 * level, -125 + 20 * level, -200 + 25 * level)
 					+ 0.8 * args.From.ap
 			end
 		end,
@@ -1788,7 +1782,7 @@ Data = {
 		end,
 	},
 
-	--12.4.1
+	--12.11.1
 	HEROES = {
 		Aatrox = { 3, true, 0.651 },
 		Ahri = { 4, false, 0.668 },
@@ -1803,6 +1797,7 @@ Data = {
 		AurelionSol = { 4, false, 0.625 },
 		Azir = { 4, true, 0.625 },
 		Bard = { 3, false, 0.625 },
+		Belveth = { 4, true, 0.85 },
 		Blitzcrank = { 1, true, 0.625 },
 		Brand = { 4, false, 0.625 },
 		Braum = { 1, true, 0.644 },
@@ -2281,7 +2276,7 @@ Data = {
 
 	HeroCanMove = function(self)
 		if self.IsChanneling and self.IsChanneling() then
-			if self.CanDisableMove == nil or (not self.CanDisableMove()) then
+			if self.CanAllowMovement == nil or (not self.CanAllowMovement()) then
 				return false
 			end
 		end
@@ -2378,7 +2373,7 @@ Data = {
 }
 
 Data.IsChanneling = Data.ChannelingBuffs[Data.HeroName]
-Data.CanDisableMove = Data.AllowMovement[Data.HeroName]
+Data.CanAllowMovement = Data.AllowMovement[Data.HeroName]
 Data.CanDisableAttackSpell = Data.DisableAttackSpells[Data.HeroName]
 Data.CanDisableAttack = Data.DisableAttackBuffs[Data.HeroName]
 Data.SpecialMissileSpeed = Data.SpecialMissileSpeeds[Data.HeroName]
@@ -4976,4 +4971,3 @@ Callback.Add("Load", function()
 		_G.Orbwalker.Drawings.Enabled:Value(false)
 	end
 end)
-
