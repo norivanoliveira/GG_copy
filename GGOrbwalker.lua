@@ -1,5 +1,9 @@
-local __version__ = 2.995
+local __version__ = 2.996
 local __name__ = "GGOrbwalker"
+
+if _G.GGUpdate then
+	return
+end
 
 _G.GGUpdate = {}
 do
@@ -95,20 +99,37 @@ do
 				end
 			end
 		end
+		function updater:DownloadHasStarted()
+			self:OnTick()
+			return self.Step == 2 or self.Step == 4
+		end
 		updater:__init()
 		table.insert(self.Callbacks, updater)
+		return updater
 	end
 	GGUpdate:__init()
 end
 
-GGUpdate:New({
-	version = __version__,
-	scriptName = __name__,
-	scriptPath = SCRIPT_PATH .. __name__ .. ".lua",
-	scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".lua",
-	versionPath = SCRIPT_PATH .. __name__ .. ".version",
-	versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".version",
-})
+Callback.Add("Tick", function()
+	for _, updater in ipairs(GGUpdate.Callbacks) do
+		if updater.Step > 0 then
+			updater:OnTick()
+		end
+	end
+end)
+
+if
+	GGUpdate:New({
+		version = __version__,
+		scriptName = __name__,
+		scriptPath = SCRIPT_PATH .. __name__ .. ".lua",
+		scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".lua",
+		versionPath = SCRIPT_PATH .. __name__ .. ".version",
+		versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".version",
+	}):DownloadHasStarted()
+then
+	return
+end
 
 if _G.SDK then
 	return
@@ -330,7 +351,7 @@ end
 
 --#endregion
 
-local Updated, ChampionInfo, FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, Cursor, Health, Attack, EvadeSupport
+local ChampionInfo, FlashHelper, Cached, Menu, Color, Action, Buff, Damage, Data, Spell, SummonerSpell, Item, Object, Target, Orbwalker, Movement, Cursor, Health, Attack, EvadeSupport
 
 local DAMAGE_TYPE_PHYSICAL = 0
 local DAMAGE_TYPE_MAGICAL = 1
@@ -4941,19 +4962,6 @@ Callback.Add("Load", function()
 		Target:OnTick()
 		Health:OnTick()
 		--tickTest = 2
-		if not Updated then
-			local ok = true
-			for i = 1, #GGUpdate.Callbacks do
-				local updater = GGUpdate.Callbacks[i]
-				updater:OnTick()
-				if updater.Step > 0 then
-					ok = false
-				end
-			end
-			if ok then
-				Updated = true
-			end
-		end
 	end)
 
 	Callback.Add("WndMsg", function(msg, wParam)
