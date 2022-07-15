@@ -1,4 +1,4 @@
-local __version__ = 2.996
+local __version__ = 2.997
 local __name__ = "GGOrbwalker"
 
 if _G.GGUpdate then
@@ -99,9 +99,12 @@ do
 				end
 			end
 		end
-		function updater:DownloadHasStarted()
-			self:OnTick()
-			return self.Step == 2 or self.Step == 4
+		function updater:CanUpdate()
+			local response = GGUpdate:ReadFile(self.VersionPath)
+			while #response == 0 do
+				response = GGUpdate:ReadFile(self.VersionPath)
+			end
+			return #response > 0 and tonumber(response[1]) > self.Version
 		end
 		updater:__init()
 		table.insert(self.Callbacks, updater)
@@ -126,7 +129,7 @@ if
 		scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".lua",
 		versionPath = SCRIPT_PATH .. __name__ .. ".version",
 		versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".version",
-	}):DownloadHasStarted()
+	}):CanUpdate()
 then
 	return
 end
