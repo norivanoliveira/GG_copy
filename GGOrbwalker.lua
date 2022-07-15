@@ -1,4 +1,4 @@
-local __version__ = 2.994
+local __version__ = 2.995
 local __name__ = "GGOrbwalker"
 
 _G.GGUpdate = {}
@@ -215,28 +215,28 @@ local function Base64Decode(data)
 	local b = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 	data = string.gsub(data, "[^" .. b .. "=]", "")
 	return (
-			data
-				:gsub(".", function(x)
-					if x == "=" then
-						return ""
-					end
-					local r, f = "", (b:find(x) - 1)
-					for i = 6, 1, -1 do
-						r = r .. (f % 2 ^ i - f % 2 ^ (i - 1) > 0 and "1" or "0")
-					end
-					return r
-				end)
-				:gsub("%d%d%d?%d?%d?%d?%d?%d?", function(x)
-					if #x ~= 8 then
-						return ""
-					end
-					local c = 0
-					for i = 1, 8 do
-						c = c + (x:sub(i, i) == "1" and 2 ^ (8 - i) or 0)
-					end
-					return string.char(c)
-				end)
-		)
+		data
+			:gsub(".", function(x)
+				if x == "=" then
+					return ""
+				end
+				local r, f = "", (b:find(x) - 1)
+				for i = 6, 1, -1 do
+					r = r .. (f % 2 ^ i - f % 2 ^ (i - 1) > 0 and "1" or "0")
+				end
+				return r
+			end)
+			:gsub("%d%d%d?%d?%d?%d?%d?%d?", function(x)
+				if #x ~= 8 then
+					return ""
+				end
+				local c = 0
+				for i = 1, 8 do
+					c = c + (x:sub(i, i) == "1" and 2 ^ (8 - i) or 0)
+				end
+				return string.char(c)
+			end)
+	)
 end
 
 local function WriteToFile(path, str)
@@ -1782,7 +1782,7 @@ Data = {
 		end,
 	},
 
-	--12.11.1
+	--12.13.1
 	HEROES = {
 		Aatrox = { 3, true, 0.651 },
 		Ahri = { 4, false, 0.668 },
@@ -1808,8 +1808,8 @@ Data = {
 		Corki = { 5, false, 0.638 },
 		Darius = { 2, true, 0.625 },
 		Diana = { 4, true, 0.625 },
-		DrMundo = { 1, true, 0.72 },
 		Draven = { 5, false, 0.679 },
+		DrMundo = { 1, true, 0.72 },
 		Ekko = { 4, true, 0.688 },
 		Elise = { 3, false, 0.625 },
 		Evelynn = { 4, true, 0.667 },
@@ -1869,6 +1869,7 @@ Data = {
 		Nautilus = { 1, true, 0.706 },
 		Neeko = { 4, false, 0.625 },
 		Nidalee = { 4, false, 0.638 },
+		Nilah = { 5, true, 0.697 },
 		Nocturne = { 4, true, 0.721 },
 		Nunu = { 2, true, 0.625 },
 		Olaf = { 2, true, 0.694 },
@@ -3949,10 +3950,8 @@ Health = {
 		elseif almostHealth - damage < 0 then
 			almostLastHitable = true
 		elseif currentHealth ~= almostHealth then
-			almostAlmostHealth, turretAttacked = self:LocalGetPrediction(
-				target,
-				1.25 * anim + 1.25 * time + 0.5 + extraTime
-			)
+			almostAlmostHealth, turretAttacked =
+				self:LocalGetPrediction(target, 1.25 * anim + 1.25 * time + 0.5 + extraTime)
 			if almostAlmostHealth - damage < 0 then
 				almostalmost = true
 			end
