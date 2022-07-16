@@ -1,4 +1,4 @@
-local __version__ = 2.997
+local __version__ = 2.998
 local __name__ = "GGOrbwalker"
 
 if _G.GGUpdate then
@@ -4879,6 +4879,16 @@ _G.SDK = {
 	ORBWALKER_MODE_JUNGLECLEAR = ORBWALKER_MODE_JUNGLECLEAR,
 	ORBWALKER_MODE_LASTHIT = ORBWALKER_MODE_LASTHIT,
 	ORBWALKER_MODE_FLEE = ORBWALKER_MODE_FLEE,
+	IsRecalling = function(unit)
+		if Buff:HasBuff(unit, "recall") then
+			return true
+		end
+		local as = unit.activeSpell
+		if as and as.valid and as.name == "recall" then
+			return true
+		end
+		return false
+	end,
 }
 
 --[[tickTest = 2
