@@ -1,28 +1,32 @@
 local LoadSimpleScripts = true
-local Version = 1.955
+local Version = 1.956
 local Name = "GGAIO"
 
-Callback.Add('Load', function()
-    GGUpdate:New({
-        version = Version,
-        scriptName = Name,
-        scriptPath = SCRIPT_PATH .. Name .. ".lua",
-        scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".lua",
-        versionPath = SCRIPT_PATH .. Name .. ".version",
-        versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version"
-    })
+Callback.Add("Load", function()
+	GGUpdate:New({
+		version = Version,
+		scriptName = Name,
+		scriptPath = SCRIPT_PATH .. Name .. ".lua",
+		scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".lua",
+		versionPath = SCRIPT_PATH .. Name .. ".version",
+		versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version",
+	})
 end)
 
 if not FileExist(COMMON_PATH .. "GGPrediction.lua") then
-    DownloadFileAsync("https://raw.githubusercontent.com/gamsteron/GG/master/GGPrediction.lua", COMMON_PATH .. "GGPrediction.lua", function() end)
-    print('GGPrediction - downloaded! Please 2xf6!')
-    return
+	DownloadFileAsync(
+		"https://raw.githubusercontent.com/gamsteron/GG/master/GGPrediction.lua",
+		COMMON_PATH .. "GGPrediction.lua",
+		function() end
+	)
+	print("GGPrediction - downloaded! Please 2xf6!")
+	return
 end
-require('GGPrediction')
+require("GGPrediction")
 
 local Menu, Utils, Champion
 
-local GG_Target, GG_Orbwalker, GG_Buff, GG_Damage, GG_Spell, GG_Object, GG_Attack, GG_Data, GG_Cursor
+local GG_Target, GG_Orbwalker, GG_Buff, GG_Damage, GG_Spell, GG_Object, GG_Attack, GG_Data, GG_Cursor, SDK_IsRecalling
 
 local HITCHANCE_NORMAL = 2
 local HITCHANCE_HIGH = 3
@@ -2850,11 +2854,8 @@ if Champion == nil and myHero.charName == "Morgana" then
 							if s.width > 0 then
 								width = width + s.width
 							end
-							local point, isOnSegment = GGPrediction:ClosestPointOnLineSegment(
-								allyPos,
-								spellPos,
-								heroPos
-							)
+							local point, isOnSegment =
+								GGPrediction:ClosestPointOnLineSegment(allyPos, spellPos, heroPos)
 							if isOnSegment and IsInRange(point, allyPos, width) then
 								canUse = true
 							end
@@ -2984,7 +2985,6 @@ if Champion == nil and myHero.charName == "Nidalee" then
 end
 
 if Champion == nil and myHero.charName == "Orianna" then
-
 	--[[local function SpellCollision(spell, object, from, to)
 		if object.dead then
 			return false
@@ -3663,7 +3663,6 @@ if Champion == nil and myHero.charName == "Orianna" then
 		QPrediction:GetPrediction(unit, self.Ball)
 
 		if QPrediction.CastPosition then
-
 			local minHitChance = 1
 			if mode == "Combo" then
 				minHitChance = Settings.QComboHitchance
@@ -3724,11 +3723,8 @@ if Champion == nil and myHero.charName == "Orianna" then
 			-- -> example return CutPath(myHero, myHero.ms * EPrediction.TimeToHit)[1]
 
 			-- to do: add HPrediction SpellCollision
-			local pointLine, isOnSegment = GGPrediction:ClosestPointOnLineSegment(
-				EPrediction.UnitPosition,
-				myHero.pos,
-				ballPos
-			)
+			local pointLine, isOnSegment =
+				GGPrediction:ClosestPointOnLineSegment(EPrediction.UnitPosition, myHero.pos, ballPos)
 			self.EHit = false
 			if
 				isOnSegment and GetDistance(pointLine, EPrediction.UnitPosition) < 80--[[ + unit.boundingRadius]]
@@ -3846,10 +3842,7 @@ if Champion == nil and myHero.charName == "Orianna" then
 					if ComboR then
 						local QenemyDmg = ComboQ
 								and GetDistance(enemy, myHero) <= self.Q.range + self.Q.radius
-								and (self.Q.ready and 2 * self:GetDmg("Q", enemy) or self:GetDmg(
-									"Q",
-									enemy
-								))
+								and (self.Q.ready and 2 * self:GetDmg("Q", enemy) or self:GetDmg("Q", enemy))
 							or 0
 						local WenemyDmg = ComboW and self.W.ready and self:GetDmg("W", enemy) or 0
 						local RenemyDmg = self:GetDmg("R", enemy)
@@ -3917,10 +3910,7 @@ if Champion == nil and myHero.charName == "Orianna" then
 							if ComboR and self.R:CanHit(enemy, ally) then
 								local QenemyDmg = ComboQ
 										and GetDistance(enemy, myHero) <= self.Q.range + self.Q.radius
-										and (self.Q.ready and 2 * self:GetDmg("Q", enemy) or self:GetDmg(
-											"Q",
-											enemy
-										))
+										and (self.Q.ready and 2 * self:GetDmg("Q", enemy) or self:GetDmg("Q", enemy))
 									or 0
 								local WenemyDmg = ComboW and self.W.ready and self:GetDmg("W", enemy) or 0
 								local RenemyDmg = self:GetDmg("R", enemy)
@@ -4395,7 +4385,7 @@ if Champion == nil and myHero.charName == "Orianna" then
 				if bPos.To2D == nil then
 					print("bPos")
 				end
-				if self.QPos.To2D == nil then--weird
+				if self.QPos.To2D == nil then --weird
 					local qPosVec = Vector(self.QPos.x, 0, self.QPos.z)
 					if qPosVec.To2D then
 						Draw.Line(bPos:To2D(), qPosVec:To2D(), 2, self.Qcolor)
@@ -6143,7 +6133,6 @@ if Champion == nil and myHero.charName == "Xayah" then
 	end
 end
 
-
 if Champion ~= nil then
 	function Champion:PreTick()
 		self.IsCombo = GG_Orbwalker.Modes[ORBWALKER_MODE_COMBO]
@@ -6182,6 +6171,7 @@ if Champion ~= nil then
 		GG_Attack = _G.SDK.Attack
 		GG_Data = _G.SDK.Data
 		GG_Cursor = _G.SDK.Cursor
+		SDK_IsRecalling = _G.SDK.IsRecalling
 		GG_Orbwalker:CanAttackEvent(Champion.CanAttackCb)
 		GG_Orbwalker:CanMoveEvent(Champion.CanMoveCb)
 		if Champion.OnLoad then
@@ -6202,7 +6192,9 @@ if Champion ~= nil then
 		if Champion.OnTick then
 			table.insert(_G.SDK.OnTick, function()
 				Champion:PreTick()
-				Champion:OnTick()
+				if not SDK_IsRecalling(myHero) then
+					Champion:OnTick()
+				end
 				Utils.CanUseSpell = true
 			end)
 		end
