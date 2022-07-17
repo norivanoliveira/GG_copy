@@ -1,4 +1,4 @@
-local __version__ = 2.998
+local __version__ = 2.999
 local __name__ = "GGOrbwalker"
 
 if _G.GGUpdate then
@@ -101,9 +101,6 @@ do
 		end
 		function updater:CanUpdate()
 			local response = GGUpdate:ReadFile(self.VersionPath)
-			while #response == 0 do
-				response = GGUpdate:ReadFile(self.VersionPath)
-			end
 			return #response > 0 and tonumber(response[1]) > self.Version
 		end
 		updater:__init()
