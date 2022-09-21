@@ -1,4 +1,4 @@
-local __version__ = 2.999
+local __version__ = 3.000
 local __name__ = "GGOrbwalker"
 
 if _G.GGUpdate then
@@ -236,27 +236,25 @@ local function Base64Decode(data)
 	local b = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 	data = string.gsub(data, "[^" .. b .. "=]", "")
 	return (
-		data
-			:gsub(".", function(x)
-				if x == "=" then
-					return ""
-				end
-				local r, f = "", (b:find(x) - 1)
-				for i = 6, 1, -1 do
-					r = r .. (f % 2 ^ i - f % 2 ^ (i - 1) > 0 and "1" or "0")
-				end
-				return r
-			end)
-			:gsub("%d%d%d?%d?%d?%d?%d?%d?", function(x)
-				if #x ~= 8 then
-					return ""
-				end
-				local c = 0
-				for i = 1, 8 do
-					c = c + (x:sub(i, i) == "1" and 2 ^ (8 - i) or 0)
-				end
-				return string.char(c)
-			end)
+		data:gsub(".", function(x)
+			if x == "=" then
+				return ""
+			end
+			local r, f = "", (b:find(x) - 1)
+			for i = 6, 1, -1 do
+				r = r .. (f % 2 ^ i - f % 2 ^ (i - 1) > 0 and "1" or "0")
+			end
+			return r
+		end):gsub("%d%d%d?%d?%d?%d?%d?%d?", function(x)
+			if #x ~= 8 then
+				return ""
+			end
+			local c = 0
+			for i = 1, 8 do
+				c = c + (x:sub(i, i) == "1" and 2 ^ (8 - i) or 0)
+			end
+			return string.char(c)
+		end)
 	)
 end
 
@@ -1882,7 +1880,7 @@ Data = {
 		Maokai = { 2, true, 0.8 },
 		MasterYi = { 5, true, 0.679 },
 		MissFortune = { 5, false, 0.656 },
-		MonkeyKing = { 3, true, 0.711 },
+		MonkeyKing = { 3, true, 0.69 },
 		Mordekaiser = { 4, true, 0.625 },
 		Morgana = { 3, false, 0.625 },
 		Nami = { 3, false, 0.644 },
@@ -1939,7 +1937,7 @@ Data = {
 		Tryndamere = { 4, true, 0.67 },
 		TwistedFate = { 4, false, 0.651 },
 		Twitch = { 5, false, 0.679 },
-		Udyr = { 2, true, 0.658 },
+		Udyr = { 2, true, 0.65 },
 		Urgot = { 2, true, 0.625 },
 		Varus = { 5, false, 0.658 },
 		Vayne = { 5, false, 0.658 },
