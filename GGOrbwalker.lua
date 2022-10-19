@@ -1,4 +1,4 @@
-local __version__ = 3.000
+local __version__ = 3.001
 local __name__ = "GGOrbwalker"
 
 if _G.GGUpdate then
@@ -128,10 +128,6 @@ if
 		versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. __name__ .. ".version",
 	}):CanUpdate()
 then
-	return
-end
-
-if _G.SDK then
 	return
 end
 
@@ -1801,7 +1797,7 @@ Data = {
 		end,
 	},
 
-	--12.13.1
+	--12.20.1
 	HEROES = {
 		Aatrox = { 3, true, 0.651 },
 		Ahri = { 4, false, 0.668 },
@@ -1817,7 +1813,7 @@ Data = {
 		Azir = { 4, true, 0.625 },
 		Bard = { 3, false, 0.625 },
 		Belveth = { 4, true, 0.85 },
-		Blitzcrank = { 1, true, 0.625 },
+		Blitzcrank = { 1, true, 0.65 },
 		Brand = { 4, false, 0.625 },
 		Braum = { 1, true, 0.644 },
 		Caitlyn = { 5, false, 0.681 },
@@ -1963,7 +1959,7 @@ Data = {
 		Ziggs = { 4, false, 0.656 },
 		Zilean = { 3, false, 0.625 },
 		Zoe = { 4, false, 0.625 },
-		Zyra = { 2, false, 0.625 },
+		Zyra = { 2, false, 0.625 }
 	},
 
 	HeroSpecialMelees = {
@@ -3969,8 +3965,10 @@ Health = {
 		elseif almostHealth - damage < 0 then
 			almostLastHitable = true
 		elseif currentHealth ~= almostHealth then
-			almostAlmostHealth, turretAttacked =
-				self:LocalGetPrediction(target, 1.25 * anim + 1.25 * time + 0.5 + extraTime)
+			almostAlmostHealth, turretAttacked = self:LocalGetPrediction(
+				target,
+				1.25 * anim + 1.25 * time + 0.5 + extraTime
+			)
 			if almostAlmostHealth - damage < 0 then
 				almostalmost = true
 			end
@@ -4986,3 +4984,4 @@ Callback.Add("Load", function()
 		_G.Orbwalker.Drawings.Enabled:Value(false)
 	end
 end)
+
