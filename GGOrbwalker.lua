@@ -1,4 +1,4 @@
-local __version__ = 3.001
+local __version__ = 3.002
 local __name__ = "GGOrbwalker"
 
 if _G.GGUpdate then
@@ -1797,7 +1797,7 @@ Data = {
 		end,
 	},
 
-	--12.20.1
+	--12.21.1
 	HEROES = {
 		Aatrox = { 3, true, 0.651 },
 		Ahri = { 4, false, 0.668 },
@@ -1823,8 +1823,8 @@ Data = {
 		Corki = { 5, false, 0.638 },
 		Darius = { 2, true, 0.625 },
 		Diana = { 4, true, 0.625 },
-		Draven = { 5, false, 0.679 },
 		DrMundo = { 1, true, 0.72 },
+		Draven = { 5, false, 0.679 },
 		Ekko = { 4, true, 0.688 },
 		Elise = { 3, false, 0.625 },
 		Evelynn = { 4, true, 0.667 },
@@ -1850,6 +1850,7 @@ Data = {
 		Jayce = { 4, false, 0.658 },
 		Jhin = { 5, false, 0.625 },
 		Jinx = { 5, false, 0.625 },
+		KSante = { 1, true, 0.625 },
 		Kaisa = { 5, false, 0.644 },
 		Kalista = { 5, false, 0.694 },
 		Karma = { 4, false, 0.625 },
@@ -1959,7 +1960,7 @@ Data = {
 		Ziggs = { 4, false, 0.656 },
 		Zilean = { 3, false, 0.625 },
 		Zoe = { 4, false, 0.625 },
-		Zyra = { 2, false, 0.625 }
+		Zyra = { 2, false, 0.625 },
 	},
 
 	HeroSpecialMelees = {
