@@ -7,15 +7,15 @@ Callback.Add("Load", function()
 		version = Version,
 		scriptName = Name,
 		scriptPath = SCRIPT_PATH .. Name .. ".lua",
-		scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".lua",
+		scriptUrl = "https://raw.githubusercontent.com/norivanoliveira/GG_copymaster/" .. Name .. ".lua",
 		versionPath = SCRIPT_PATH .. Name .. ".version",
-		versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version",
+		versionUrl = "https://raw.githubusercontent.com/norivanoliveira/GG_copymaster/" .. Name .. ".version",
 	})
 end)
 
 if not FileExist(COMMON_PATH .. "GGPrediction.lua") then
 	DownloadFileAsync(
-		"https://raw.githubusercontent.com/gamsteron/GG/master/GGPrediction.lua",
+		"https://raw.githubusercontent.com/norivanoliveira/GG_copymaster/GGPrediction.lua",
 		COMMON_PATH .. "GGPrediction.lua",
 		function() end
 	)
