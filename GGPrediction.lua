@@ -1,16 +1,48 @@
 local Version = 1.51
 local Name = "GGPrediction"
 
-Callback.Add("Load", function()
-	GGUpdate:New({
-		version = Version,
-		scriptName = Name,
-		scriptPath = COMMON_PATH .. Name .. ".lua",
-		scriptUrl = "https://raw.githubusercontent.com/norivanoliveira/GG_copymaster/" .. Name .. ".lua",
-		versionPath = COMMON_PATH .. Name .. ".version",
-		versionUrl = "https://raw.githubusercontent.com/norivanoliveira/GG_copymaster/" .. Name .. ".version",
-	})
-end)
+
+-- Force SDK Init
+_G.SDK = {
+	OnDraw = {},
+	OnTick = {},
+	OnWndMsg = {},
+	Menu = Menu,
+	Color = Color,
+	Action = Action,
+	BuffManager = Buff,
+	Damage = Damage,
+	Data = Data,
+	Spell = Spell,
+	SummonerSpell = SummonerSpell,
+	ItemManager = Item,
+	ObjectManager = Object,
+	TargetSelector = Target,
+	HealthPrediction = Health,
+	Cursor = Cursor,
+	Attack = Attack,
+	Orbwalker = Orbwalker,
+	DAMAGE_TYPE_PHYSICAL = DAMAGE_TYPE_PHYSICAL,
+	DAMAGE_TYPE_MAGICAL = DAMAGE_TYPE_MAGICAL,
+	DAMAGE_TYPE_TRUE = DAMAGE_TYPE_TRUE,
+	ORBWALKER_MODE_NONE = ORBWALKER_MODE_NONE,
+	ORBWALKER_MODE_COMBO = ORBWALKER_MODE_COMBO,
+	ORBWALKER_MODE_HARASS = ORBWALKER_MODE_HARASS,
+	ORBWALKER_MODE_LANECLEAR = ORBWALKER_MODE_LANECLEAR,
+	ORBWALKER_MODE_JUNGLECLEAR = ORBWALKER_MODE_JUNGLECLEAR,
+	ORBWALKER_MODE_LASTHIT = ORBWALKER_MODE_LASTHIT,
+	ORBWALKER_MODE_FLEE = ORBWALKER_MODE_FLEE,
+	IsRecalling = function(unit)
+		if Buff:HasBuff(unit, "recall") then
+			return true
+		end
+		local as = unit.activeSpell
+		if as and as.valid and as.name == "recall" then
+			return true
+		end
+		return false
+	end,
+}
 
 if _G.GGPrediction then
 	return
