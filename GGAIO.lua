@@ -1,5 +1,5 @@
 local LoadSimpleScripts = true
-local Version = 1.956
+local Version = 1.957
 local Name = "GGAIO"
 
 Callback.Add("Load", function()
@@ -7,15 +7,15 @@ Callback.Add("Load", function()
 		version = Version,
 		scriptName = Name,
 		scriptPath = SCRIPT_PATH .. Name .. ".lua",
-		scriptUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".lua",
+		scriptUrl = "https://raw.githubusercontent.com/norivanoliveira/GG_copymaster/" .. Name .. ".lua",
 		versionPath = SCRIPT_PATH .. Name .. ".version",
-		versionUrl = "https://raw.githubusercontent.com/gamsteron/GG/master/" .. Name .. ".version",
+		versionUrl = "https://raw.githubusercontent.com/norivanoliveira/GG_copymaster/" .. Name .. ".version",
 	})
 end)
 
 if not FileExist(COMMON_PATH .. "GGPrediction.lua") then
 	DownloadFileAsync(
-		"https://raw.githubusercontent.com/gamsteron/GG/master/GGPrediction.lua",
+		"https://raw.githubusercontent.com/norivanoliveira/GG_copymaster/GGPrediction.lua",
 		COMMON_PATH .. "GGPrediction.lua",
 		function() end
 	)
@@ -75,6 +75,143 @@ local pairs = pairs
 local GetTickCount = GetTickCount
 
 local LastChatOpenTimer = 0
+
+class("DrawHelper")
+
+function DrawHelper:__init()
+	self.activeSpellKeys = {
+		"acceleration",
+		"animation",
+		"castFrame",
+		"coneAngle",
+		"coneDistance",
+		"endTime",
+		"isAutoAttack",
+		"isChanneling",
+		"isCharging",
+		"isStopped",
+		"level",
+		"mana",
+		"maxSpeed",
+		"minSpeed",
+		"name",
+		"placementPos",
+		"range",
+		"speed",
+		"spellWasCast",
+		"startPos",
+		"startTime",
+		"target",
+		"valid",
+		"width",
+		"windup",
+	}
+end
+
+function DrawHelper:drawHeroesDistance(fontSize)
+	local count = Game.HeroCount()
+
+	if count == nil or count <= 0 or count > 1000 then
+		return
+	end
+
+	for i = 1, count do
+		local hero = Game.Hero(i)
+		if hero and hero.valid and hero.visible and hero.isTargetable and not hero.dead then
+			Draw.Text("distance = " .. tostring(hero.distance), fontSize, hero.pos:To2D())
+		end
+	end
+end
+
+function DrawHelper:drawActiveSpell(unit, x, y, fontSize)
+	local activeSpell = unit.activeSpell
+
+	if activeSpell == nil then
+		return
+	end
+
+	local info = {}
+
+	for _, key in ipairs(self.activeSpellKeys) do
+		info[key] = activeSpell[key]
+	end
+
+	Draw.Text(self:tableToString(info, "", "ActiveSpell"), fontSize, x, y)
+	Draw.Line(Vector(activeSpell.placementPos):To2D(), Vector(activeSpell.startPos):To2D())
+end
+
+function DrawHelper:drawSpellData(unit, iSlot, x, y, fontSize)
+	local spell = unit:GetSpellData(iSlot)
+
+	if spell == nil then
+		return
+	end
+
+	Draw.Text(self:tableToString(spell, "", "W SpellData"), fontSize, x, y)
+end
+
+function DrawHelper:tableToString(t, s, k, afs, kt)
+	-- t: table [table]
+	-- s: space [string]
+	-- k: key [string]
+	-- afs: add first line space if key is nil [bool]
+	-- kt: keys table
+
+	s = s or ""
+	afs = afs and s or ""
+	k = k and (s .. k .. " = ") or afs
+
+	local result = k .. "{\n"
+
+	local tkeys = kt or {}
+	if kt == nil then
+		for key in pairs(t) do
+			table.insert(tkeys, key)
+		end
+		table.sort(tkeys)
+	end
+
+	for _, key in ipairs(tkeys) do
+		local value = t[key]
+		result = result .. s .. "    " .. key .. " = " .. self:valueToString(value, s .. "    ") .. ",\n"
+	end
+
+	return result .. s .. "}"
+end
+
+function DrawHelper:valueToString(o, s)
+	-- o: object [any]
+	-- s: space [string]
+
+	local otype = type(o)
+
+	if otype == "nil" then
+		return "nil"
+	end
+
+	if otype == "string" then
+		return o
+	end
+
+	if otype == "number" or otype == "boolean" then
+		return tostring(o)
+	end
+
+	if otype == "userdata" then
+		if o.x and o.y and o.z then
+			otype = "table"
+			o = { x = o.x, y = o.y, z = o.z }
+		end
+	end
+
+	if otype == "table" then
+		return self:tableToString(o, s)
+	end
+
+	return otype .. "_UNKOWN_" .. tostring(o)
+end
+
+local DH = DrawHelper()
 
 local function IsInRange(v1, v2, range)
 	v1 = v1.pos or v1
@@ -1760,7 +1897,7 @@ if Champion == nil and myHero.charName == "Jhin" then
 	local QPrediction = { Delay = 0.25, Range = 550, Speed = 2500 }
 	local WPrediction = GGPrediction:SpellPrediction({
 		Delay = 0.75,
-		Range = 3000,
+		Range = 2500,
 		Radius = 45,
 		Speed = math.huge,
 		Type = GGPrediction.SPELLTYPE_LINE,
@@ -6191,6 +6328,9 @@ if Champion ~= nil then
 		end
 		if Champion.OnTick then
 			table.insert(_G.SDK.OnTick, function()
+				--DH:drawSpellData(myHero, _W, 0, 0, 22)
+				--DH:drawActiveSpell(myHero, 500, 0, 22)
+				--DH:drawHeroesDistance(22)
 				Champion:PreTick()
 				if not SDK_IsRecalling(myHero) then
 					Champion:OnTick()
